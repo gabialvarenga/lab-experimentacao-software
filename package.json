@@ -1,0 +1,19 @@
+{
+  "name": "lab01-experimentacao-software",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Coleta e caracterização dos 1.000 repositórios mais populares do GitHub (Lab01 - Laboratório de Experimentação de Software)",
+  "scripts": {
+    "collect": "node --env-file=.env --import tsx src/collect.ts",
+    "snapshot": "node --env-file=.env --import tsx src/snapshot.ts",
+    "test": "vitest run",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
