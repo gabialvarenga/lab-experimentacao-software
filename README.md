@@ -18,4 +18,4 @@ percentual de issues fechadas.
 
 ## GitHub Projects (Kanban)
 
-Board do grupo: (em andamento)
+Board do grupo: [Kanban](https://github.com/users/gabialvarenga/projects/9)
