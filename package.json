@@ -7,6 +7,7 @@
   "scripts": {
     "collect": "node --env-file=.env --import tsx src/collect.ts",
     "snapshot": "node --env-file=.env --import tsx src/snapshot.ts",
+    "validate:rq05-rq06": "node --env-file=.env --import tsx scripts/validate-rq05-rq06.ts",
     "test": "vitest run",
     "build": "tsc"
   },
