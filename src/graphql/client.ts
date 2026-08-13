@@ -9,17 +9,19 @@ interface GraphQLResponse<T> {
   errors?: GraphQLError[];
 }
 
-export async function githubGraphQL<T>(
-  query: string,
-  variables?: Record<string, unknown>,
-): Promise<T> {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
-    throw new Error(
-      "GITHUB_TOKEN não definido. Crie um .env a partir do .env.example.",
-    );
-  }
+const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
+const MAX_ATTEMPTS = 4;
+const RETRY_DELAY_MS = 2000;
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestOnce<T>(
+  query: string,
+  variables: Record<string, unknown> | undefined,
+  token: string,
+): Promise<T> {
   const response = await fetch(GITHUB_GRAPHQL_URL, {
     method: "POST",
     headers: {
@@ -30,9 +32,11 @@ export async function githubGraphQL<T>(
   });
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       `GitHub GraphQL respondeu ${response.status}: ${await response.text()}`,
     );
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
   }
 
   const result = (await response.json()) as GraphQLResponse<T>;
@@ -48,4 +52,37 @@ export async function githubGraphQL<T>(
   }
 
   return result.data;
+}
+
+export async function githubGraphQL<T>(
+  query: string,
+  variables?: Record<string, unknown>,
+): Promise<T> {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    throw new Error(
+      "GITHUB_TOKEN não definido. Crie um .env a partir do .env.example.",
+    );
+  }
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await requestOnce<T>(query, variables, token);
+    } catch (error) {
+      const status = (error as Error & { status?: number }).status;
+      const podeTentarNovamente =
+        status !== undefined && RETRYABLE_STATUS_CODES.has(status);
+
+      if (!podeTentarNovamente || attempt === MAX_ATTEMPTS) {
+        throw error;
+      }
+
+      console.warn(
+        `Tentativa ${attempt}/${MAX_ATTEMPTS} falhou (${status}), tentando de novo em ${RETRY_DELAY_MS}ms...`,
+      );
+      await sleep(RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  throw new Error("Número máximo de tentativas excedido.");
 }

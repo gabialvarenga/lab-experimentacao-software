@@ -1,48 +1,44 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import {
-  fetchSampleRepositories,
-  type RepositorySampleResult,
-} from "../src/graphql/sampleRepositories.js";
+import { describe, expect, it } from "vitest";
+import type { RawRepository } from "../src/graphql/repositoryQuery.js";
 import { getDaysSinceLastUpdate } from "../src/metrics/rq04-lastUpdate.js";
 
-describe("RQ04 - tempo até a última atualização", () => {
-  let repositories: RepositorySampleResult[];
+function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
+  return {
+    nameWithOwner: "exemplo/repo",
+    createdAt: "2020-01-01T00:00:00Z",
+    pushedAt: "2026-01-01T00:00:00Z",
+    pullRequests: { totalCount: 0 },
+    releases: { totalCount: 0 },
+    primaryLanguage: { name: "TypeScript" },
+    totalIssues: { totalCount: 0 },
+    closedIssues: { totalCount: 0 },
+    forkCount: 0,
+    ...overrides,
+  };
+}
 
-  beforeAll(async () => {
-    repositories = await fetchSampleRepositories();
-  }, 30_000);
+describe("getDaysSinceLastUpdate (RQ04)", () => {
+  it("calcula os dias desde a última atualização", () => {
+    const agora = new Date("2026-01-31T00:00:00Z");
+    const repo = repoFixture({ pushedAt: "2026-01-01T00:00:00Z" });
 
-  it("retorna um número não negativo de dias para cada repositório da amostra", () => {
-    for (const repository of repositories) {
-      expect(getDaysSinceLastUpdate(repository)).toBeGreaterThanOrEqual(0);
-    }
+    expect(getDaysSinceLastUpdate(repo, agora)).toBe(30);
   });
 
-  it("identifica repositórios abandonados como desatualizados há muito tempo", () => {
-    const abandoned = repositories.find(
-      (repository) => repository.requestedOwner === "996icu" && repository.requestedName === "996.ICU"
-    );
-    expect(abandoned).toBeDefined();
-    expect(getDaysSinceLastUpdate(abandoned!)).toBeGreaterThan(180);
+  it("retorna 0 para um repositório atualizado agora mesmo", () => {
+    const agora = new Date("2026-01-01T12:00:00Z");
+    const repo = repoFixture({ pushedAt: agora.toISOString() });
+
+    expect(getDaysSinceLastUpdate(repo, agora)).toBe(0);
   });
 
-  it("identifica repositórios ativamente mantidos como atualizados recentemente", () => {
-    const react = repositories.find(
-      (repository) => repository.requestedOwner === "facebook" && repository.requestedName === "react"
-    );
-    expect(react).toBeDefined();
-    expect(getDaysSinceLastUpdate(react!)).toBeLessThan(30);
-  });
+  it("um repositório abandonado fica muito mais desatualizado que um ativo", () => {
+    const agora = new Date("2026-08-11T00:00:00Z");
+    const abandonado = repoFixture({ pushedAt: "2019-01-01T00:00:00Z" });
+    const ativo = repoFixture({ pushedAt: "2026-08-01T00:00:00Z" });
 
-  it("um repositório abandonado está muito mais desatualizado que um ativo", () => {
-    const abandoned = repositories.find(
-      (repository) => repository.requestedOwner === "996icu" && repository.requestedName === "996.ICU"
-    );
-    const react = repositories.find(
-      (repository) => repository.requestedOwner === "facebook" && repository.requestedName === "react"
-    );
-    expect(getDaysSinceLastUpdate(abandoned!)).toBeGreaterThan(
-      getDaysSinceLastUpdate(react!)
+    expect(getDaysSinceLastUpdate(abandonado, agora)).toBeGreaterThan(
+      getDaysSinceLastUpdate(ativo, agora),
     );
   });
 });
