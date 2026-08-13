@@ -1,9 +1,18 @@
 import { githubGraphQL } from "./client.js";
 
-export const REPO_FIELDS_RQ01_RQ02 = `
+export const REPO_FIELDS = `
   nameWithOwner
   createdAt
   pullRequests(states: MERGED) {
+    totalCount
+  }
+  primaryLanguage {
+    name
+  }
+  totalIssues: issues {
+    totalCount
+  }
+  closedIssues: issues(states: CLOSED) {
     totalCount
   }
 `;
@@ -11,22 +20,39 @@ export const REPO_FIELDS_RQ01_RQ02 = `
 export interface RawRepository {
   nameWithOwner: string;
   createdAt: string;
-  pullRequests: {
-    totalCount: number;
-  };
+  pullRequests: { totalCount: number };
+  primaryLanguage: { name: string } | null;
+  totalIssues: { totalCount: number };
+  closedIssues: { totalCount: number };
 }
 
-interface RepositoryByNameResponse {
+interface RepositoryResponse {
   repository: RawRepository | null;
 }
 
-const REPOSITORY_BY_NAME_QUERY = `
-  query RepositoryByName($owner: String!, $name: String!) {
+const REPOSITORY_QUERY = `
+  query Repository($owner: String!, $name: String!) {
     repository(owner: $owner, name: $name) {
-      ${REPO_FIELDS_RQ01_RQ02}
+      ${REPO_FIELDS}
     }
   }
 `;
+
+export async function fetchRepository(
+  owner: string,
+  name: string,
+): Promise<RawRepository> {
+  const data = await githubGraphQL<RepositoryResponse>(REPOSITORY_QUERY, {
+    owner,
+    name,
+  });
+
+  if (!data.repository) {
+    throw new Error(`Repositório "${owner}/${name}" não encontrado.`);
+  }
+
+  return data.repository;
+}
 
 export async function fetchRepositoryByName(
   ownerAndName: string,
@@ -38,14 +64,5 @@ export async function fetchRepositoryByName(
     );
   }
 
-  const data = await githubGraphQL<RepositoryByNameResponse>(
-    REPOSITORY_BY_NAME_QUERY,
-    { owner, name },
-  );
-
-  if (!data.repository) {
-    throw new Error(`Repositório "${ownerAndName}" não encontrado.`);
-  }
-
-  return data.repository;
+  return fetchRepository(owner, name);
 }
