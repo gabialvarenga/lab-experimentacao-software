@@ -15,6 +15,7 @@ export const REPO_FIELDS = `
   closedIssues: issues(states: CLOSED) {
     totalCount
   }
+  forkCount
 `;
 
 export interface RawRepository {
@@ -24,6 +25,7 @@ export interface RawRepository {
   primaryLanguage: { name: string } | null;
   totalIssues: { totalCount: number };
   closedIssues: { totalCount: number };
+  forkCount: number;
 }
 
 interface RepositoryResponse {
