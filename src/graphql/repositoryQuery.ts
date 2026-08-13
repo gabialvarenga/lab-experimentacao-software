@@ -1,76 +1,68 @@
-const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
+import { githubGraphQL } from "./client.js";
 
-const REPOSITORY_QUERY = `
-  query RepositoryLinguagemEIssues($owner: String!, $name: String!) {
-    repository(owner: $owner, name: $name) {
-      nameWithOwner
-      primaryLanguage {
-        name
-      }
-      totalIssues: issues {
-        totalCount
-      }
-      closedIssues: issues(states: CLOSED) {
-        totalCount
-      }
-    }
+export const REPO_FIELDS = `
+  nameWithOwner
+  createdAt
+  pullRequests(states: MERGED) {
+    totalCount
+  }
+  primaryLanguage {
+    name
+  }
+  totalIssues: issues {
+    totalCount
+  }
+  closedIssues: issues(states: CLOSED) {
+    totalCount
   }
 `;
 
 export interface RawRepository {
   nameWithOwner: string;
+  createdAt: string;
+  pullRequests: { totalCount: number };
   primaryLanguage: { name: string } | null;
   totalIssues: { totalCount: number };
   closedIssues: { totalCount: number };
 }
 
-interface RepositoryQueryResponse {
-  data?: {
-    repository: RawRepository | null;
-  };
-  errors?: { message: string }[];
+interface RepositoryResponse {
+  repository: RawRepository | null;
 }
+
+const REPOSITORY_QUERY = `
+  query Repository($owner: String!, $name: String!) {
+    repository(owner: $owner, name: $name) {
+      ${REPO_FIELDS}
+    }
+  }
+`;
 
 export async function fetchRepository(
   owner: string,
   name: string,
 ): Promise<RawRepository> {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
-    throw new Error(
-      "GITHUB_TOKEN não definido. Crie um .env a partir do .env.example.",
-    );
-  }
-
-  const response = await fetch(GITHUB_GRAPHQL_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      query: REPOSITORY_QUERY,
-      variables: { owner, name },
-    }),
+  const data = await githubGraphQL<RepositoryResponse>(REPOSITORY_QUERY, {
+    owner,
+    name,
   });
 
-  if (!response.ok) {
-    throw new Error(
-      `GitHub GraphQL respondeu ${response.status}: ${await response.text()}`,
-    );
-  }
-
-  const result = (await response.json()) as RepositoryQueryResponse;
-
-  if (result.errors?.length) {
-    throw new Error(
-      `Erros do GraphQL: ${result.errors.map((error) => error.message).join("; ")}`,
-    );
-  }
-
-  if (!result.data?.repository) {
+  if (!data.repository) {
     throw new Error(`Repositório "${owner}/${name}" não encontrado.`);
   }
 
-  return result.data.repository;
+  return data.repository;
+}
+
+export async function fetchRepositoryByName(
+  ownerAndName: string,
+): Promise<RawRepository> {
+  const [owner, name] = ownerAndName.split("/");
+  if (!owner || !name) {
+    throw new Error(
+      `Formato inválido "${ownerAndName}", esperado "owner/nome".`,
+    );
+  }
+
+  return fetchRepository(owner, name);
 }
