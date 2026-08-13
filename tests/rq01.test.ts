@@ -7,6 +7,10 @@ function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
     nameWithOwner: "exemplo/repo",
     createdAt: "2016-08-11T00:00:00Z",
     pullRequests: { totalCount: 0 },
+    primaryLanguage: { name: "TypeScript" },
+    totalIssues: { totalCount: 0 },
+    closedIssues: { totalCount: 0 },
+    forkCount: 0,
     ...overrides,
   };
 }

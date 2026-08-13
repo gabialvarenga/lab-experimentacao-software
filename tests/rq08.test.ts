@@ -5,6 +5,11 @@ import { calcularTotalForks } from "../src/metrics/rq08-forks.js";
 function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
   return {
     nameWithOwner: "exemplo/repo",
+    createdAt: "2020-01-01T00:00:00Z",
+    pullRequests: { totalCount: 0 },
+    primaryLanguage: { name: "TypeScript" },
+    totalIssues: { totalCount: 0 },
+    closedIssues: { totalCount: 0 },
     forkCount: 0,
     ...overrides,
   };
