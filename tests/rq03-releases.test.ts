@@ -1,38 +1,32 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import {
-  fetchSampleRepositories,
-  type RepositorySampleResult,
-} from "../src/graphql/sampleRepositories.js";
+import { describe, expect, it } from "vitest";
+import type { RawRepository } from "../src/graphql/repositoryQuery.js";
 import { getTotalReleases } from "../src/metrics/rq03-releases.js";
 
-describe("RQ03 - total de releases", () => {
-  let repositories: RepositorySampleResult[];
+function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
+  return {
+    nameWithOwner: "exemplo/repo",
+    createdAt: "2020-01-01T00:00:00Z",
+    pushedAt: "2026-01-01T00:00:00Z",
+    pullRequests: { totalCount: 0 },
+    releases: { totalCount: 0 },
+    primaryLanguage: { name: "TypeScript" },
+    totalIssues: { totalCount: 0 },
+    closedIssues: { totalCount: 0 },
+    forkCount: 0,
+    ...overrides,
+  };
+}
 
-  beforeAll(async () => {
-    repositories = await fetchSampleRepositories();
-  }, 30_000);
+describe("getTotalReleases (RQ03)", () => {
+  it("retorna o total de releases do repositório", () => {
+    const repo = repoFixture({ releases: { totalCount: 214 } });
 
-  it("retorna um número não negativo de releases para cada repositório da amostra", () => {
-    for (const repository of repositories) {
-      expect(getTotalReleases(repository)).toBeGreaterThanOrEqual(0);
-    }
+    expect(getTotalReleases(repo)).toBe(214);
   });
 
-  it("identifica repositórios sem uso relevante de GitHub Releases", () => {
-    const awesome = repositories.find(
-      (repository) =>
-        repository.requestedOwner === "sindresorhus" && repository.requestedName === "awesome"
-    );
-    expect(awesome).toBeDefined();
-    expect(getTotalReleases(awesome!)).toBeLessThanOrEqual(3);
-  });
+  it("retorna 0 quando o repositório não usa GitHub Releases", () => {
+    const repo = repoFixture({ releases: { totalCount: 0 } });
 
-  it("identifica repositórios com releases frequentes", () => {
-    const vscode = repositories.find(
-      (repository) =>
-        repository.requestedOwner === "microsoft" && repository.requestedName === "vscode"
-    );
-    expect(vscode).toBeDefined();
-    expect(getTotalReleases(vscode!)).toBeGreaterThan(20);
+    expect(getTotalReleases(repo)).toBe(0);
   });
 });

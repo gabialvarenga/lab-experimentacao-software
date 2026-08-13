@@ -3,7 +3,11 @@ import { githubGraphQL } from "./client.js";
 export const REPO_FIELDS = `
   nameWithOwner
   createdAt
+  pushedAt
   pullRequests(states: MERGED) {
+    totalCount
+  }
+  releases {
     totalCount
   }
   primaryLanguage {
@@ -21,7 +25,9 @@ export const REPO_FIELDS = `
 export interface RawRepository {
   nameWithOwner: string;
   createdAt: string;
+  pushedAt: string;
   pullRequests: { totalCount: number };
+  releases: { totalCount: number };
   primaryLanguage: { name: string } | null;
   totalIssues: { totalCount: number };
   closedIssues: { totalCount: number };

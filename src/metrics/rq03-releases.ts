@@ -1,7 +1,5 @@
-import type { RepositorySampleResult } from "../graphql/sampleRepositories.js";
+import type { RawRepository } from "../graphql/repositoryQuery.js";
 
-export function getTotalReleases(
-  repository: Pick<RepositorySampleResult, "totalReleases">
-): number {
-  return repository.totalReleases;
+export function getTotalReleases(repo: RawRepository): number {
+  return repo.releases.totalCount;
 }
