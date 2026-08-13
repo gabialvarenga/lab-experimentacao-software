@@ -1,44 +1,51 @@
-const GITHUB_GRAPHQL_ENDPOINT = "https://api.github.com/graphql";
+const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
+
+interface GraphQLError {
+  message: string;
+}
 
 interface GraphQLResponse<T> {
   data?: T;
-  errors?: Array<{ message: string }>;
+  errors?: GraphQLError[];
 }
 
-export async function githubGraphQL<T>(query: string): Promise<T> {
+export async function githubGraphQL<T>(
+  query: string,
+  variables?: Record<string, unknown>,
+): Promise<T> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
     throw new Error(
-      "GITHUB_TOKEN não definido. Configure o arquivo .env a partir de .env.example."
+      "GITHUB_TOKEN não definido. Crie um .env a partir do .env.example.",
     );
   }
 
-  const response = await fetch(GITHUB_GRAPHQL_ENDPOINT, {
+  const response = await fetch(GITHUB_GRAPHQL_URL, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, variables }),
   });
 
   if (!response.ok) {
     throw new Error(
-      `GitHub GraphQL request failed: ${response.status} ${response.statusText}`
+      `GitHub GraphQL respondeu ${response.status}: ${await response.text()}`,
     );
   }
 
-  const body = (await response.json()) as GraphQLResponse<T>;
+  const result = (await response.json()) as GraphQLResponse<T>;
 
-  if (body.errors?.length) {
+  if (result.errors?.length) {
     throw new Error(
-      `GitHub GraphQL error: ${body.errors.map((error) => error.message).join("; ")}`
+      `Erros do GraphQL: ${result.errors.map((error) => error.message).join("; ")}`,
     );
   }
 
-  if (!body.data) {
-    throw new Error("GitHub GraphQL response missing data.");
+  if (!result.data) {
+    throw new Error("Resposta do GraphQL sem 'data'.");
   }
 
-  return body.data;
+  return result.data;
 }
