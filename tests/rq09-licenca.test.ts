@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RawRepository } from "../src/graphql/repositoryQuery.js";
-import { calcularTotalForks } from "../src/metrics/rq08-forks.js";
+import { obterLicenca } from "../src/metrics/rq09-licenca.js";
 
 function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
   return {
@@ -20,16 +20,16 @@ function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
   };
 }
 
-describe("calcularTotalForks (RQ08)", () => {
-  it("retorna o total de forks do repositório", () => {
-    const repo = repoFixture({ forkCount: 4821 });
+describe("obterLicenca (RQ09)", () => {
+  it("retorna o nome da licença do repositório", () => {
+    const repo = repoFixture({ licenseInfo: { name: "Apache License 2.0" } });
 
-    expect(calcularTotalForks(repo)).toBe(4821);
+    expect(obterLicenca(repo)).toBe("Apache License 2.0");
   });
 
-  it("retorna 0 quando o repositório não tem forks", () => {
-    const repo = repoFixture({ forkCount: 0 });
+  it('retorna "Não informado" quando o repositório não tem licença detectada', () => {
+    const repo = repoFixture({ licenseInfo: null });
 
-    expect(calcularTotalForks(repo)).toBe(0);
+    expect(obterLicenca(repo)).toBe("Não informado");
   });
 });
