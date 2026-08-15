@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RawRepository } from "../src/graphql/repositoryQuery.js";
-import { calcularTotalForks } from "../src/metrics/rq08-forks.js";
+import { possuiCiCd } from "../src/metrics/rq10-ci.js";
 
 function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
   return {
@@ -20,16 +20,24 @@ function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
   };
 }
 
-describe("calcularTotalForks (RQ08)", () => {
-  it("retorna o total de forks do repositório", () => {
-    const repo = repoFixture({ forkCount: 4821 });
+describe("possuiCiCd (RQ10)", () => {
+  it("retorna true quando existem arquivos de workflow em .github/workflows", () => {
+    const repo = repoFixture({
+      workflowsDir: { entries: [{ name: "ci.yml" }] },
+    });
 
-    expect(calcularTotalForks(repo)).toBe(4821);
+    expect(possuiCiCd(repo)).toBe(true);
   });
 
-  it("retorna 0 quando o repositório não tem forks", () => {
-    const repo = repoFixture({ forkCount: 0 });
+  it("retorna false quando .github/workflows não existe", () => {
+    const repo = repoFixture({ workflowsDir: null });
 
-    expect(calcularTotalForks(repo)).toBe(0);
+    expect(possuiCiCd(repo)).toBe(false);
+  });
+
+  it("retorna false quando .github/workflows existe mas está vazio", () => {
+    const repo = repoFixture({ workflowsDir: { entries: [] } });
+
+    expect(possuiCiCd(repo)).toBe(false);
   });
 });

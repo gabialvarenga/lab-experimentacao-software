@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RawRepository } from "../src/graphql/repositoryQuery.js";
-import { calcularTotalForks } from "../src/metrics/rq08-forks.js";
+import { contarLinguagens } from "../src/metrics/rq11-linguagens.js";
 
 function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
   return {
@@ -20,16 +20,16 @@ function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
   };
 }
 
-describe("calcularTotalForks (RQ08)", () => {
-  it("retorna o total de forks do repositório", () => {
-    const repo = repoFixture({ forkCount: 4821 });
+describe("contarLinguagens (RQ11)", () => {
+  it("retorna o número de linguagens usadas no repositório", () => {
+    const repo = repoFixture({ languages: { totalCount: 7 } });
 
-    expect(calcularTotalForks(repo)).toBe(4821);
+    expect(contarLinguagens(repo)).toBe(7);
   });
 
-  it("retorna 0 quando o repositório não tem forks", () => {
-    const repo = repoFixture({ forkCount: 0 });
+  it("retorna 0 quando não há linguagens detectadas", () => {
+    const repo = repoFixture({ languages: { totalCount: 0 } });
 
-    expect(calcularTotalForks(repo)).toBe(0);
+    expect(contarLinguagens(repo)).toBe(0);
   });
 });

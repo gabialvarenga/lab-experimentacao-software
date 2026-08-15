@@ -8,6 +8,9 @@ import { getDaysSinceLastUpdate } from "./metrics/rq04-lastUpdate.js";
 import { obterLinguagemPrimaria } from "./metrics/rq05-linguagem.js";
 import { calcularRazaoIssuesFechadas } from "./metrics/rq06-issues.js";
 import { calcularTotalForks } from "./metrics/rq08-forks.js";
+import { obterLicenca } from "./metrics/rq09-licenca.js";
+import { possuiCiCd } from "./metrics/rq10-ci.js";
+import { contarLinguagens } from "./metrics/rq11-linguagens.js";
 
 const LIMIT = 100;
 const OUTPUT_PATH = "data/repositories.csv";
@@ -28,6 +31,9 @@ async function main() {
     linguagem: obterLinguagemPrimaria(repo),
     razao_issues_fechadas: calcularRazaoIssuesFechadas(repo).toFixed(4),
     total_forks: calcularTotalForks(repo),
+    licenca: obterLicenca(repo),
+    possui_ci_cd: possuiCiCd(repo),
+    total_linguagens: contarLinguagens(repo),
   }));
 
   await writeFile(OUTPUT_PATH, toCsv(linhas), "utf-8");

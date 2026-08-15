@@ -13,6 +13,9 @@ function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
     totalIssues: { totalCount: 0 },
     closedIssues: { totalCount: 0 },
     forkCount: 0,
+    licenseInfo: { name: "MIT License" },
+    languages: { totalCount: 1 },
+    workflowsDir: null,
     ...overrides,
   };
 }

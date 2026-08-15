@@ -20,6 +20,19 @@ export const REPO_FIELDS = `
     totalCount
   }
   forkCount
+  licenseInfo {
+    name
+  }
+  languages {
+    totalCount
+  }
+  workflowsDir: object(expression: "HEAD:.github/workflows") {
+    ... on Tree {
+      entries {
+        name
+      }
+    }
+  }
 `;
 
 export interface RawRepository {
@@ -32,6 +45,9 @@ export interface RawRepository {
   totalIssues: { totalCount: number };
   closedIssues: { totalCount: number };
   forkCount: number;
+  licenseInfo: { name: string } | null;
+  languages: { totalCount: number };
+  workflowsDir: { entries: { name: string }[] } | null;
 }
 
 interface RepositoryResponse {
