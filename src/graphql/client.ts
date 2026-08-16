@@ -23,14 +23,23 @@ async function requestOnce<T>(
   variables: Record<string, unknown> | undefined,
   token: string,
 ): Promise<T> {
-  const response = await fetch(GITHUB_GRAPHQL_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query, variables }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(GITHUB_GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+  } catch (causa) {
+    const error = new Error(
+      `Falha de rede ao chamar a API do GitHub: ${(causa as Error).message}`,
+    );
+    (error as Error & { isNetworkError?: boolean }).isNetworkError = true;
+    throw error;
+  }
 
   if (!response.ok) {
     const error = new Error(
@@ -82,6 +91,9 @@ export async function githubGraphQL<T>(
         error as Error & { retryAfterSeconds?: number }
       ).retryAfterSeconds;
 
+      const isNetworkError =
+        (error as Error & { isNetworkError?: boolean }).isNetworkError ===
+        true;
       const isTransient =
         status !== undefined && RETRYABLE_STATUS_CODES.has(status);
       const isRateLimited =
@@ -89,7 +101,10 @@ export async function githubGraphQL<T>(
         RATE_LIMIT_STATUS_CODES.has(status) &&
         retryAfterSeconds !== undefined;
 
-      if ((!isTransient && !isRateLimited) || attempt === MAX_ATTEMPTS) {
+      if (
+        (!isNetworkError && !isTransient && !isRateLimited) ||
+        attempt === MAX_ATTEMPTS
+      ) {
         throw error;
       }
 
@@ -97,8 +112,9 @@ export async function githubGraphQL<T>(
         ? retryAfterSeconds * 1000
         : RETRY_DELAY_MS * attempt;
 
+      const motivo = isNetworkError ? "falha de rede" : `status ${status}`;
       console.warn(
-        `Tentativa ${attempt}/${MAX_ATTEMPTS} falhou (${status}), tentando de novo em ${delayMs}ms...`,
+        `Tentativa ${attempt}/${MAX_ATTEMPTS} falhou (${motivo}), tentando de novo em ${delayMs}ms...`,
       );
       await sleep(delayMs);
     }
