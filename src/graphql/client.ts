@@ -10,10 +10,11 @@ interface GraphQLResponse<T> {
 }
 
 const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
+const RATE_LIMIT_STATUS_CODES = new Set([403, 429]);
 const MAX_ATTEMPTS = 4;
 const RETRY_DELAY_MS = 2000;
 
-function sleep(ms: number): Promise<void> {
+export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -36,6 +37,13 @@ async function requestOnce<T>(
       `GitHub GraphQL respondeu ${response.status}: ${await response.text()}`,
     );
     (error as Error & { status?: number }).status = response.status;
+
+    const retryAfter = response.headers.get("retry-after");
+    if (retryAfter) {
+      (error as Error & { retryAfterSeconds?: number }).retryAfterSeconds =
+        Number(retryAfter);
+    }
+
     throw error;
   }
 
@@ -70,17 +78,29 @@ export async function githubGraphQL<T>(
       return await requestOnce<T>(query, variables, token);
     } catch (error) {
       const status = (error as Error & { status?: number }).status;
-      const podeTentarNovamente =
-        status !== undefined && RETRYABLE_STATUS_CODES.has(status);
+      const retryAfterSeconds = (
+        error as Error & { retryAfterSeconds?: number }
+      ).retryAfterSeconds;
 
-      if (!podeTentarNovamente || attempt === MAX_ATTEMPTS) {
+      const isTransient =
+        status !== undefined && RETRYABLE_STATUS_CODES.has(status);
+      const isRateLimited =
+        status !== undefined &&
+        RATE_LIMIT_STATUS_CODES.has(status) &&
+        retryAfterSeconds !== undefined;
+
+      if ((!isTransient && !isRateLimited) || attempt === MAX_ATTEMPTS) {
         throw error;
       }
 
+      const delayMs = isRateLimited
+        ? retryAfterSeconds * 1000
+        : RETRY_DELAY_MS * attempt;
+
       console.warn(
-        `Tentativa ${attempt}/${MAX_ATTEMPTS} falhou (${status}), tentando de novo em ${RETRY_DELAY_MS}ms...`,
+        `Tentativa ${attempt}/${MAX_ATTEMPTS} falhou (${status}), tentando de novo em ${delayMs}ms...`,
       );
-      await sleep(RETRY_DELAY_MS * attempt);
+      await sleep(delayMs);
     }
   }
 

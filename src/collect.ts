@@ -12,7 +12,7 @@ import { obterLicenca } from "./metrics/rq09-licenca.js";
 import { possuiCiCd } from "./metrics/rq10-ci.js";
 import { contarLinguagens } from "./metrics/rq11-linguagens.js";
 
-const LIMIT = 100;
+const LIMIT = 1000;
 const OUTPUT_PATH = "data/repositories.csv";
 
 async function main() {
