@@ -75,3 +75,184 @@ moderada — real, mas não extraordinária. Há também repositórios populares
 com **0 PRs aceitas** (o mínimo observado) — casos legítimos de projetos que
 não usam o fluxo de Pull Request do GitHub para contribuições (já
 documentado na validação da Issue #1, ex: `torvalds/linux`).
+
+## RQ05 — Sistemas populares são escritos nas linguagens mais populares?
+
+**Métrica:** linguagem primária do repositório (`linguagem`), comparada
+contra o ranking do GitHub Octoverse (fonte definida na Issue #3).
+
+### Distribuição, outliers e valores ausentes
+
+| Categoria | Contagem |
+|---|---|
+| Python | 229 |
+| TypeScript | 174 |
+| JavaScript | 110 |
+| Go | 76 |
+| Rust | 57 |
+| *(demais 38 categorias)* | — |
+| **Não informado** | 87 |
+
+- **Ausentes: 87 (8,7%).** Não é falha de coleta — são repositórios sem uma
+  linguagem de código dominante, geralmente listas/coleções (ex.:
+  `sindresorhus/awesome`, já documentado na validação da Issue #3), onde o
+  GitHub Linguist não consegue eleger uma linguagem de programação primária
+  porque o conteúdo é majoritariamente Markdown/texto.
+- Não existe conceito de "outlier" numérico numa variável categórica — a
+  distribuição é lida em concentração, não em dispersão.
+- Top 5 linguagens concentram 646/1000 (64,6%) da amostra; as outras 38
+  categorias dividem os 267 restantes — cauda longa também aqui, entre
+  categorias.
+
+### Hipótese informal
+
+Os dados sustentam a hipótese. As três linguagens no topo — Python (229),
+TypeScript (174) e JavaScript (110) — são exatamente as que aparecem entre as
+mais populares nos relatórios recentes do GitHub Octoverse, a fonte adotada
+pelo grupo desde a Issue #3. Juntas, essas três já respondem por mais da
+metade (51,3%) da amostra, indicando que popularidade medida por estrelas e
+popularidade de linguagem medida por adoção geral caminham juntas — não é
+surpresa que projetos escritos nas linguagens mais usadas pela comunidade
+tenham mais desenvolvedores propensos a descobri-los, usá-los e estrelá-los.
+Os 87 casos "Não informado" não contradizem a hipótese: são majoritariamente
+repositórios de conteúdo (listas "awesome", coleções de recursos), uma
+categoria de projeto popular no GitHub que não se encaixa na pergunta de
+pesquisa por não ser, no sentido estrito, "escrito" em nenhuma linguagem.
+
+## RQ06 — Sistemas populares possuem um alto percentual de issues fechadas?
+
+**Métrica:** razão entre issues fechadas e total de issues
+(`razao_issues_fechadas`).
+
+### Distribuição, outliers e valores ausentes
+
+| Mín | Máx | Mediana | Q1 | Q3 | Outliers | Ausentes |
+|---|---|---|---|---|---|---|
+| 0 | 1 | 0,86 | 0,67 | 0,97 | 60 | 0/1000 |
+
+- **Ausentes: 0.** `issues.totalCount` e `issues(states: CLOSED).totalCount`
+  sempre retornam um número, mesmo que 0 — a divisão por zero é tratada
+  explicitamente na métrica (retorna 0, não `NaN`, conforme documentado na
+  Issue #3).
+- **Outliers: 60 (6%).** Como a métrica é uma razão limitada entre 0 e 1, o
+  IQR é estreito (Q1=0,67 a Q3=0,97), então valores nos dois extremos contam
+  como outlier: repositórios com razão muito baixa e repositórios com razão
+  0 — incluindo o caso já documentado de repositórios que não usam o
+  rastreador de Issues do GitHub (`torvalds/linux`, 0/0), que entra como
+  outlier técnico, não como sinal de má manutenção.
+- Q3 em 0,97 mostra que pelo menos 25% da amostra fecha quase todas as
+  issues que recebe.
+
+### Hipótese informal
+
+Os dados sustentam a hipótese com folga. A mediana de 86% de issues fechadas
+é um número alto por qualquer critério, e o Q1 em 67% mostra que mesmo o
+quarto mais "fraco" da amostra ainda fecha a maioria das suas issues — não há
+um grupo grande de projetos populares mal cuidados. Isso é coerente com o
+comportamento esperado de projetos que atraem muitos usuários: mais gente
+reportando problemas gera mais issues, mas também mais gente no time de
+manutenção capaz de triá-las e fechá-las. Os 60 outliers merecem leitura em
+duas pontas: de um lado, projetos genuinamente menos ativos apesar da
+popularidade (estrela não implica manutenção contínua); do outro, casos como
+`torvalds/linux`, onde a razão 0/0 é um artefato de o projeto não usar o
+rastreador de Issues do GitHub — a manutenção real acontece por lista de
+e-mail, fora do alcance dessa métrica. Sem essa distinção, corre-se o risco
+de interpretar "ausência de dado" como "projeto mal cuidado", quando é o
+oposto.
+
+## RQ08 (bônus) — Sistemas populares possuem um alto número de forks?
+
+**Métrica:** total de forks (`total_forks`). Hipótese informal original
+(Issue #4): sistemas populares tendem a ter alta razão fork/estrela.
+
+### Distribuição, outliers e valores ausentes
+
+| Mín | Máx | Mediana | Q1 | Q3 | Outliers | Ausentes |
+|---|---|---|---|---|---|---|
+| 36 | 109.092 | 6.339 | 3.575,5 | 10.857,5 | 93 | 0/1000 |
+
+- **Ausentes: 0.** `forkCount` é um campo simples do schema `Repository`,
+  sempre presente.
+- **Outliers: 93 (9,3%).** Distribuição em cauda longa clássica — a maioria
+  fica na faixa de milhares de forks, mas ~9% dispara até seis dígitos
+  (máximo de 109.092), puxando a média bem acima da mediana.
+- **Limitação conhecida:** a hipótese original da Issue #4 é sobre a *razão*
+  fork/estrela, não sobre a contagem absoluta — mas `stargazerCount` nunca
+  foi incluído em `REPO_FIELDS` (fora do escopo original e não pedido
+  depois), então essa razão não pode ser calculada com o dataset atual. A
+  análise abaixo se limita à magnitude absoluta de forks.
+
+### Hipótese informal
+
+Com o dado disponível, dá pra validar só uma parte da hipótese original. A
+mediana de 6.339 forks é um número substancial — mesmo o repositório
+"típico" do top 1000 por estrelas é forkado milhares de vezes, sugerindo
+reuso ativo do código, não só popularidade passiva. Os 93 outliers, chegando
+a mais de 100 mil forks, provavelmente correspondem a frameworks/bibliotecas
+amplamente adotados como dependência direta de outros projetos. Sem a
+contagem de estrelas, porém, não dá pra confirmar a parte central da
+hipótese original — se esse volume de forks é proporcionalmente alto *em
+relação à popularidade* de cada repositório, ou se apenas acompanha o
+tamanho absoluto da amostra. Fica registrado como limitação de dataset a
+considerar numa coleta futura, caso o grupo queira fechar essa lacuna antes
+do relatório final.
+
+## Métricas extras (Issue #26) — licença, CI/CD e diversidade de linguagens
+
+**Métricas:** licença (`licenca`), presença de pipeline de CI/CD via GitHub
+Actions (`possui_ci_cd`), número de linguagens detectadas no repositório
+(`total_linguagens`).
+
+### Licença
+
+| Categoria | Contagem |
+|---|---|
+| MIT License | 394 |
+| Apache License 2.0 | 181 |
+| Other | 148 |
+| GNU General Public License v3.0 | 50 |
+| GNU Affero General Public License v3.0 | 48 |
+| *(demais 14 categorias)* | — |
+| **Não informado** | 84 |
+
+Licenças permissivas (MIT + Apache-2.0) somam 575 repositórios — 57,5% da
+amostra —, contra apenas 98 (9,8%) de licenças copyleft fortes (GPLv3 +
+AGPLv3). A categoria "Other" (148, 14,8%) não significa licença desconhecida:
+na maioria dos casos é uma expressão SPDX não-padrão que o detector do
+GitHub não casa com um único template — o mesmo padrão já documentado na
+Issue #26 para o `torvalds/linux` (`GPL-2.0 WITH Linux-syscall-note`).
+
+### CI/CD
+
+| Valor | Contagem |
+|---|---|
+| true | 798 |
+| false | 202 |
+
+Quase 80% dos 1000 repositórios têm pelo menos um workflow de GitHub Actions
+configurado.
+
+### Número de linguagens
+
+| Mín | Máx | Mediana | Q1 | Q3 | Outliers | Ausentes |
+|---|---|---|---|---|---|---|
+| 0 | 56 | 5 | 3 | 9 | 48 | 0/1000 |
+
+### Hipótese informal
+
+Os três sinais extras, juntos, apontam pra uma mesma conclusão: sistemas
+populares tendem a ter **maturidade de engenharia**, não só popularidade. A
+predominância de licenças permissivas (quase 6 em cada 10 repositórios) é
+coerente com projetos que buscam adoção ampla, inclusive comercial — licença
+restritiva é fricção a menos gente disposta a depender do projeto. A adoção
+de CI/CD em quase 80% da amostra reforça isso: é uma prática que só compensa
+o investimento quando o projeto já espera volume relevante de contribuições
+externas a validar automaticamente (conectando com o que já observamos em
+RQ02, sobre contribuição externa). A mediana de 5 linguagens por repositório
+mostra que a maioria não é monolinguagem "pura" — o Linguist do GitHub conta
+arquivos de build, configuração (YAML, Dockerfile) e scripts auxiliares como
+linguagens à parte, então esse número reflete mais a complexidade de um
+projeto maduro (infraestrutura de CI/CD, testes, documentação) do que
+fragmentação real de código-fonte. Os 48 outliers no topo (até 56 linguagens)
+provavelmente são monorepos ou projetos guarda-chuva que hospedam múltiplos
+subprojetos.
