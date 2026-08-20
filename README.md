@@ -1,5 +1,7 @@
 # Laboratório de Experimentação de Software — Lab01
 
+[![CI](https://github.com/gabialvarenga/lab-experimentacao-software/actions/workflows/ci.yml/badge.svg)](https://github.com/gabialvarenga/lab-experimentacao-software/actions/workflows/ci.yml)
+
 Repositório do grupo para o Lab01 da disciplina de Laboratório de Experimentação
 de Software (PUC Minas), sob orientação do Prof. Danilo Maia.
 
