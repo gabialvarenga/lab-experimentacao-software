@@ -12,7 +12,8 @@
     "validate:rq05-rq06": "node --env-file=.env --import tsx scripts/validate-rq05-rq06.ts",
     "validate:rq01-rq02": "node --env-file=.env --import tsx scripts/validate-rq01-rq02.ts",
     "test": "vitest run",
-    "build": "tsc"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
