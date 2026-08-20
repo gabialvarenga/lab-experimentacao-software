@@ -76,6 +76,104 @@ com **0 PRs aceitas** (o mínimo observado) — casos legítimos de projetos que
 não usam o fluxo de Pull Request do GitHub para contribuições (já
 documentado na validação da Issue #1, ex: `torvalds/linux`).
 
+## RQ03 — Sistemas populares lançam releases com frequência?
+
+**Métrica:** total de releases do repositório (`total_releases`,
+`releases.totalCount` do schema `Repository`).
+
+### Distribuição, outliers e valores ausentes
+
+| Mín | Máx | Mediana | Q1 | Q3 | Outliers | Ausentes |
+|---|---|---|---|---|---|---|
+| 0 | 1.000 | 39,5 | 0 | 148,25 | 94 | 0/1000 |
+
+- **Ausentes: 0.** `releases.totalCount` sempre retorna um número, mesmo 0.
+- **Q1 = 0** — pelo menos 25% da amostra nunca usou a feature de Releases do
+  GitHub. Olhando a distribuição completa: 280/1000 (28%) têm exatamente 0
+  releases.
+- **Outliers: 94 (9,4%),** todos no extremo superior — cauda longa também
+  aqui, um pequeno grupo de projetos lança releases com muito mais
+  frequência que a maioria.
+- **Inconsistência de coleta encontrada:** 21 repositórios aparecem com
+  exatamente `1.000` releases — número redondo demais para ser coincidência
+  entre projetos tão distintos (`electron/electron`, `vercel/next.js`,
+  `home-assistant/core`, `langchain-ai/langchain`, entre outros). Conferi 3
+  deles direto na API REST (contagem real via paginação, não `totalCount`):
+
+  | Repositório | Coletado (GraphQL) | Real (REST) |
+  |---|---|---|
+  | `electron/electron` | 1.000 | 1.986 |
+  | `vercel/next.js` | 1.000 | 3.810 |
+  | `home-assistant/core` | 1.000 | 1.630 |
+
+  Confirmado: o campo `releases.totalCount` da API GraphQL do GitHub trunca
+  em 1.000 para conexões muito grandes — limitação da própria API, não erro
+  do nosso script de coleta. Os 21 repositórios no teto têm o valor real
+  subestimado (em alguns casos, quase 4x menor que o real); o Q3/máximo
+  reportados acima são um piso, não o valor verdadeiro, para os projetos
+  mais prolíficos da amostra.
+
+### Hipótese informal
+
+A hipótese "sistemas populares lançam releases com frequência" não se
+sustenta como afirmação única — os dados apontam para uma distribuição
+**bimodal**, dependente do tipo de repositório, não da popularidade em si.
+Em uma ponta, 28% da amostra nunca usou a feature de Releases do GitHub:
+majoritariamente repositórios de conteúdo, listas curadas e materiais de
+estudo (o mesmo perfil de repositório sem PRs documentado em RQ02) — onde
+"popular" não implica "versionado". Na outra ponta, projetos de software
+ativamente mantidos lançam releases com frequência muito alta, provavelmente
+ainda mais alta do que os dados capturam: o teto de 1.000 no campo coletado
+esconde que pelo menos `electron/electron` e `vercel/next.js` já ultrapassam
+3-4x esse valor. Em suma: popularidade por si só não prediz frequência de
+releases — o tipo de conteúdo do repositório é o fator determinante, e a
+métrica coletada subestima sistematicamente os casos mais extremos.
+
+## RQ04 — Sistemas populares são atualizados com frequência?
+
+**Métrica:** tempo até a última atualização, em dias
+(`dias_desde_atualizacao`, calculado a partir de `pushedAt`).
+
+### Distribuição, outliers e valores ausentes
+
+| Mín | Máx | Mediana | Q1 | Q3 | Outliers | Ausentes |
+|---|---|---|---|---|---|---|
+| 0 | 2.448 | 3 | 0 | 49 | 191 | 0/1000 |
+
+- **Ausentes: 0.** `pushedAt` é um timestamp simples, sempre presente — sem
+  o problema de teto observado em RQ03.
+- Mediana de apenas 3 dias, e 339/1000 (33,9%) repositórios atualizados no
+  próprio dia da coleta — a esmagadora maioria do top 1000 por estrelas
+  segue com desenvolvimento ativo.
+- **Outliers: 191 (19,1%),** todos no extremo superior (repositórios há
+  muito tempo sem push). Investigando os mais extremos individualmente,
+  todos são casos legítimos de projetos descontinuados, não erro de coleta:
+
+  | Repositório | Dias sem atualização | Motivo plausível |
+  |---|---|---|
+  | `exacity/deeplearningbook-chinese` | 2.448 (~6,7 anos) | Tradução de livro — conteúdo estático |
+  | `GitSquared/edex-ui` | 1.761 | Projeto arquivado pelo autor |
+  | `adobe/brackets` | 1.526 | Editor descontinuado pela Adobe (2021) |
+  | `atom/atom` | 1.321 | Editor descontinuado pelo próprio GitHub (dez/2022) |
+  | `AFNetworking/AFNetworking` | 1.307 | Lib de rede iOS, superada pelo `URLSession` nativo da Apple |
+
+### Hipótese informal
+
+Os dados sustentam a hipótese para a maioria da amostra, com uma minoria
+relevante de exceções bem explicáveis. A mediana de apenas 3 dias sem
+atualização mostra que popularidade por estrelas, no top 1000, anda junto
+com desenvolvimento ativo — consistente com a própria mecânica do GitHub
+(busca, trending, descoberta) favorecer projetos com sinais recentes de
+vida. Os 191 outliers (quase 1 em cada 5 repositórios), porém, revelam que
+estrelas acumuladas **não desaparecem quando o projeto para** — são
+"fósseis" que continuam no top 1000 histórico mesmo anos após deixarem de
+ser mantidos, como `atom/atom` (descontinuado pelo próprio GitHub) e
+`AFNetworking` (superado por uma API nativa da Apple). Isso reforça uma
+leitura já sugerida em RQ08: número de estrelas é um indicador de
+relevância *histórica* acumulada, não necessariamente de manutenção
+*corrente* — as duas coisas costumam andar juntas, mas não são a mesma
+coisa.
+
 ## RQ05 — Sistemas populares são escritos nas linguagens mais populares?
 
 **Métrica:** linguagem primária do repositório (`linguagem`), comparada
