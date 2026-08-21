@@ -14,13 +14,21 @@ de Software (PUC Minas), sob orientação do Prof. Danilo Maia.
 ## Objetivo
 
 Caracterizar os 1.000 repositórios open-source mais populares do GitHub
-(por número de estrelas), respondendo a 7 questões de pesquisa sobre maturidade,
-contribuição externa, frequência de releases, atualizações, linguagens e
-percentual de issues fechadas.
+(por número de estrelas), respondendo às 7 questões de pesquisa do enunciado
+sobre maturidade, contribuição externa, frequência de releases, atualizações,
+linguagens e percentual de issues fechadas — mais uma RQ08 bônus (efeito de
+rede via forks) e 3 métricas extras (licença, CI/CD, número de linguagens).
 
 ## GitHub Projects (Kanban)
 
 Board do grupo: [Kanban](https://github.com/users/gabialvarenga/projects/9)
+
+## Relatório
+
+- [Hipóteses informais](relatorio/hipoteses-informais.md) — validação de
+  dados (distribuição, outliers, valores ausentes) e hipótese informal por
+  RQ, gerado a partir de `data/data-quality-report.md`.
+- [Primeira versão do relatório (PDF)](relatorio/Primeira_versao_Relatorio_Laboratorio.pdf)
 
 ## Como rodar
 
@@ -50,6 +58,14 @@ O token precisa do escopo `read:project` para o snapshot (além do acesso
 padrão a repositórios públicos usado pela coleta) — edite o token em
 [github.com/settings/tokens](https://github.com/settings/tokens) e marque
 essa permissão caso o script retorne erro de escopo insuficiente.
+
+**Relatório de qualidade de dados** (gera `data/data-quality-report.md` a
+partir de `data/repositories.csv`: distribuição, outliers e valores ausentes
+por RQ):
+
+```bash
+npm run data-quality
+```
 
 **Testes e verificação de tipos:**
 
