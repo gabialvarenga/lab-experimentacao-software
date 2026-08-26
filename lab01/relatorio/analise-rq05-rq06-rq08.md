@@ -63,31 +63,48 @@ deslocada pro topo da caixa, e uma fileira de outliers marcados abaixo de
 visível. **Resultado: hipótese sustentada, com o cluster de zeros confirmado
 como um padrão distinto, não ruído aleatório.**
 
-## RQ08 (bônus) — Total de forks
+## RQ08 (bônus) — Total de forks e razão fork/estrela
 
 ![Distribuição (escala log) e boxplot de forks](graficos/rq08_forks.png)
 
 | n | Mín | Q1 | Mediana | Q3 | Máx | Média |
 |---|---|---|---|---|---|---|
-| 1000 | 36 | 3.575,5 | 6.339 | 10.857,5 | 109.092 | 9.911,9 |
+| 1000 | 38 | 3.624,5 | 6.403 | 10.915,5 | 108.902 | 9.980,71 |
+
+Com `stargazerCount` agora coletado (Issue #54), dá pra testar a métrica que
+a hipótese original da Issue #4 sempre pediu:
+
+![Distribuição (escala log) e boxplot da razão fork/estrela](graficos/rq08_razao_fork_estrela.png)
+
+| n | Mín | Q1 | Mediana | Q3 | Máx | Média |
+|---|---|---|---|---|---|---|
+| 1000 | 0,0009 | 0,0770 | 0,1146 | 0,1797 | 1,9474 | 0,1459 |
 
 ### Discussão — hipótese vs. resultado
 
-A [hipótese informal da S02](hipoteses-informais.md#rq08-bônus--sistemas-populares-possuem-um-alto-número-de-forks)
-já registrava uma limitação: sem `stargazerCount` coletado, só dá pra validar
-a magnitude absoluta de forks, não a razão fork/estrela da hipótese original
-da Issue #4 — essa limitação continua valendo aqui, os gráficos não resolvem
-isso. Dentro do que dá pra observar, o histograma em escala log mostra uma
-forma aproximadamente log-normal (sino simétrico em escala log), o mesmo
-padrão já visto em RQ02 (PRs aceitas) — sugerindo que o número de forks segue
-a mesma dinâmica de "cauda longa" típica de métricas de engajamento
-open-source. O boxplot em escala log deixa visível uma quantidade grande de
-outliers acima do bigode superior (~93 casos, chegando a mais de 10⁵ forks),
-consistentes com um pequeno grupo de frameworks/bibliotecas usados como
-dependência direta por muitos outros projetos. Média (9.911,9) acima da
-mediana (6.339) confirma a assimetria, embora menos extrema que em RQ02 (a
-razão média/mediana aqui é de ~1,56x, contra mais de 5x em RQ02) — indicando
-que, apesar da cauda longa, a distribuição de forks é relativamente menos
-desigual que a de PRs aceitas. **Resultado: magnitude absoluta consistente
-com "alto número de forks", mas a pergunta original (razão fork/estrela)
-segue sem resposta neste dataset.**
+O histograma de `total_forks` em escala log mostra uma forma aproximadamente
+log-normal, o mesmo padrão já visto em RQ02 (PRs aceitas), sugerindo que
+forks seguem a mesma dinâmica de cauda longa de outras métricas de
+engajamento open-source. Média (9.980,71) acima da mediana (6.403) confirma
+a assimetria, embora menos extrema que em RQ02 (razão média/mediana aqui
+~1,56x, contra mais de 5x em RQ02).
+
+O histograma da razão fork/estrela conta uma história diferente da magnitude
+absoluta. A distribuição também é de cauda longa em escala log, mas a faixa
+é enorme: de 0,0009 a 1,9474, uma variação de mais de 2.100x — proporcionalmente
+muito mais larga que a de forks ou estrelas isoladas. Investigando os
+extremos: no topo, `firstcontributions/first-contributions` (razão 1,95) e
+`eugenp/tutorials` (razão 1,43) são repositórios de tutorial/prática feitos
+para serem forkados — o fork é o uso pretendido, não um efeito colateral da
+popularidade. No fundo, `hexojs/hexo` (razão 0,0009) é consumido via
+`npm install`, raramente clonado para modificação. O boxplot deixa visível
+uma quantidade grande de outliers acima do bigode superior — mas, ao
+contrário de RQ02/RQ08 (forks absolutos), aqui os outliers concentram um
+*tipo* de repositório, não só um tamanho.
+
+**Resultado: hipótese sustentada parcialmente.** A mediana de 0,11 (~1 fork
+a cada 9 estrelas) indica engajamento ativo real, não só popularidade
+passiva — dar estrela custa um clique, fazer fork exige intenção. Mas "alta
+razão fork/estrela" não é uma propriedade uniforme de sistemas populares: ela
+depende do tipo de projeto (tutorial/template vs. ferramenta/biblioteca
+consumida como dependência), não da popularidade em si.

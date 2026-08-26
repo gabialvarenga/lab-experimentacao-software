@@ -20,6 +20,7 @@ export const REPO_FIELDS = `
     totalCount
   }
   forkCount
+  stargazerCount
   licenseInfo {
     name
   }
@@ -45,6 +46,7 @@ export interface RawRepository {
   totalIssues: { totalCount: number };
   closedIssues: { totalCount: number };
   forkCount: number;
+  stargazerCount: number;
   licenseInfo: { name: string } | null;
   languages: { totalCount: number };
   workflowsDir: { entries: { name: string }[] } | null;

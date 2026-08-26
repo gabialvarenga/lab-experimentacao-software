@@ -260,40 +260,55 @@ oposto.
 
 ## RQ08 (bônus) — Sistemas populares possuem um alto número de forks?
 
-**Métrica:** total de forks (`total_forks`). Hipótese informal original
-(Issue #4): sistemas populares tendem a ter alta razão fork/estrela.
+**Métrica:** total de forks (`total_forks`) e, agora que `stargazerCount` foi
+adicionado à coleta (Issue #54), a razão fork/estrela (`razao_fork_estrela`)
+— a métrica que a hipótese informal original (Issue #4) sempre pediu:
+sistemas populares tendem a ter alta razão fork/estrela, indicando não só
+popularidade passiva mas reuso ativo do código.
 
 ### Distribuição, outliers e valores ausentes
 
-| Mín | Máx | Mediana | Q1 | Q3 | Outliers | Ausentes |
-|---|---|---|---|---|---|---|
-| 36 | 109.092 | 6.339 | 3.575,5 | 10.857,5 | 93 | 0/1000 |
+| Métrica | Mín | Máx | Mediana | Q1 | Q3 | Outliers | Ausentes |
+|---|---|---|---|---|---|---|---|
+| Total de forks | 38 | 108.902 | 6.403 | 3.624,5 | 10.915,5 | 95 | 0/1000 |
+| Total de estrelas | 33.040 | 543.177 | 48.868,5 | 38.662,75 | 72.965,5 | 82 | 0/1000 |
+| Razão fork/estrela | 0,0009 | 1,95 | 0,11 | 0,08 | 0,18 | 54 | 0/1000 |
 
-- **Ausentes: 0.** `forkCount` é um campo simples do schema `Repository`,
-  sempre presente.
-- **Outliers: 93 (9,3%).** Distribuição em cauda longa clássica — a maioria
-  fica na faixa de milhares de forks, mas ~9% dispara até seis dígitos
-  (máximo de 109.092), puxando a média bem acima da mediana.
-- **Limitação conhecida:** a hipótese original da Issue #4 é sobre a *razão*
-  fork/estrela, não sobre a contagem absoluta — mas `stargazerCount` nunca
-  foi incluído em `REPO_FIELDS` (fora do escopo original e não pedido
-  depois), então essa razão não pode ser calculada com o dataset atual. A
-  análise abaixo se limita à magnitude absoluta de forks.
+- **Ausentes: 0** nas três colunas — `forkCount` e `stargazerCount` são
+  campos simples do schema `Repository`, sempre presentes.
+- A razão varia por mais de **2.100x** entre o mínimo e o máximo observados —
+  faixa muito mais larga, proporcionalmente, do que a de forks ou estrelas
+  isoladas, o que já sugere que a razão depende do *tipo* de repositório, não
+  só da popularidade.
+- **Extremo superior:** `firstcontributions/first-contributions` (108.440
+  forks / 55.685 estrelas, razão 1,95 — quase 2 forks por estrela) e
+  `eugenp/tutorials` (razão 1,43). Ambos são repositórios de **tutorial/
+  prática**, feitos explicitamente para serem forkados (o próprio README do
+  `first-contributions` instrui o leitor a fazer fork como exercício de
+  primeira contribuição open-source) — não é popularidade passiva, é o
+  oposto: o fork *é* o produto.
+- **Extremo inferior:** `hexojs/hexo` (38 forks / 41.773 estrelas, razão
+  0,0009) — um gerador de site estático consumido via `npm install`, não
+  clonado/modificado pela maioria de quem o usa. Estrela aqui expressa "uso
+  a ferramenta", não "quero mexer no código".
 
 ### Hipótese informal
 
-Com o dado disponível, dá pra validar só uma parte da hipótese original. A
-mediana de 6.339 forks é um número substancial — mesmo o repositório
-"típico" do top 1000 por estrelas é forkado milhares de vezes, sugerindo
-reuso ativo do código, não só popularidade passiva. Os 93 outliers, chegando
-a mais de 100 mil forks, provavelmente correspondem a frameworks/bibliotecas
-amplamente adotados como dependência direta de outros projetos. Sem a
-contagem de estrelas, porém, não dá pra confirmar a parte central da
-hipótese original — se esse volume de forks é proporcionalmente alto *em
-relação à popularidade* de cada repositório, ou se apenas acompanha o
-tamanho absoluto da amostra. Fica registrado como limitação de dataset a
-considerar numa coleta futura, caso o grupo queira fechar essa lacuna antes
-do relatório final.
+Com `stargazerCount` agora coletado, dá pra testar a hipótese original de
+verdade — e o resultado é mais nuançado do que uma confirmação simples. A
+mediana de 0,11 (cerca de 1 fork a cada 9 estrelas) não é desprezível:
+como dar estrela custa um clique e fazer fork exige intenção real de estudar
+ou modificar o código, uma conversão de ~11% do "público passivo" pra
+"engajamento ativo" já é um sinal de reuso genuíno, não só admiração — nesse
+sentido, a hipótese tem apoio. Mas a variação de mais de 2.000x entre os
+extremos mostra que **"alta razão fork/estrela" não é uma propriedade
+uniforme dos repositórios populares** — é concentrada num tipo específico de
+projeto (tutoriais, templates, material de estudo, onde o fork é o próprio
+uso pretendido), enquanto ferramentas e bibliotecas consumidas via gerenciador
+de pacotes (como o `hexojs/hexo`) mantêm razão baixa mesmo com centenas de
+milhares de estrelas. **Resultado: hipótese sustentada parcialmente** — o
+efeito de rede via fork existe e é mensurável, mas ele reflete o *tipo* de
+repositório popular, não a popularidade em si.
 
 ## Métricas extras (Issue #26) — licença, CI/CD e diversidade de linguagens
 
