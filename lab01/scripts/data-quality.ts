@@ -37,6 +37,8 @@ const COLUNAS: Coluna[] = [
   },
   { rq: "RQ06", label: "Razão de issues fechadas", coluna: "razao_issues_fechadas", tipo: "numerica" },
   { rq: "RQ08 (bônus)", label: "Total de forks", coluna: "total_forks", tipo: "numerica" },
+  { rq: "RQ08 (bônus)", label: "Total de estrelas", coluna: "total_estrelas", tipo: "numerica" },
+  { rq: "RQ08 (bônus)", label: "Razão fork/estrela", coluna: "razao_fork_estrela", tipo: "numerica" },
   {
     rq: "RQ09 (extra)",
     label: "Licença",

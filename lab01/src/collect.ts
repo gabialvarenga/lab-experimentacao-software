@@ -10,6 +10,10 @@ import { rq04UltimaAtualizacao } from "./metrics/rq04-lastUpdate.js";
 import { rq05Linguagem } from "./metrics/rq05-linguagem.js";
 import { rq06RazaoIssuesFechadas } from "./metrics/rq06-issues.js";
 import { rq08Forks } from "./metrics/rq08-forks.js";
+import {
+  rq08Estrelas,
+  rq08RazaoForkEstrela,
+} from "./metrics/rq08-estrelas-fork.js";
 import { rq09Licenca } from "./metrics/rq09-licenca.js";
 import { rq10Ci } from "./metrics/rq10-ci.js";
 import { rq11Linguagens } from "./metrics/rq11-linguagens.js";
@@ -26,6 +30,8 @@ export const METRICAS: MetricStrategy[] = [
   rq05Linguagem,
   rq06RazaoIssuesFechadas,
   rq08Forks,
+  rq08Estrelas,
+  rq08RazaoForkEstrela,
   rq09Licenca,
   rq10Ci,
   rq11Linguagens,

@@ -14,6 +14,7 @@ function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
     totalIssues: { totalCount: 50 },
     closedIssues: { totalCount: 40 },
     forkCount: 25,
+    stargazerCount: 200,
     licenseInfo: { name: "MIT License" },
     languages: { totalCount: 3 },
     workflowsDir: { entries: [{ name: "ci.yml" }] },
@@ -23,7 +24,7 @@ function repoFixture(overrides: Partial<RawRepository> = {}): RawRepository {
 
 describe("METRICAS (estrategias de metrica)", () => {
   it("tem uma estrategia para cada RQ coletada (RQ01-06, RQ08-11)", () => {
-    expect(METRICAS).toHaveLength(10);
+    expect(METRICAS).toHaveLength(12);
   });
 
   it("cada estrategia tem uma chave unica", () => {
@@ -43,6 +44,8 @@ describe("calcularLinha", () => {
     expect(linha.linguagem).toBe("TypeScript");
     expect(linha.razao_issues_fechadas).toBe("0.8000");
     expect(linha.total_forks).toBe(25);
+    expect(linha.total_estrelas).toBe(200);
+    expect(linha.razao_fork_estrela).toBe(0.125);
     expect(linha.licenca).toBe("MIT License");
     expect(linha.possui_ci_cd).toBe(true);
     expect(linha.total_linguagens).toBe(3);

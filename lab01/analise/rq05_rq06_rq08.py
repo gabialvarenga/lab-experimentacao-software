@@ -153,6 +153,48 @@ def grafico_rq08_forks(df: pd.DataFrame) -> dict:
     return stats
 
 
+def grafico_rq08b_razao_fork_estrela(df: pd.DataFrame) -> dict:
+    razao = df["razao_fork_estrela"]
+    stats = estatisticas_descritivas(razao)
+
+    fig, (ax_hist, ax_box) = plt.subplots(1, 2, figsize=(10, 4))
+
+    bins_log = np.logspace(np.log10(razao.min()), np.log10(razao.max()), 25)
+    ax_hist.hist(razao, bins=bins_log, color=VERMELHO, edgecolor=TINTA_PRIMARIA, linewidth=0.3)
+    ax_hist.set_xscale("log")
+    ax_hist.axvline(stats["mediana"], color=TINTA_PRIMARIA, linestyle="--", linewidth=1.2)
+    ax_hist.text(
+        stats["mediana"], ax_hist.get_ylim()[1] * 0.95,
+        f"  mediana={stats['mediana']:.3f}",
+        color=TINTA_SECUNDARIA, fontsize=9, va="top",
+    )
+    ax_hist.set_title("RQ08 (bônus) — Distribuição da razão fork/estrela (escala log)")
+    ax_hist.set_xlabel("Forks por estrela (log)")
+    ax_hist.set_ylabel("Nº de repositórios")
+    aplicar_estilo(ax_hist)
+
+    box = ax_box.boxplot(
+        razao, patch_artist=True, widths=0.5,
+        medianprops={"color": TINTA_PRIMARIA, "linewidth": 1.5},
+        flierprops={"markeredgecolor": VERMELHO, "markersize": 4, "alpha": 0.5},
+    )
+    box["boxes"][0].set_facecolor(VERMELHO)
+    box["boxes"][0].set_alpha(0.55)
+    box["boxes"][0].set_edgecolor(TINTA_PRIMARIA)
+    ax_box.set_yscale("log")
+    ax_box.set_title("RQ08 (bônus) — Boxplot da razão fork/estrela (escala log)")
+    ax_box.set_ylabel("Forks por estrela")
+    ax_box.set_xticks([])
+    aplicar_estilo(ax_box)
+
+    fig.tight_layout()
+    caminho = GRAFICOS_DIR / "rq08_razao_fork_estrela.png"
+    fig.savefig(caminho, dpi=150)
+    plt.close(fig)
+
+    return stats
+
+
 def main() -> None:
     GRAFICOS_DIR.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(CSV_PATH)
@@ -174,6 +216,11 @@ def main() -> None:
     print("\nRQ08 (total_forks):")
     for chave, valor in stats_rq08.items():
         print(f"  {chave}: {valor:.2f}" if isinstance(valor, float) else f"  {chave}: {valor}")
+
+    stats_rq08b = grafico_rq08b_razao_fork_estrela(df)
+    print("\nRQ08 (razao_fork_estrela):")
+    for chave, valor in stats_rq08b.items():
+        print(f"  {chave}: {valor:.4f}" if isinstance(valor, float) else f"  {chave}: {valor}")
 
     print(f"\nGráficos salvos em {GRAFICOS_DIR}")
 
