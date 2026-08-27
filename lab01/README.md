@@ -28,7 +28,7 @@ Board do grupo: [Kanban](https://github.com/users/gabialvarenga/projects/9)
 - [Hipóteses informais](relatorio/hipoteses-informais.md) — validação de
   dados (distribuição, outliers, valores ausentes) e hipótese informal por
   RQ, gerado a partir de `data/data-quality-report.md`.
-- [Primeira versão do relatório (PDF)](relatorio/Primeira_versao_Relatorio_Laboratorio.pdf)
+- [Relatório de laboratório](relatorio/Relatorio_Laboratorio.md)
 
 ## Como rodar
 
