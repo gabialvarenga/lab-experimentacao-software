@@ -126,3 +126,47 @@ integração com `radon`/`jscpd` de verdade foi validada manualmente contra
 trials de amostra (kata de exemplo preenchido, um trial com duplicação
 proposital, e um trial com erro de sintaxe proposital para testar a
 resiliência do modo lote).
+
+## `contagem_testes.py` — testes de aceitação por trial (RQ2)
+
+Calcula `testes_total`, `testes_passando`, `testes_falhando` e
+`taxa_sucesso` a partir do `report.xml` que o `cronometro.py` já grava ao
+vivo em cada trial — não roda o pytest de novo.
+
+### Rodar um trial
+
+```
+python lab02/scripts/contagem_testes.py --integrante carlos --kata k1 --tratamento com-ia
+```
+
+| parâmetro | valores | descrição |
+|---|---|---|
+| `--integrante` | nome | usado com `--kata`/`--tratamento` |
+| `--kata` | id do kata | usado com `--integrante`/`--tratamento` |
+| `--tratamento` | `com-ia` \| `sem-ia` | usado com `--integrante`/`--kata` |
+| `--lote` | — | roda sobre todos os trials em `trials/` e escreve o CSV consolidado |
+| `--csv` | caminho | CSV alternativo (padrão `lab02/dados/contagem-testes.csv`) |
+
+### Por que `testes_total` não vem direto do `report.xml`
+
+Quando `solucao.py` tem erro de sintaxe, o pytest grava `tests="1"
+errors="1"` no relatório — a própria falha de coleta contada como um
+teste, não os casos reais do kata. Isso deixaria um trial quebrado com
+`testes_total` diferente dos outros trials do mesmo kata. Por isso o total
+vem da contagem estática de `def test_...` no `test_aceitacao.py` original
+do kata (fixo, nunca muda); só `testes_passando` vem do relatório real do
+trial. Um trial sem `report.xml` (nem chegou a rodar) conta como 0
+passando, sem quebrar o lote.
+
+### Colunas de `contagem-testes.csv`
+
+`integrante, kata, tratamento, testes_total, testes_passando,
+testes_falhando, taxa_sucesso`. Separado de `trials.csv` (que fica só com
+o registro bruto, gravado ao vivo) — mesma separação de
+`metricas-estaticas.csv`.
+
+### Testes do próprio script
+
+```
+cd lab02 && python -m pytest
+```
