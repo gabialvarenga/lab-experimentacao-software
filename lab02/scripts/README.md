@@ -67,3 +67,62 @@ duplicação) ficam em um CSV separado, gerado por outro script.
 ```
 cd lab02 && python -m pytest
 ```
+
+## `metricas_estaticas.py` — métricas estáticas de um trial (RQ3)
+
+Roda sobre o `solucao.py` final de um trial e extrai as métricas
+estruturais: complexidade ciclomática (Radon), LOC (Radon) e duplicação de
+código (jscpd).
+
+### Antes de rodar
+
+```
+python -m pip install -r lab02/requirements.txt
+npm install -g jscpd   # ou deixe o npx baixar sob demanda na primeira vez
+```
+
+### Rodar um trial
+
+```
+python lab02/scripts/metricas_estaticas.py --integrante carlos --kata k1 --tratamento com-ia
+```
+
+| parâmetro | valores | descrição |
+|---|---|---|
+| `--integrante` | nome | quem fez o trial (junto com `--kata`/`--tratamento`, localiza `trials/<integrante>/<kata>-<tratamento>/solucao.py`) |
+| `--kata` | id do kata | usado com `--integrante`/`--tratamento` |
+| `--tratamento` | `com-ia` \| `sem-ia` | usado com `--integrante`/`--kata` |
+| `--lote` | — | roda sobre todos os trials em `trials/` e escreve o CSV consolidado (não combina com `--integrante`) |
+| `--csv` | caminho | CSV alternativo (padrão `lab02/dados/metricas-estaticas.csv`) |
+
+### O que acontece
+
+1. Roda `radon cc/raw/mi -j` e `jscpd --reporters json` sobre o `solucao.py`
+   do trial (limiares do jscpd reduzidos para `--min-lines 3 --min-tokens
+   20`, senão soluções pequenas de kata nunca disparam a detecção padrão).
+2. Complexidade ciclomática: média e máximo entre funções/métodos (blocos
+   `class` são excluídos, pra não contar a complexidade agregada da classe
+   em cima da dos métodos).
+3. Em `--lote`, pastas `exemplo-*` são ignoradas (mesmo critério do
+   `cronometro.py`) e um trial que falha a medição (ex.: código com erro de
+   sintaxe, esperado em trial censurado) é pulado com aviso, não derruba o
+   lote inteiro.
+4. `--lote` sempre reescreve `metricas-estaticas.csv` do zero — ele é
+   derivado de `trials/`, não é coleta incremental como `trials.csv`.
+
+### Colunas de `metricas-estaticas.csv`
+
+`integrante, kata, tratamento, loc, cc_media, cc_max, mi, duplicacao_pct` —
+esquema completo em `lab02/docs/00-decisoes.md`.
+
+### Testes do próprio script
+
+```
+cd lab02 && python -m pytest
+```
+
+Só as funções de parsing/agregação são testadas automaticamente; a
+integração com `radon`/`jscpd` de verdade foi validada manualmente contra
+trials de amostra (kata de exemplo preenchido, um trial com duplicação
+proposital, e um trial com erro de sintaxe proposital para testar a
+resiliência do modo lote).
