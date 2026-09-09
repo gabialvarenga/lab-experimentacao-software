@@ -24,8 +24,8 @@ mais rápido do que montar projeto JUnit para cada uma.
 A mesma configuração das duas ferramentas vale para todos os trials. Versões
 travadas depois de montar o ambiente:
 
-- radon: _(a preencher)_
-- jscpd: _(a preencher)_
+- radon: 6.0.1
+- jscpd: 5.2.0
 
 ## Assistente de IA
 
