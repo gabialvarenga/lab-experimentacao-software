@@ -62,7 +62,24 @@ duplicação) ficam em um CSV separado, gerado por outro script.
 **não entra no experimento**. Os trials gerados com ele
 (`trials/**/exemplo-*/`) são ignorados pelo git.
 
-### Testes do próprio script
+## `validar_katas.py` — conferência das katas
+
+Para cada kata do experimento, confere que a pasta está completa
+(`enunciado.md`, `test_aceitacao.py`, `solucao_starter.py`), que a suíte de
+aceitação roda pelo pytest sem erro de coleta, e que com o esqueleto vazio
+todos os casos falham — nenhum teste passa sem implementação.
+
+```
+python lab02/scripts/validar_katas.py
+python lab02/scripts/validar_katas.py --kata k3
+python lab02/scripts/validar_katas.py --incluir-exemplo
+```
+
+Imprime, por kata, o nº de casos de teste — um dos critérios de equivalência de
+dificuldade em `docs/katas.md`. Sai com código 1 se alguma kata estiver
+mal-formada, então serve como checagem antes da S02.
+
+## Testes dos próprios scripts
 
 ```
 cd lab02 && python -m pytest
