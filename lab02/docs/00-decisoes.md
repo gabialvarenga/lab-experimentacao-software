@@ -36,16 +36,10 @@ três precisam ter o Claude Code instalado e autenticado antes da S02.
 - No início de cada trial, anotar a versão (`claude --version`) e confirmar o
   modelo em `/model` (`claude-sonnet-5`), para a seção de reprodutibilidade do
   relatório.
-- Regras de uso a fechar antes da S02: o Claude Code tem acesso ao diretório do
-  kata, então enxerga o enunciado e o `test_aceitacao.py`. Definir se ele pode
-  rodar os testes durante o trial ou se só o participante roda, e se o agente
-  edita os arquivos direto ou só sugere. Sem limite de iterações além dos 35
-  minutos.
-- Como o agente lê o repositório e roda comandos, o tratamento *com IA* aqui é
-  mais forte que um chatbot de copiar e colar — anotar isso na análise de
-  ameaças à validade.
-- Tratamento sem IA: Claude Code fechado e autocompletar por IA da IDE
-  desligado.
+- Regras de uso dos tratamentos (`com-ia` pode editar `solucao.py` e rodar os
+  testes direto, sem limite de iterações; `sem-ia` com Claude Code fechado e
+  autocompletar por IA da IDE desligado) fechadas em
+  [01-desenho-experimento.md](01-desenho-experimento.md) (#64), item (D).
 - Coluna `prompts` da planilha = número de mensagens enviadas ao agente no
   trial.
 
