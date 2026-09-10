@@ -19,6 +19,7 @@ Board do grupo: [Kanban](https://github.com/users/gabialvarenga/projects/9)
 | Documento | Descrição |
 |---|---|
 | [docs/00-decisoes.md](docs/00-decisoes.md) | Decisões de setup (linguagem, ferramentas, assistente de IA, framework de testes, esquema de dados) — issue #59 |
+| [docs/01-desenho-experimento.md](docs/01-desenho-experimento.md) | Variáveis, tratamentos, tipo de projeto, contrabalanceamento e métricas por RQ (GQM) — issue #64 |
 
 ## Estrutura
 
