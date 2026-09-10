@@ -19,13 +19,17 @@ Board do grupo: [Kanban](https://github.com/users/gabialvarenga/projects/9)
 | Documento | Descrição |
 |---|---|
 | [docs/00-decisoes.md](docs/00-decisoes.md) | Decisões de setup (linguagem, ferramentas, assistente de IA, framework de testes, esquema de dados) — issue #59 |
-| [docs/01-desenho-experimento.md](docs/01-desenho-experimento.md) | Variáveis, tratamentos, tipo de projeto, contrabalanceamento e métricas por RQ (GQM) — issue #64 |
+| [docs/katas.md](docs/katas.md) | Katas do experimento: critério de equivalência de dificuldade, candidatos e distribuição contrabalanceada — issue #61 |
+| [scripts/README.md](scripts/README.md) | Uso dos scripts de cronometragem e de validação das katas |
 
 ## Estrutura
 
 ```
 lab02/
     docs/            # decisões e desenho do experimento
+    katas/           # k1..k6: enunciado, suíte de aceitação e esqueleto
+    scripts/         # cronometro.py e validar_katas.py
+    tests/           # testes dos scripts
     dados/           # trials.csv e metricas-estaticas.csv (coleta da S02)
     trials/          # código produzido em cada trial
 ```
