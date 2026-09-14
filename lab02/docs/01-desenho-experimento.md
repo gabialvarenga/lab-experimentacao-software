@@ -5,7 +5,15 @@ Espinha do desenho experimental. Hipóteses formais entram em
 [03-ameacas-validade.md](03-ameacas-validade.md) (#66) — aqui ficam as
 variáveis, tratamentos, tipo de projeto, contrabalanceamento e a escolha de
 métricas por RQ (GQM), a partir do que já foi decidido em
-[00-decisoes.md](00-decisoes.md) (#59).
+[00-decisoes.md](00-decisoes.md) (#59) e [katas.md](katas.md) (#61).
+
+> **Atualização pós-redução de katas:** a seleção original (#61) validou 6
+> katas de dificuldade equivalente. Por causa do prazo curto da disciplina, o
+> grupo reduziu para as 4 katas mínimas permitidas pelo enunciado, com 3
+> níveis de dificuldade declarados (2 fáceis, 1 média, 1 difícil) — ver
+> `katas.md` para o detalhamento. Isso muda a quantidade de medições (G) e a
+> tabela de contrabalanceamento abaixo; os demais itens (B, C, D, F, GQM) não
+> dependem do número de katas e continuam valendo como escritos originalmente.
 
 ## (B) Variáveis dependentes
 
@@ -66,33 +74,26 @@ Duas propriedades garantidas pela tabela, não deixadas ao acaso:
    senão a dificuldade do próprio kata se confundiria com o efeito do
    tratamento.
 2. **Tratamento alternado dentro da sequência de cada integrante** (não é
-   "as 3 com IA primeiro, depois as 3 sem IA") — senão o efeito de
-   aprendizado se confundiria com o efeito do tratamento. O tratamento
-   inicial também varia entre integrantes.
+   "as 2 com IA primeiro, depois as 2 sem IA") — senão o efeito de
+   aprendizado se confundiria com o efeito do tratamento.
 
-`k1`..`k6` são os ids abstratos já usados em `trials.csv` (`00-decisoes.md`)
-— a seleção de qual kata real é qual id é escopo da #61, não desta issue.
+`k1`..`k4` são os katas reais já selecionados e documentados em `katas.md`
+(#61) — tabela idêntica à de lá, repetida aqui como parte do desenho formal.
 
 | integrante | ordem | kata | tratamento |
 |---|---|---|---|
-| gabriela | 1 | k1 | com-ia |
-| gabriela | 2 | k4 | sem-ia |
-| gabriela | 3 | k2 | com-ia |
-| gabriela | 4 | k5 | sem-ia |
-| gabriela | 5 | k3 | com-ia |
-| gabriela | 6 | k6 | sem-ia |
-| carlos | 1 | k6 | sem-ia |
-| carlos | 2 | k3 | com-ia |
+| brenda | 1 | k1 | com-ia |
+| brenda | 2 | k2 | sem-ia |
+| brenda | 3 | k3 | com-ia |
+| brenda | 4 | k4 | sem-ia |
+| carlos | 1 | k3 | sem-ia |
+| carlos | 2 | k2 | com-ia |
 | carlos | 3 | k1 | sem-ia |
 | carlos | 4 | k4 | com-ia |
-| carlos | 5 | k2 | sem-ia |
-| carlos | 6 | k5 | com-ia |
-| brenda | 1 | k5 | com-ia |
-| brenda | 2 | k2 | sem-ia |
-| brenda | 3 | k6 | com-ia |
-| brenda | 4 | k3 | sem-ia |
-| brenda | 5 | k1 | com-ia |
-| brenda | 6 | k4 | sem-ia |
+| gabriela | 1 | k4 | com-ia |
+| gabriela | 2 | k3 | sem-ia |
+| gabriela | 3 | k1 | com-ia |
+| gabriela | 4 | k2 | sem-ia |
 
 Cobertura por kata (nenhum preso a um único tratamento):
 
@@ -100,15 +101,14 @@ Cobertura por kata (nenhum preso a um único tratamento):
 |---|---|---|
 | k1 | 2 | 1 |
 | k2 | 1 | 2 |
-| k3 | 2 | 1 |
-| k4 | 1 | 2 |
-| k5 | 2 | 1 |
-| k6 | 1 | 2 |
+| k3 | 1 | 2 |
+| k4 | 2 | 1 |
 
 ## (G) Quantidade de medições
 
-Já fechado em `00-decisoes.md`: 3 integrantes × 6 katas = **18 trials**, 9
-com IA e 9 sem — a tabela acima é a distribuição concreta desse total.
+Atualizado em `00-decisoes.md` após a redução de katas: 3 integrantes × 4
+katas = **12 trials**, 6 com IA e 6 sem — a tabela acima é a distribuição
+concreta desse total.
 
 ## Seleção e justificativa das métricas por RQ (GQM)
 
@@ -138,13 +138,13 @@ Qual métrica candidata do enunciado é usada em cada RQ, e por quê:
   composta — mais robusta que olhar cada métrica isolada.
 
 **Nota geral:** mediana e IQR nas tabelas descritivas em vez de média e
-desvio-padrão (N pequeno — 3 a 6 trials por tratamento), com Wilcoxon pareado
-na análise inferencial (S03) — já convenção do enunciado e de
-`00-decisoes.md`.
+desvio-padrão (N pequeno — 6 trials por tratamento no total, 1 a 2 por kata),
+com Wilcoxon pareado na análise inferencial (S03) — já convenção do
+enunciado e de `00-decisoes.md`.
 
 ## Próximos passos (fora do escopo desta issue)
 
 - Hipóteses nula/alternativa por RQ — #65
 - Ameaças à validade (efeito de aprendizado, familiaridade prévia, força do
-  tratamento `com-ia`, memorização) — #66
-- Seleção e validação dos katas reais por trás de `k1`..`k6` — #61
+  tratamento `com-ia`, memorização, e a redução de 6 para 4 katas com níveis
+  de dificuldade desiguais) — #66
