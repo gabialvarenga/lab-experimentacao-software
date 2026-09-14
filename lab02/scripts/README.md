@@ -29,7 +29,7 @@ python lab02/scripts/cronometro.py --integrante gabriela --kata k1 --tratamento 
 | `--integrante` | `brenda` \| `carlos` \| `gabriela` | quem está resolvendo |
 | `--kata` | id da pasta em `katas/` (ex.: `k1`, `exemplo`) | kata do trial |
 | `--tratamento` | `com-ia` \| `sem-ia` | com ou sem o Claude Code |
-| `--ordem` | inteiro `1..6` | posição do trial na sequência do integrante |
+| `--ordem` | inteiro `1..4` | posição do trial na sequência do integrante |
 | `--timebox` | minutos (padrão `35`) | só reduzir, com justificativa no relatório; nunca aumentar |
 | `--poll` | segundos (padrão `15`) | intervalo entre as checagens automáticas dos testes |
 | `--csv` | caminho | CSV alternativo (padrão `lab02/dados/trials.csv`) |

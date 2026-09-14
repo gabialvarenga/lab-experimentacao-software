@@ -1,2 +1,2 @@
-def calcular_tarifa(entrada, saida):
+def validar_lote(codigo):
     raise NotImplementedError

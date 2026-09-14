@@ -1,61 +1,51 @@
 import pytest
 
-from solucao import montar_escala
+from solucao import calcular_tarifa
 
 
-def pessoa(nome, indisponivel=None):
-    if indisponivel is None:
-        return {"nome": nome}
-    return {"nome": nome, "indisponivel": indisponivel}
+def test_ate_15_minutos_e_gratuito():
+    assert calcular_tarifa("08:00", "08:15") == 0.0
 
 
-def test_sem_dias_todos_ficam_com_lista_vazia():
-    assert montar_escala([pessoa("Ana"), pessoa("Bia")], []) == {"Ana": [], "Bia": []}
+def test_16_minutos_cobra_a_primeira_hora():
+    assert calcular_tarifa("08:00", "08:16") == 5.0
 
 
-def test_um_dia_uma_pessoa():
-    assert montar_escala([pessoa("Ana")], ["seg"]) == {"Ana": ["seg"]}
+def test_uma_hora_exata_cobra_so_a_primeira():
+    assert calcular_tarifa("08:00", "09:00") == 5.0
 
 
-def test_alterna_entre_duas_pessoas_equilibrando_a_carga():
-    equipe = [pessoa("Ana"), pessoa("Bia")]
-    assert montar_escala(equipe, ["seg", "ter", "qua", "qui"]) == {
-        "Ana": ["seg", "qua"],
-        "Bia": ["ter", "qui"],
-    }
+def test_hora_iniciada_conta_como_hora_cheia():
+    assert calcular_tarifa("08:00", "09:01") == 8.0
 
 
-def test_respeita_a_indisponibilidade():
-    equipe = [pessoa("Ana", ["seg"]), pessoa("Bia")]
-    assert montar_escala(equipe, ["seg"]) == {"Ana": [], "Bia": ["seg"]}
+def test_tres_horas_somam_as_adicionais():
+    assert calcular_tarifa("08:00", "11:00") == 11.0
 
 
-def test_empate_de_carga_resolve_por_ordem_alfabetica():
-    equipe = [pessoa("Zeca"), pessoa("Ana")]
-    assert montar_escala(equipe, ["seg"]) == {"Ana": ["seg"], "Zeca": []}
+def test_valor_e_limitado_ao_teto_diario():
+    assert calcular_tarifa("08:00", "20:00") == 25.0
 
 
-def test_quem_esta_sempre_indisponivel_fica_sem_plantao():
-    equipe = [pessoa("Ana", ["seg", "ter"]), pessoa("Bia")]
-    assert montar_escala(equipe, ["seg", "ter"]) == {"Ana": [], "Bia": ["seg", "ter"]}
+def test_atravessa_a_virada_de_hora():
+    assert calcular_tarifa("23:00", "23:50") == 5.0
 
 
-def test_menor_carga_tem_prioridade_sobre_o_alfabeto():
-    equipe = [pessoa("Ana"), pessoa("Bia", ["seg"])]
-    assert montar_escala(equipe, ["seg", "ter"]) == {"Ana": ["seg"], "Bia": ["ter"]}
+def test_saida_anterior_a_entrada_levanta_erro():
+    with pytest.raises(ValueError, match="saída anterior à entrada"):
+        calcular_tarifa("10:00", "09:00")
 
 
-def test_sem_ninguem_disponivel_levanta_erro():
-    equipe = [pessoa("Ana", ["seg"]), pessoa("Bia", ["seg"])]
-    with pytest.raises(ValueError, match="sem cobertura para seg"):
-        montar_escala(equipe, ["seg"])
+def test_saida_igual_a_entrada_levanta_erro():
+    with pytest.raises(ValueError, match="saída anterior à entrada"):
+        calcular_tarifa("10:00", "10:00")
 
 
-def test_todas_as_pessoas_aparecem_no_resultado():
-    equipe = [pessoa("Ana"), pessoa("Bia"), pessoa("Caio")]
-    assert set(montar_escala(equipe, ["seg"])) == {"Ana", "Bia", "Caio"}
+def test_formato_invalido_levanta_erro():
+    with pytest.raises(ValueError, match="horário inválido: 8h00"):
+        calcular_tarifa("8h00", "09:00")
 
 
-def test_dias_ficam_na_ordem_em_que_foram_atribuidos():
-    equipe = [pessoa("Ana")]
-    assert montar_escala(equipe, ["qui", "seg", "ter"]) == {"Ana": ["qui", "seg", "ter"]}
+def test_hora_fora_da_faixa_levanta_erro():
+    with pytest.raises(ValueError, match="horário inválido: 25:00"):
+        calcular_tarifa("07:00", "25:00")
