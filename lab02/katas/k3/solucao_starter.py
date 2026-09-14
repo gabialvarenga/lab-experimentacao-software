@@ -1,2 +1,2 @@
-def mesclar_leituras(a, b):
+def montar_escala(pessoas, dias):
     raise NotImplementedError

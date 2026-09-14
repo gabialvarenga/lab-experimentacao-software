@@ -328,7 +328,7 @@ def _construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--kata", required=True, help="id do kata (ex.: k1, exemplo)")
     p.add_argument("--tratamento", required=True, choices=TRATAMENTOS)
     p.add_argument("--ordem", required=True, type=int,
-                   help="posição do trial na sequência do integrante (1..6)")
+                   help="posição do trial na sequência do integrante (1..4)")
     p.add_argument("--timebox", type=float, default=TIMEBOX_MIN_PADRAO,
                    help="minutos do time-box (padrão 35; só reduzir, com "
                         "justificativa no relatório)")

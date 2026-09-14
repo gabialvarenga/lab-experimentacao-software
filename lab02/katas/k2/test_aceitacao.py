@@ -1,51 +1,45 @@
-import pytest
-
-from solucao import calcular_tarifa
+from solucao import validar_lote
 
 
-def test_ate_15_minutos_e_gratuito():
-    assert calcular_tarifa("08:00", "08:15") == 0.0
+def test_codigo_valido_nao_tem_erros():
+    assert validar_lote("ABC-1234-K") == []
 
 
-def test_16_minutos_cobra_a_primeira_hora():
-    assert calcular_tarifa("08:00", "08:16") == 5.0
+def test_prefixo_minusculo():
+    assert validar_lote("abc-1234-K") == ["PREFIXO"]
 
 
-def test_uma_hora_exata_cobra_so_a_primeira():
-    assert calcular_tarifa("08:00", "09:00") == 5.0
+def test_prefixo_parcialmente_maiusculo():
+    assert validar_lote("AbC-1234-K") == ["PREFIXO"]
 
 
-def test_hora_iniciada_conta_como_hora_cheia():
-    assert calcular_tarifa("08:00", "09:01") == 8.0
+def test_digitos_todos_iguais():
+    assert validar_lote("ABC-1111-E") == ["SEQUENCIA"]
 
 
-def test_tres_horas_somam_as_adicionais():
-    assert calcular_tarifa("08:00", "11:00") == 11.0
+def test_verificador_errado():
+    assert validar_lote("ABC-1234-Z") == ["DIGITO"]
 
 
-def test_valor_e_limitado_ao_teto_diario():
-    assert calcular_tarifa("08:00", "20:00") == 25.0
+def test_soma_maior_que_26_da_a_volta_no_alfabeto():
+    assert validar_lote("ABC-9999-K") == ["SEQUENCIA"]
 
 
-def test_atravessa_a_virada_de_hora():
-    assert calcular_tarifa("23:00", "23:50") == 5.0
+def test_erros_saem_na_ordem_definida():
+    assert validar_lote("abc-9999-J") == ["PREFIXO", "SEQUENCIA", "DIGITO"]
 
 
-def test_saida_anterior_a_entrada_levanta_erro():
-    with pytest.raises(ValueError, match="saída anterior à entrada"):
-        calcular_tarifa("10:00", "09:00")
+def test_formato_curto_demais():
+    assert validar_lote("AB-1234-K") == ["FORMATO"]
 
 
-def test_saida_igual_a_entrada_levanta_erro():
-    with pytest.raises(ValueError, match="saída anterior à entrada"):
-        calcular_tarifa("10:00", "10:00")
+def test_formato_com_numero_errado_de_digitos():
+    assert validar_lote("ABC-123-K") == ["FORMATO"]
 
 
-def test_formato_invalido_levanta_erro():
-    with pytest.raises(ValueError, match="horário inválido: 8h00"):
-        calcular_tarifa("8h00", "09:00")
+def test_texto_vazio():
+    assert validar_lote("") == ["FORMATO"]
 
 
-def test_hora_fora_da_faixa_levanta_erro():
-    with pytest.raises(ValueError, match="horário inválido: 25:00"):
-        calcular_tarifa("07:00", "25:00")
+def test_formato_sem_hifens():
+    assert validar_lote("ABC1234K") == ["FORMATO"]

@@ -1,2 +1,2 @@
-def montar_escala(pessoas, dias):
+def calcular_tarifa(entrada, saida):
     raise NotImplementedError

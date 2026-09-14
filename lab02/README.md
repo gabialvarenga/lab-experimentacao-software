@@ -27,7 +27,7 @@ Board do grupo: [Kanban](https://github.com/users/gabialvarenga/projects/9)
 ```
 lab02/
     docs/            # decisões e desenho do experimento
-    katas/           # k1..k6: enunciado, suíte de aceitação e esqueleto
+    katas/           # k1..k4: enunciado, suíte de aceitação e esqueleto
     scripts/         # cronometro.py e validar_katas.py
     tests/           # testes dos scripts
     dados/           # trials.csv e metricas-estaticas.csv (coleta da S02)
