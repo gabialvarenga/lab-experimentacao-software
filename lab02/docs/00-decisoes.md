@@ -75,9 +75,9 @@ Dois arquivos em `lab02/dados/`, ligados por `integrante` + `kata` +
 | coluna | valores | descrição |
 |---|---|---|
 | integrante | brenda, carlos, gabriela | quem fez o trial |
-| kata | k1..k4 | identificador do kata |
+| kata | k1..k6 | identificador do kata |
 | tratamento | com-ia, sem-ia | com ou sem assistente |
-| ordem | 1..4 | posição do trial na sequência do integrante |
+| ordem | 1..6 | posição do trial na sequência do integrante |
 | data_inicio | ISO 8601 | início do trial |
 | tempo_segundos | inteiro | tempo até todos os testes passarem; 2100 se o tempo acabar antes |
 | censurado | true, false | true quando o trial terminou pelo tempo, sem passar tudo |
@@ -116,11 +116,11 @@ lab02/trials/<integrante>/<kata>-<tratamento>/
   relatório, nunca aumentado.
 - Trial que estoura o tempo entra como censurado (`censurado = true`,
   `tempo_segundos = 2100`). Não descartar.
-- Katas: 4 (`k1`..`k4`, o mínimo permitido pelo enunciado), reduzido de 6 por
-  causa do prazo curto — 2 fáceis, 1 média e 1 difícil. As duas katas que não
-  entraram foram removidas do repositório. Distribuição entre os integrantes
-  fica na tarefa de seleção de katas.
-- Trials: 3 integrantes x 4 katas = 12, sendo 6 com IA e 6 sem.
+- Katas: 6 (`k1`..`k6`), conforme exigido pelo professor. O grupo havia
+  reduzido para 4 por causa do prazo curto, mas voltou às 6 katas originais
+  da S01 (k5 e k6 restauradas do histórico do repositório). Distribuição
+  entre os integrantes fica na tarefa de seleção de katas.
+- Trials: 3 integrantes x 6 katas = 18, sendo 9 com IA e 9 sem.
 - Estatística: mediana e IQR nas tabelas descritivas; Wilcoxon pareado na
   análise inferencial.
 
