@@ -187,3 +187,89 @@ o registro bruto, gravado ao vivo) — mesma separação de
 ```
 cd lab02 && python -m pytest
 ```
+
+## `rodar_analise_completa.py` — pipeline de ponta a ponta
+
+Reproduz a análise inteira com um único comando: recalcula os CSVs derivados
+a partir de `lab02/trials/`, refaz as estatísticas de RQ1–RQ3 e regenera os
+gráficos. Não implementa nada novo — só chama, na ordem certa, os scripts que
+já existem.
+
+### Antes de rodar
+
+```
+python -m pip install -r lab02/requirements.txt
+```
+
+O passo de métricas estáticas também precisa do Node.js (o `jscpd` roda via
+`npx`). Sem Node, use `--pular-metricas`.
+
+### Rodar
+
+```
+python lab02/scripts/rodar_analise_completa.py
+python lab02/scripts/rodar_analise_completa.py --pular-metricas
+```
+
+Funciona de qualquer diretório (os scripts resolvem os caminhos a partir do
+próprio arquivo).
+
+### O que acontece
+
+| # | Passo | Gera |
+|---|---|---|
+| 1 | `scripts/contagem_testes.py --lote` | `dados/contagem-testes.csv` |
+| 2 | `scripts/metricas_estaticas.py --lote` | `dados/metricas-estaticas.csv` |
+| 3 | `analise/rq1_rq2_estatistica.py` | estatísticas de RQ1/RQ2 + 2 gráficos exploratórios |
+| 4 | `analise/rq3_estatistica.py` | estatísticas de RQ3 |
+| 5 | `analise/dashboard.py` | 13 gráficos em `analise/graficos/dashboard/` |
+
+A ordem segue a dependência de dados: os passos 3–5 leem os CSVs dos passos 1
+e 2. Para no primeiro passo que falhar (código de saída 1), dizendo qual foi.
+Com `--pular-metricas` o passo 2 não roda e o `metricas-estaticas.csv` já
+existente é reaproveitado.
+
+As saídas dos passos 3 e 4 (que só imprimem no terminal) são gravadas em
+`relatorio/resultados-estatisticos.txt`, sem caminhos absolutos, para que os
+números citados nos relatórios possam ser conferidos contra uma nova execução.
+O script também imprime, no início, as versões de Python, das bibliotecas e do
+`jscpd`, e avisa se alguma divergir do que `docs/00-decisoes.md` fixa.
+
+### Como conferir que reproduziu
+
+Depois de rodar, os CSVs e o arquivo de resultados devem ficar idênticos ao
+versionado:
+
+```
+git status --porcelain lab02/dados lab02/relatorio
+```
+
+Saída vazia = reprodução idêntica. Os PNGs **não** servem como critério: o
+matplotlib grava bytes diferentes entre versões/sistemas mesmo com o mesmo
+dado, então eles aparecem como modificados sem que nada tenha mudado de fato.
+
+### O que não é regenerado
+
+`dados/trials.csv` é registro bruto, gravado ao vivo pelo `cronometro.py`
+(inclusive com a correção manual do tempo de `carlos/k3-sem-ia`), e por isso é
+**entrada** do pipeline, não saída. Os textos de `relatorio/analise-*.md` foram
+escritos à mão a partir das saídas dos passos 3 e 4.
+
+### Limitação conhecida: versão do jscpd
+
+`metricas_estaticas.py` chama `npx jscpd` sem versão, então o `npx` usa a mais
+recente. Com o `jscpd` 5.3.2 (em vez da 5.2.0 fixada em `docs/00-decisoes.md`)
+a duplicação de `gabriela/k5-sem-ia` sai **39,29** em vez de **35,71** — a única
+linha do CSV que muda, porque é o único trial com duplicação. O pipeline avisa
+quando detecta essa divergência, e o `--pular-metricas` evita o problema por
+reaproveitar o CSV versionado.
+
+### Testes do próprio script
+
+```
+cd lab02 && python -m pytest tests/test_rodar_analise_completa.py
+```
+
+Cobrem a ordem dos passos, o `--pular-metricas`, a parada no primeiro erro, a
+normalização da saída e o aviso de versão. A execução real dos scripts foi
+validada rodando o pipeline de verdade.

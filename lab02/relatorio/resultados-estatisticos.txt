@@ -1,0 +1,110 @@
+# Resultados estatisticos do Lab02
+# Gerado por scripts/rodar_analise_completa.py — nao editar a mao.
+# Entrada: dados/trials.csv (bruto), dados/contagem-testes.csv e dados/metricas-estaticas.csv.
+
+## analise/rq1_rq2_estatistica.py
+
+======================================================================
+RQ1 — Tempo (tempo_segundos)
+======================================================================
+  com-ia: mediana=109.0s  IQR=[31.0, 188.0]
+  sem-ia: mediana=576.0s  IQR=[561.0, 1112.0]
+  outliers (IQR global): [1387]
+  Wilcoxon pareado (N=3, unicaudal com-ia<sem-ia): W=0.00  p=0.1250  r=-1.000
+  Bootstrap IC95% (diferença de mediana, com-ia - sem-ia): [-1071.0, -171.0]
+
+======================================================================
+RQ2 — Defeitos (taxa_sucesso)
+======================================================================
+  com-ia: mediana=100.0%  IQR=[100.0, 100.0]
+  sem-ia: mediana=100.0%  IQR=[100.0, 100.0]
+  Wilcoxon: SEM VARIÂNCIA — os 18 trials tiveram taxa_sucesso=100%. H0 não pode ser rejeitada nem confirmada por falta de variação.
+  Densidade de defeitos (testes_falhando/KLOC) — máx observado: 0.000
+
+Proporção de censura por tratamento: {'com-ia': 0.0, 'sem-ia': 0.0}
+
+Gráficos salvos em <repo>/lab02/analise/graficos
+
+## analise/rq3_estatistica.py
+
+======================================================================
+RQ3 — Estatística descritiva (mediana e IQR por tratamento)
+======================================================================
+       metrica tratamento  mediana    q1    q3  iqr
+      cc_media     com-ia     4.00  3.50  6.00 2.50
+      cc_media     sem-ia     6.00  6.00  7.00 1.00
+duplicacao_pct     com-ia     0.00  0.00  0.00 0.00
+duplicacao_pct     sem-ia     0.00  0.00  0.00 0.00
+           loc     com-ia    18.00 18.00 20.00 2.00
+           loc     sem-ia    20.00 18.00 23.00 5.00
+            mi     com-ia    60.62 59.81 61.53 1.72
+            mi     sem-ia    60.13 55.05 64.39 9.34
+        cc_max     com-ia     4.00  4.00  7.00 3.00
+        cc_max     sem-ia     7.00  6.00  8.00 2.00
+  outliers de cc_media (IQR global): []
+  outliers de duplicacao_pct (IQR global): [35.71]
+  outliers de loc (IQR global): [11, 25, 26]
+  outliers de mi (IQR global): [73.82, 75.25]
+  outliers de cc_max (IQR global): []
+
+======================================================================
+RQ3 — cc_media (H: mediana difere)
+======================================================================
+  Pares (mediana por integrante):
+    integrante  com-ia  sem-ia
+        brenda    2.75     6.0
+        carlos    6.00     6.0
+      gabriela    4.00     9.0
+  Wilcoxon pareado (N=3, bicaudal): W=0.00  p=0.5000
+  Rank-biserial: r=-1.000
+  Bootstrap IC95% (diferença de mediana, com-ia - sem-ia): [-5.00, 0.00]
+
+======================================================================
+RQ3 — duplicacao_pct (H: mediana difere)
+======================================================================
+  Pares (mediana por integrante):
+    integrante  com-ia  sem-ia
+        brenda     0.0     0.0
+        carlos     0.0     0.0
+      gabriela     0.0     0.0
+  Wilcoxon pareado (N=3, bicaudal): sem variância nos pares (diferença zero em todos) — não computável
+  Bootstrap IC95% (diferença de mediana, com-ia - sem-ia): [0.00, 0.00]
+
+======================================================================
+Controle — loc
+======================================================================
+  Pares (mediana por integrante):
+    integrante  com-ia  sem-ia
+        brenda    18.0    20.0
+        carlos    18.0    18.0
+      gabriela    18.0    21.0
+  Wilcoxon pareado (N=3, bicaudal): W=0.00  p=0.5000
+  Rank-biserial: r=-1.000
+  Bootstrap IC95% (diferença de mediana, com-ia - sem-ia): [-5.00, 1.00]
+
+======================================================================
+Aprofundamento — Índice de Manutenibilidade (mi)
+======================================================================
+  Pares (mediana por integrante):
+    integrante  com-ia  sem-ia
+        brenda   60.62   55.05
+        carlos   59.81   73.82
+      gabriela   61.19   57.74
+  Wilcoxon pareado (N=3, bicaudal): W=3.00  p=1.0000
+  Rank-biserial: r=0.000
+  Bootstrap IC95% (diferença de mediana, com-ia - sem-ia): [-12.63, 6.48]
+
+======================================================================
+Duplicação — trials com duplicacao_pct > 0
+======================================================================
+  contagem por tratamento: {'com-ia': 0, 'sem-ia': 1}
+integrante kata tratamento  duplicacao_pct
+  gabriela   k5     sem-ia           35.71
+
+======================================================================
+loc lado a lado com cc/duplicação — Spearman entre os 18 trials
+======================================================================
+  loc x cc_media: rho=-0.10
+  loc x cc_max: rho=0.11
+  loc x duplicacao_pct: rho=0.02
+  loc x mi: rho=-0.54
