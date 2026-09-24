@@ -56,3 +56,17 @@ Os gráficos de RQ2 saem achatados de propósito: `taxa_sucesso` é 100% e
 `testes_falhando` é 0 nos 18 trials (efeito teto). O dashboard anota isso no
 próprio gráfico para que a ausência de variância seja lida como resultado, e
 não como falha do script.
+
+## Reproduzir a análise
+
+Um único comando refaz os CSVs derivados de `trials/`, as estatísticas de
+RQ1–RQ3 e os gráficos — issue #125:
+
+```
+python -m pip install -r lab02/requirements.txt
+python lab02/scripts/rodar_analise_completa.py
+```
+
+Sem Node.js instalado, acrescente `--pular-metricas`. Detalhes, ordem dos
+passos, como conferir que o resultado é idêntico ao versionado e a limitação
+conhecida da versão do `jscpd` estão em [scripts/README.md](scripts/README.md).
