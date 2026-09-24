@@ -32,4 +32,27 @@ lab02/
     tests/           # testes dos scripts
     dados/           # trials.csv e metricas-estaticas.csv (coleta da S02)
     trials/          # código produzido em cada trial
+    analise/         # estatística das RQs e dashboard de gráficos
+    relatorio/       # análises escritas por RQ
 ```
+
+## Análise e gráficos
+
+| Script | O que faz |
+|---|---|
+| [analise/rq1_rq2_estatistica.py](analise/rq1_rq2_estatistica.py) | Wilcoxon pareado, rank-biserial e bootstrap para RQ1 (tempo) e RQ2 (defeitos) — issue #121 |
+| [analise/rq3_estatistica.py](analise/rq3_estatistica.py) | Mesma bateria para RQ3 (complexidade, duplicação, MI, loc) — issue #122 |
+| [analise/dashboard.py](analise/dashboard.py) | Dashboard consolidado: 13 gráficos comparativos com-ia vs. sem-ia — issue #123 |
+
+```
+python -m pip install -r lab02/requirements.txt
+python lab02/analise/dashboard.py
+```
+
+Os gráficos são gravados em [analise/graficos/dashboard/](analise/graficos/dashboard/)
+e versionados junto com o script que os gera.
+
+Os gráficos de RQ2 saem achatados de propósito: `taxa_sucesso` é 100% e
+`testes_falhando` é 0 nos 18 trials (efeito teto). O dashboard anota isso no
+próprio gráfico para que a ausência de variância seja lida como resultado, e
+não como falha do script.
