@@ -5,6 +5,7 @@ Figueiredo (1507022), Gabriela Alvarenga Cardoso (1026227)
 
 **Repositório:** <https://github.com/gabialvarenga/lab-experimentacao-software>
 (pasta `lab02/`)
+
 **GitHub Projects (Kanban):** <https://github.com/users/gabialvarenga/projects/9/views/1>
 
 ---
@@ -30,18 +31,22 @@ Rombach). O objetivo é descrito pelo gabarito do modelo:
 | **do ponto de vista do** | grupo pesquisador |
 | **no contexto de** | katas de dificuldade equivalente, resolvidas por estudantes de graduação sob condições controladas (crossover *within-subject*, com tempo limitado) |
 
-A partir do objetivo, três questões de pesquisa, cada uma com as métricas
-que a respondem:
+A partir do objetivo, o GQM define três questões de pesquisa (mais duas
+perguntas extras) e as métricas que respondem a cada uma.
 
-| Questão de pesquisa | Métricas |
+![GQM — objetivo, questões e métricas](imagens/gqm-diagrama.jpg)
+
+| Pergunta (Question) | Métrica (Metric) — o que mede |
 |---|---|
-| **RQ1.** Qual o efeito do uso de um assistente de IA sobre o tempo necessário para resolver uma tarefa de programação? | tempo até passar em todos os testes de aceitação, em segundos (primária); nº de prompts (exploratória) |
-| **RQ2.** Qual o efeito do uso de um assistente de IA sobre a quantidade de defeitos, medida em testes de aceitação que falham, no código produzido? | taxa de sucesso dos testes, em % (primária); nº de testes falhando e densidade de defeitos, em testes por KLOC (complementares) |
-| **RQ3.** De que forma o uso de um assistente de IA altera a complexidade ciclomática e a duplicação do código produzido, considerando o seu tamanho? | complexidade ciclomática média; duplicação, em %; LOC (controle); Índice de Manutenibilidade (aprofundamento) |
+| RQ1 — O assistente de IA reduz o tempo para resolver a tarefa? | **Tempo até verde** (`tempo_segundos`), até todos os testes de aceitação passarem; trial que estoura os 35 min é censurado em 2100 s. Exploratórias: **nº de prompts** (`prompts`) e **ordem do trial** (`ordem`) |
+| RQ2 — O assistente de IA reduz os defeitos no código produzido? | **Taxa de sucesso** (`taxa_sucesso`), testes passando ÷ testes totais × 100 ao fim do trial. Complementares: **nº de testes falhando** (`testes_falhando`) e **densidade de defeitos** (`densidade_defeitos`), falhas por KLOC |
+| RQ3 — O assistente de IA altera a complexidade ou a duplicação do código? | **Complexidade ciclomática média** (`cc_media`), média por função via Radon, e **duplicação** (`duplicacao_pct`), % de linhas duplicadas via jscpd. Controle: **LOC** (`loc`); aprofundamento: **Índice de Manutenibilidade** (`mi`) |
+| Extra — A IA ajuda mais em katas fáceis ou difíceis? | **Tempo e taxa de sucesso por kata**, agrupados por tratamento (com IA e sem IA) |
+| Extra — Ir mais rápido custa qualidade do código? | **Trade-off** entre o tempo até verde (`tempo_segundos`) e a complexidade (`cc_media`), com `loc` como tamanho da bolha no gráfico |
 
 ### 1.2 Hipóteses
 
-Nível de significância α = 0,05 nos três testes. Teste: Wilcoxon signed-rank
+Nível de significância α = 0,05 em todos os testes. Teste: Wilcoxon signed-rank
 pareado (não paramétrico, adequado ao N pequeno). Detalhes em
 [`docs/02-hipoteses.md`](../docs/02-hipoteses.md).
 
@@ -72,7 +77,7 @@ hipótese formal própria.
 - **Tempo por trial:** 35 minutos. Trial que estoura o tempo entra como
   censurado (2100 s), sem ser descartado. Nenhum dos 18 trials foi
   censurado.
-- **Contrabalanceamento:** nenhum kata é sempre `com-ia` ou sempre `sem-ia`,
+- **Contrabalanceamento:** nenhuma kata é sempre `com-ia` ou sempre `sem-ia`,
   e o tratamento alterna a cada posição da sequência de cada integrante.
 
 | ordem | Brenda | Carlos | Gabriela |
@@ -107,7 +112,7 @@ Critérios de equivalência de dificuldade e candidatos descartados em
 
 ### 2.3 Tratamentos
 
-- **`com-ia`:** Claude Code com acesso ao diretório do kata, podendo editar
+- **`com-ia`:** Claude Code com acesso ao diretório da kata, podendo editar
   `solucao.py` e rodar os testes por conta própria, sem limite de iterações
   além dos 35 minutos.
 - **`sem-ia`:** Claude Code fechado e autocompletar por IA da IDE desligado.
@@ -126,13 +131,14 @@ integrantes em todos os trials `com-ia`.
 | Integrante | SO | IDE | Python | Node |
 |---|---|---|---|---|
 | Brenda | Windows 11 Home Single Language | VS Code | 3.14.3 | 24.14.0 |
-| Carlos | Windows 11 Home (10.0.26200) | VS Code | 3.12.10 | 24.19.0 |
+| Carlos | Windows 11 Home (build 26200) | VS Code | 3.12.10 | 24.19.0 |
 | Gabriela | Windows 11 Home (build 26200) | VS Code | 3.14.3 | 24.14.0 |
 
 Ferramentas de métricas, com a mesma configuração para todos os trials:
 radon 6.0.1 (complexidade ciclomática, LOC e índice de manutenibilidade) e
 jscpd 5.2.0 (duplicação). Testes de aceitação com `pytest`
-(`--junitxml`). Análise em pandas, numpy e scipy (`lab02/requirements.txt`).
+(`--junitxml`). Análise em pandas, numpy e scipy; gráficos em matplotlib e seaborn
+(`lab02/requirements.txt`).
 
 ### 2.6 Métricas por RQ e coleta
 
@@ -142,7 +148,7 @@ justificativa:
 | RQ | Métrica | Justificativa |
 |---|---|---|
 | RQ1 | tempo até passar em todos os testes de aceitação (mediana); nº de prompts como exploratória | métrica primária recomendada; mediana por causa do N pequeno e da sensibilidade da média a outliers |
-| RQ2 | taxa de sucesso dos testes (%); testes falhando e densidade de defeitos como complementares | a taxa normaliza katas com número diferente de testes; o total de testes é o do kata original, para que um trial que não compilou não apareça com denominador menor |
+| RQ2 | taxa de sucesso dos testes (%); testes falhando e densidade de defeitos como complementares | a taxa normaliza katas com número diferente de testes; o total de testes é o da kata original, para que um trial que não compilou não apareça com denominador menor |
 | RQ3 | complexidade ciclomática média (Radon `cc`) e duplicação (jscpd), com `loc` como controle; Índice de Manutenibilidade (Radon `mi`) como aprofundamento | `loc` controla a hipótese de que o código de IA seja apenas mais verboso; o MI é composto por complexidade, LOC e volume de Halstead |
 
 Coleta feita por `scripts/cronometro.py` (tempo), `scripts/contagem_testes.py`
@@ -205,8 +211,9 @@ Par por integrante (mediana dos 3 trials):
 - **Bootstrap IC 95% da diferença de mediana (com-ia − sem-ia):**
   **[−1071,0 ; −171,0]**.
 - **Censura:** 0% nos dois tratamentos.
-- **Outlier:** 1387 s (`carlos/k3`, sem-ia), trial real com tempo corrigido
-  a partir do log do terminal.
+- **Outlier:** 1387 s (`carlos/k3`, sem-ia). É um trial válido, mantido na
+  análise: o cronômetro foi interrompido por engano depois de os testes
+  passarem, e o tempo foi recuperado do log do terminal.
 
 **Achado:** o efeito é grande (mediana ~5× menor) e consistente nos três
 integrantes, mas **o teste formal não rejeita H0**. Com N = 3, W = 0 é o
@@ -221,16 +228,19 @@ resultado deste desenho poderia ser significativo. O bootstrap, que usa os
 ![Prompts x tempo](../analise/graficos/dashboard/rq1_prompts_vs_tempo.png)
 
 Os trials `com-ia` usaram de 1 a 4 prompts (mediana 2). Spearman entre
-prompts e tempo: 0,56.
+prompts e tempo: 0,56, ou seja, trials com mais interações tenderam a ser
+mais longos. Com 9 pontos, é uma associação exploratória, não uma relação
+de causa.
 
 **Efeito de aprendizado (tempo × ordem):**
 
 ![Tempo x ordem](../analise/graficos/dashboard/rq1_tempo_vs_ordem.png)
 
 Spearman entre a ordem do trial e o tempo, nos 18 trials: 0,03 (com-ia: 0,03;
-sem-ia: −0,27). Não há tendência clara de os trials ficarem mais rápidos ao
-longo da sequência, coerente com o contrabalanceamento de ordem, embora
-com N tão pequeno isso não descarte um efeito de aprendizado.
+sem-ia: −0,27). No conjunto não há tendência de os trials ficarem mais
+rápidos ao longo da sequência, coerente com o contrabalanceamento de ordem.
+Nos trials `sem-ia` há uma leve queda, fraca demais para ser conclusiva com
+N tão pequeno, mas que não permite descartar algum efeito de aprendizado.
 
 ### 3.2 RQ2 — Defeitos
 
@@ -244,8 +254,8 @@ com N tão pequeno isso não descarte um efeito de aprendizado.
   os integrantes.
 - **Densidade de defeitos** (testes falhando / KLOC): máximo observado 0,000.
 
-**Achado:** não é um resultado nulo, é ausência de variação para testar. H0
-não pode ser rejeitada nem confirmada. Provável causa: o time-box de 35 min
+**Achado:** não é um resultado nulo, é ausência de variação para testar: o
+teste não pode ser aplicado, então não há decisão sobre H0. Provável causa: o time-box de 35 min
 foi folgado para katas deste porte, e qualquer integrante chegou a uma
 solução correta, com ou sem IA. RQ2, como desenhada, não discrimina os
 tratamentos nesta amostra.
@@ -260,6 +270,8 @@ Os três gráficos saem achatados porque todos os trials tiveram 100% de
 sucesso e 0 testes falhando (efeito teto).
 
 ### 3.3 RQ3 — Estrutura do código
+
+Valores como mediana [Q1 ; Q3]:
 
 | Métrica | com-ia | sem-ia |
 |---|---:|---:|
@@ -317,7 +329,8 @@ sucesso e 0 testes falhando (efeito teto).
 
 A mediana do tempo é menor com IA nas seis katas. Cada célula kata ×
 tratamento tem só 1 ou 2 trials, então o gráfico mostra a direção do
-efeito, não sua magnitude.
+efeito, não sua magnitude. A taxa de sucesso por kata não tem gráfico
+próprio porque é 100% em todas as células.
 
 ---
 
@@ -333,15 +346,25 @@ efeito, não sua magnitude.
 | RQ3 — `duplicacao_pct` | não computável | indeterminada | nenhum efeito observável: 17 de 18 trials com 0% |
 | RQ3 — `mi` (exploratório) | p = 1,00 | sem hipótese formal | medianas praticamente iguais; sem efeito direcional |
 
+**Perguntas extras.**
+
+- *A IA ajuda mais em katas fáceis ou difíceis?* A mediana de tempo é menor
+  com IA nas seis katas, mas cada célula kata × tratamento tem só 1 ou 2
+  trials, o que não permite dizer se o ganho depende da dificuldade.
+- *Ir mais rápido custa qualidade do código?* Nesta amostra, não: os trials
+  com IA foram mais rápidos e tiveram complexidade ciclomática igual ou
+  menor, sem código mais longo.
+
 **O que o experimento consegue dizer.** Com IA, os integrantes chegaram à
 solução correta mais rápido em todos os três pares, sem que o código ficasse
 mais longo (`loc`) e, na direção, com complexidade ciclomática menor. Não
 houve diferença detectável em correção (teto de 100% nos dois tratamentos),
 duplicação nem manutenibilidade.
 
-**Por que quase nenhum teste é significativo.** Não é falta de efeito, é
-limite do desenho: com 3 pares, o menor p possível do Wilcoxon é 0,125
-(unicaudal) ou 0,25 (bicaudal), e cai para 0,5 quando um par empata. Isso
+**Por que quase nenhum teste é significativo.** Não rejeitar H0 não
+significa que o efeito não existe; aqui reflete o limite do desenho: com 3
+pares, o menor p possível do Wilcoxon é 0,125 (unicaudal) ou 0,25
+(bicaudal), e sobe para 0,5 quando um par empata. Isso
 confirma na prática a ameaça de conclusão #4 de
 [`docs/03-ameacas-validade.md`](../docs/03-ameacas-validade.md). O bootstrap
 no nível de trial ajuda a ver o tamanho do efeito, mas não substitui o teste
