@@ -59,8 +59,8 @@ pytest --junitxml=report.xml <kata>/
 
 | Integrante | SO | IDE | Python | Node |
 |---|---|---|---|---|
-| Brenda | | | | |
-| Carlos | | | | |
+| Brenda | Windows 11 Home Single Language | VS Code | 3.14.3 | 24.14.0 |
+| Carlos | Windows 11 Home (10.0.26200) | VS Code | 3.12.10 | 24.19.0 |
 | Gabriela | Windows 11 Home (build 26200) | VS Code | 3.14.3 | 24.14.0 |
 
 Nos trials sem IA, desligar plugins de IA da IDE (Copilot, Codeium e afins).
