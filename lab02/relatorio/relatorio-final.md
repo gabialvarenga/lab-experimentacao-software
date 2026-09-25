@@ -17,21 +17,35 @@ resolução de tarefas de programação. O desenho é um crossover
 cada integrante resolve seis katas, três com IA e três sem, de modo que a
 comparação central é sempre a mesma pessoa consigo mesma.
 
-**Objetivo (GQM).** Analisar o uso de um assistente de IA generativa na
-resolução de tarefas de programação, com o propósito de comparar seu efeito
-frente à codificação manual, com respeito a tempo de resolução, qualidade
-funcional (defeitos) e qualidade estrutural do código, do ponto de vista do
-grupo pesquisador, no contexto de katas de dificuldade equivalente
-resolvidas por estudantes de graduação sob condições controladas
-(crossover *within-subject*, com tempo limitado).
+### 1.1 Objetivo, questões e métricas (GQM)
 
-### 1.1 Questões de pesquisa e hipóteses
+O experimento segue o modelo Goal-Question-Metric (Basili, Caldiera e
+Rombach). O objetivo é descrito pelo gabarito do modelo:
+
+| Elemento | Descrição |
+|---|---|
+| **Analisar** | o uso de um assistente de IA generativa (Claude Code) |
+| **com o propósito de** | comparar seu efeito frente à codificação manual |
+| **com respeito a** | tempo de resolução, qualidade funcional (defeitos) e qualidade estrutural do código |
+| **do ponto de vista do** | grupo pesquisador |
+| **no contexto de** | katas de dificuldade equivalente, resolvidas por estudantes de graduação sob condições controladas (crossover *within-subject*, com tempo limitado) |
+
+A partir do objetivo, três questões de pesquisa, cada uma com as métricas
+que a respondem:
+
+| Questão de pesquisa | Métricas |
+|---|---|
+| **RQ1.** Qual o efeito do uso de um assistente de IA sobre o tempo necessário para resolver uma tarefa de programação? | tempo até passar em todos os testes de aceitação, em segundos (primária); nº de prompts (exploratória) |
+| **RQ2.** Qual o efeito do uso de um assistente de IA sobre a quantidade de defeitos, medida em testes de aceitação que falham, no código produzido? | taxa de sucesso dos testes, em % (primária); nº de testes falhando e densidade de defeitos, em testes por KLOC (complementares) |
+| **RQ3.** De que forma o uso de um assistente de IA altera a complexidade ciclomática e a duplicação do código produzido, considerando o seu tamanho? | complexidade ciclomática média; duplicação, em %; LOC (controle); Índice de Manutenibilidade (aprofundamento) |
+
+### 1.2 Hipóteses
 
 Nível de significância α = 0,05 nos três testes. Teste: Wilcoxon signed-rank
 pareado (não paramétrico, adequado ao N pequeno). Detalhes em
 [`docs/02-hipoteses.md`](../docs/02-hipoteses.md).
 
-| RQ | Variável | H0 | H1 | Teste |
+| Questão | Variável | H0 | H1 | Teste |
 |---|---|---|---|---|
 | RQ1 — Tempo | `tempo_segundos` | a mediana do tempo até verde é igual com e sem IA | a mediana é **menor** com IA | Wilcoxon pareado, unicaudal |
 | RQ2 — Defeitos | `taxa_sucesso` (complementar: testes falhando) | a mediana da taxa de sucesso é igual com e sem IA | a mediana é **maior** com IA | Wilcoxon pareado, unicaudal |
@@ -311,13 +325,13 @@ efeito, não sua magnitude.
 
 **Síntese por RQ.**
 
-| RQ | Resultado | Decisão sobre H0 (α = 0,05) | Leitura |
+| Questão | Resultado | Decisão sobre H0 (α = 0,05) | Resposta à questão |
 |---|---|---|---|
-| RQ1 — Tempo | p = 0,125; r = −1,00; IC [−1071 ; −171] s | não rejeitada | efeito grande e consistente com IA, sem significância possível com N = 3 |
-| RQ2 — Defeitos | não computável | indeterminada | sem variação: todos os trials com 100% |
-| RQ3 — `cc_media` | p = 0,50; IC [−5,0 ; 0,0] | não rejeitada | complexidade menor com IA na direção, sem evidência estatística |
-| RQ3 — `duplicacao_pct` | não computável | indeterminada | 17 de 18 trials com 0% |
-| RQ3 — `mi` (exploratório) | p = 1,00 | sem hipótese formal | sem efeito direcional |
+| RQ1 — Tempo | p = 0,125; r = −1,00; IC [−1071 ; −171] s | não rejeitada | tempo menor com IA (mediana de 109 s contra 576 s), nos três integrantes; sem significância possível com N = 3 |
+| RQ2 — Defeitos | não computável | indeterminada | nenhum efeito observável: todos os trials com 100% de sucesso |
+| RQ3 — `cc_media` | p = 0,50; IC [−5,0 ; 0,0] | não rejeitada | complexidade menor com IA na direção (4 contra 6), sem evidência estatística |
+| RQ3 — `duplicacao_pct` | não computável | indeterminada | nenhum efeito observável: 17 de 18 trials com 0% |
+| RQ3 — `mi` (exploratório) | p = 1,00 | sem hipótese formal | medianas praticamente iguais; sem efeito direcional |
 
 **O que o experimento consegue dizer.** Com IA, os integrantes chegaram à
 solução correta mais rápido em todos os três pares, sem que o código ficasse
