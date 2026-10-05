@@ -1,0 +1,24 @@
+# Configuração do pipeline do Lab03. O token do GitHub NÃO fica aqui:
+# ele é lido da variável de ambiente GITHUB_TOKEN.
+
+janela:
+  inicio: 2025-10-01   # intervalo fechado, datas em UTC
+  fim: 2026-09-30
+
+criterios:
+  min_releases: 5
+  min_workflow_runs: 50
+
+selecao:
+  amostra: 100         # repositórios aprovados no funil (Sprint 01); 300 na Sprint 02
+  consulta_base: "stars:>1000"
+  # Faixas de estrelas para contornar o teto de 1.000 resultados por busca
+  faixas_estrelas:
+    - "1000..2000"
+    - "2000..5000"
+    - "5000..10000"
+    - ">10000"
+
+caminhos:
+  cache: dados/cache
+  saida: dados/saida
