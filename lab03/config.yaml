@@ -12,12 +12,13 @@ criterios:
 selecao:
   amostra: 100         # repositórios aprovados no funil (Sprint 01); 300 na Sprint 02
   consulta_base: "stars:>1000"
-  # Faixas de estrelas para contornar o teto de 1.000 resultados por busca
+  # Faixas de estrelas para contornar o teto de 1.000 resultados por busca,
+  # em ordem decrescente; a que passar do teto é estreitada em pipeline/selecao.py
   faixas_estrelas:
-    - "1000..2000"
-    - "2000..5000"
-    - "5000..10000"
     - ">10000"
+    - "5000..10000"
+    - "2000..5000"
+    - "1000..2000"
 
 caminhos:
   cache: dados/cache
