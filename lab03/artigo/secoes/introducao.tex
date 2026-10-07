@@ -1,0 +1,11 @@
+\section{Introdução}
+
+As métricas DORA (\textit{DevOps Research and Assessment})~--- frequência de deploy, lead time, taxa de falha de mudanças (CFR, \textit{Change Failure Rate}) e tempo de recuperação~--- tornaram-se a referência para medir o desempenho de entrega de software \cite{forsgren2018accelerate}. Elas classificam equipes em quatro faixas (\textit{Elite}, \textit{High}, \textit{Medium} e \textit{Low}) e associam entrega rápida e estável a melhores resultados organizacionais \cite{dora2024report}. Apesar disso, a maior parte da evidência vem de pesquisas com questionários respondidos por profissionais, e pouco se sabe sobre como projetos open-source populares se posicionam nessas faixas quando as métricas são calculadas a partir dos próprios dados do repositório.
+
+O problema é que, em repositórios públicos, as métricas DORA não são observadas diretamente: o GitHub não registra deploys nem falhas em produção, e é preciso inferi-los a partir de aproximações (\textit{proxies}), como releases, commits e execuções de \textit{workflows} do GitHub Actions. Cada escolha de definição (o que conta como deploy, como identificar uma falha, quando há recuperação) pode alterar a classificação de um repositório, e não há consenso sobre qual operacionalização é a mais adequada.
+
+O objetivo deste trabalho é mensurar as quatro métricas DORA em repositórios populares do GitHub que usam GitHub Actions, em uma janela de um ano (01/10/2025 a 30/09/2026), e investigar como elas se relacionam entre si, como variam com características dos repositórios e quão sensíveis são às definições adotadas. Para isso, formulamos oito questões de pesquisa (RQ 01 a RQ 08): as RQ 01 a RQ 04 descrevem cada métrica; a RQ 05 trata da relação entre frequência de deploy e taxa de falha; a RQ 06, das características dos repositórios associadas a melhor desempenho; a RQ 07, da sensibilidade da classificação às definições; e a RQ 08, do \textit{rework rate} e da evolução temporal das métricas. As hipóteses de cada questão, escritas antes da coleta e da análise dos dados, são apresentadas a seguir.
+
+\input{secoes/hipoteses-rq01-rq04}
+
+\input{secoes/hipoteses-rq05-rq08}
