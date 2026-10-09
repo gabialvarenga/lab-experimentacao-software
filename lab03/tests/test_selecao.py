@@ -199,6 +199,17 @@ def test_sem_faixas_devolve_lista_vazia(api):
     assert api.chamadas == []
 
 
+def test_buscar_repositorio_devolve_o_formato_dos_candidatos(api):
+    api.corpos["/repos/o/r"] = bruto("o/r", 1500, criado="2020-01-01T00:00:00Z")
+
+    assert selecao.buscar_repositorio("o", "r") == candidato()
+    assert api.chamadas == [("/repos/o/r", {})]
+
+
+def test_buscar_repositorio_inexistente_devolve_none(api):
+    assert selecao.buscar_repositorio("o", "sumiu") is None
+
+
 def test_usa_actions_com_workflows(api, fixture_json):
     api.corpos["/repos/o/r/actions/workflows"] = fixture_json("workflows")
 

@@ -189,6 +189,43 @@ def test_paginacao_com_chave(rede):
     assert [r["id"] for r in runs] == [1, 2, 3]
 
 
+def test_campos_reduzem_os_itens_no_resultado_e_no_cache(rede):
+    run = {"id": 1, "conclusion": "success", "repository": {"muito": "texto"}}
+    rede.enfileirar(RespostaFalsa(200, {"total_count": 1, "workflow_runs": [run]}))
+
+    runs = cliente_http.get_paginado(
+        "/repos/o/r/actions/runs", chave="workflow_runs", campos=("id", "conclusion", "updated_at")
+    )
+
+    reduzido = {"id": 1, "conclusion": "success", "updated_at": None}
+    assert runs == [reduzido]
+    (arquivo,) = rede.pasta_cache.glob("*.json")
+    assert json.loads(arquivo.read_text(encoding="utf-8"))["corpo"] == {"total_count": 1, "workflow_runs": [reduzido]}
+
+
+def test_campos_valem_para_pagina_gravada_inteira_no_cache(rede):
+    run = {"id": 1, "conclusion": "success", "repository": {"muito": "texto"}}
+    rede.enfileirar(RespostaFalsa(200, {"total_count": 1, "workflow_runs": [run]}))
+    cliente_http.get_paginado("/repos/o/r/actions/runs", chave="workflow_runs")
+
+    runs = cliente_http.get_paginado("/repos/o/r/actions/runs", chave="workflow_runs", campos=("id",))
+
+    assert runs == [{"id": 1}]
+    assert len(rede.chamadas) == 1
+
+
+def test_campos_em_pagina_que_ja_e_uma_lista(rede):
+    rede.enfileirar(RespostaFalsa(200, [{"name": "v1", "zipball_url": "x"}]))
+
+    assert cliente_http.get_paginado("/repos/o/r/tags", campos=("name",)) == [{"name": "v1"}]
+
+
+def test_campos_nao_afetam_repositorio_inexistente(rede):
+    rede.enfileirar(RespostaFalsa(404))
+
+    assert cliente_http.get_paginado("/repos/o/sumiu/actions/runs", chave="workflow_runs", campos=("id",)) == []
+
+
 def test_paginacao_de_repositorio_inexistente_devolve_lista_vazia(rede):
     rede.enfileirar(RespostaFalsa(404))
 

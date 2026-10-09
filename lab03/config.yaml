@@ -10,7 +10,7 @@ criterios:
   min_workflow_runs: 50
 
 selecao:
-  amostra: 100         # repositórios aprovados no funil (Sprint 01); 300 na Sprint 02
+  alvo_aprovados: 100  # repositórios aprovados no funil (Sprint 01); 300 na Sprint 02
   consulta_base: "stars:>1000"
   # Faixas de estrelas para contornar o teto de 1.000 resultados por busca,
   # em ordem decrescente; a que passar do teto é estreitada em pipeline/selecao.py

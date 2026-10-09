@@ -16,7 +16,8 @@ class ApiFalsa:
         self.respostas = respostas or {}
         self.chamadas = []
 
-    def get_paginado(self, caminho, params=None, chave=None):
+    def get_paginado(self, caminho, params=None, chave=None, campos=None):
+        self.campos = campos
         self.chamadas.append((caminho, dict(params), chave))
         return self.respostas.get(params["created"], [])
 
@@ -165,3 +166,9 @@ def test_duplicados_ordem_e_runs_fora_da_janela(api):
 
 def test_repositorio_sem_runs_devolve_lista_vazia(api):
     assert runs.coletar_runs("o", "sem-actions", "main", INICIO, FIM) == []
+
+
+def test_so_os_campos_usados_vao_para_o_cache(api):
+    runs.coletar_runs("o", "r", "main", INICIO, FIM)
+
+    assert api.campos == ("id", "workflow_id", "conclusion", "created_at", "run_started_at", "updated_at")

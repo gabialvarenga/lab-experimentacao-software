@@ -81,11 +81,19 @@ $env:GITHUB_TOKEN = "<token>"
 python -m pipeline --config config.yaml
 ```
 
-No Linux ou macOS, use `export GITHUB_TOKEN=<token>` no lugar da terceira linha.
+No Linux ou macOS, use `export GITHUB_TOKEN=<token>` no lugar da terceira linha. Sem a variável `GITHUB_TOKEN`, o comando encerra com uma mensagem e não faz nenhuma chamada. O token não é gravado em arquivo nem em log.
 
-Para processar uma lista específica de repositórios, sem a busca, acrescente `--repos <arquivo>`, com um `owner/repo` por linha.
+O comando examina os candidatos por estrelas decrescentes, uma faixa de `selecao.faixas_estrelas` por vez, e para no 100º repositório aprovado no funil (`selecao.alvo_aprovados` do `config.yaml`).
 
-Se a execução for interrompida (rate limit, queda de rede ou `Ctrl+C`), o mesmo comando continua de onde parou, porque as respostas já obtidas estão em `dados/cache/`.
+| Argumento | Efeito |
+|---|---|
+| `--config <arquivo>` | Obrigatório. Caminhos relativos de `caminhos` partem da pasta desse arquivo |
+| `--limite N` | Para no N-ésimo aprovado, no lugar de `selecao.alvo_aprovados`. `--limite 5` serve de teste rápido |
+| `--repos <arquivo>` | Pula a busca e processa só os repositórios do arquivo, um `owner/repo` por linha, na ordem do arquivo |
+
+Com `--repos`, todos os repositórios do arquivo são processados, a menos que `--limite` seja informado. Linhas em branco são ignoradas; uma linha fora do formato `owner/repo` encerra a execução antes de qualquer chamada; um repositório que não existe mais é descartado como "erro da API".
+
+Se a execução for interrompida (rate limit, queda de rede ou `Ctrl+C`), o mesmo comando continua de onde parou, porque as respostas já obtidas estão em `dados/cache/`. Os CSVs são gravados ao final da execução.
 
 Saídas em `dados/saida/`:
 
@@ -93,6 +101,34 @@ Saídas em `dados/saida/`:
 |---|---|
 | `funil.csv` | Repositórios restantes e motivo de descarte em cada etapa da seleção |
 | `repositorios.csv` | Metadados e métricas por repositório aprovado |
+| `funil_subamostra.csv`, `repositorios_subamostra.csv` | As mesmas tabelas quando o comando roda com `--repos`, para não sobrescrever as da amostra |
+
+Etapas do `funil.csv` (colunas `etapa`, `entrada`, `saida`, `motivo`):
+
+| Etapa | Motivo de descarte |
+|---|---|
+| Candidatos examinados | Não examinado: a execução parou no último aprovado. A entrada são os candidatos das faixas de estrelas já buscadas |
+| Com GitHub Actions | Sem Actions |
+| Coleta sem erro | Erro da API em qualquer etapa da coleta; a etapa e o repositório ficam no log |
+| Releases na janela | Menos de 5 releases |
+| Runs válidos na janela | Menos de 50 runs |
+
+Colunas do `repositorios.csv`, uma linha por repositório aprovado. Decimais usam ponto e precisão completa; métrica indefinida fica vazia.
+
+| Coluna | Conteúdo |
+|---|---|
+| `full_name` | `owner/repo` |
+| `estrelas`, `linguagem`, `contribuidores` | Metadados do repositório; `linguagem` e `contribuidores` ficam vazios quando a API não informa |
+| `idade_dias` | Dias entre a criação e o fim da janela |
+| `n_deploys`, `n_runs_validos` | Contagens usadas no critério de inclusão |
+| `frequencia_semana` | RQ 01: deploys por semana |
+| `lead_time_a_h`, `lead_time_b_h` | RQ 02: mediana por release (a) e por commit (b), em horas |
+| `releases_ignoradas_404` | Releases fora do lead time porque o `compare` com a anterior devolveu 404 |
+| `cfr_a` | RQ 03 (a): fração de runs com falha, de 0 a 1 |
+| `recuperacao_mediana_h` | RQ 04: mediana dos episódios completos, em horas |
+| `n_episodios`, `n_censurados_direita`, `n_censurados_esquerda` | Episódios de falha e quantos são censurados |
+| `categoria_c1` | Classificação DORA com `frequencia_semana`, `lead_time_a_h`, `cfr_a` e `recuperacao_mediana_h` |
+| `n_metricas_classificadas` | Métricas definidas que entraram na classificação (até 4) |
 
 ## Testes
 
