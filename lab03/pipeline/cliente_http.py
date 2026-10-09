@@ -59,23 +59,39 @@ def get_com_cabecalhos(caminho: str, params: dict | None = None) -> tuple[dict |
     return _obter(_url_canonica(caminho, params))
 
 
-def get_paginado(caminho: str, params: dict | None = None, chave: str | None = None) -> list:
+def get_paginado(
+    caminho: str,
+    params: dict | None = None,
+    chave: str | None = None,
+    campos: tuple[str, ...] | None = None,
+) -> list:
     """Segue `Link rel="next"` até o fim e junta os itens de todas as páginas.
 
     Com `chave`, os itens estão em `corpo[chave]` (ex.: `workflow_runs`); sem ela, o
     corpo de cada página já é uma lista. Cada página é cacheada separadamente.
+
+    Com `campos`, cada item fica só com essas chaves, no cache e no resultado. Serve para
+    respostas volumosas: uma página de 100 workflow runs passa de 4 MB, porque cada run
+    traz o repositório inteiro embutido.
     """
     params = dict(params or {})
     params.setdefault("per_page", 100)
     url = _url_canonica(caminho, params)
+    reduzir = (lambda corpo: _so_campos(corpo, chave, campos)) if campos else None
     itens = []
     while url:
-        corpo, cabecalhos = _obter(url)
+        corpo, cabecalhos = _obter(url, reduzir)
         if corpo is None:
             break
         itens.extend(corpo[chave] if chave else corpo)
         url = _proxima_pagina(cabecalhos.get("link"))
     return itens
+
+
+def _so_campos(corpo, chave: str | None, campos: tuple[str, ...]):
+    if chave is None:
+        return [{campo: item.get(campo) for campo in campos} for item in corpo]
+    return {**corpo, chave: [{campo: item.get(campo) for campo in campos} for item in corpo[chave]]}
 
 
 def _requisitar(url: str, cabecalhos: dict):
@@ -168,10 +184,16 @@ def _espera_do_limite(cabecalhos: dict) -> float | None:
     return None
 
 
-def _obter(url: str):
+def _obter(url: str, reduzir=None):
+    """Corpo e cabeçalhos da URL, do cache ou da rede.
+
+    `reduzir` enxuga o corpo antes de gravá-lo no cache. Também é aplicado na leitura,
+    porque o cache pode ter páginas gravadas inteiras por uma execução anterior.
+    """
     em_cache = _ler_cache(url)
     if em_cache is not None:
-        return em_cache
+        corpo, cabecalhos = em_cache
+        return (reduzir(corpo) if reduzir and corpo is not None else corpo), cabecalhos
 
     falhas_5xx = 0
     esperas_de_limite = 0
@@ -188,6 +210,8 @@ def _obter(url: str):
             if status in (200, 404):
                 guardados = {n: v for n, v in cabecalhos.items() if n in CABECALHOS_GUARDADOS}
                 corpo = resposta.json() if status == 200 else None
+                if reduzir and corpo is not None:
+                    corpo = reduzir(corpo)
                 _gravar_cache(url, status, corpo, guardados)
                 return corpo, guardados
             if status in (403, 429):

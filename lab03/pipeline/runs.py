@@ -13,6 +13,9 @@ from metricas.janela import dentro_da_janela
 from pipeline import cliente_http
 
 LIMITE_DA_API = 1000
+# Só estes campos de cada run vão para o cache: a resposta completa da API tem cerca de
+# 40 KB por run, o que esgota memória e disco em repositórios com muitos runs.
+CAMPOS = ("id", "workflow_id", "conclusion", "created_at", "run_started_at", "updated_at")
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +67,9 @@ def _consultar(owner: str, repo: str, branch: str, inicio: date, fim: date) -> l
         "event": "push",
         "created": f"{inicio.isoformat()}..{fim.isoformat()}",
     }
-    return cliente_http.get_paginado(f"/repos/{owner}/{repo}/actions/runs", params, chave="workflow_runs")
+    return cliente_http.get_paginado(
+        f"/repos/{owner}/{repo}/actions/runs", params, chave="workflow_runs", campos=CAMPOS
+    )
 
 
 def _normalizar(bruto: dict) -> dict:

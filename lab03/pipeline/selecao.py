@@ -32,6 +32,12 @@ def buscar_candidatos(faixas: list[str]) -> list[dict]:
     return sorted(candidatos.values(), key=lambda c: (-c["stargazers_count"], c["full_name"]))
 
 
+def buscar_repositorio(owner: str, repo: str) -> dict | None:
+    """Um repositório pelo nome, no formato de `buscar_candidatos`; `None` se não existe (404)."""
+    bruto = cliente_http.get_json(f"/repos/{owner}/{repo}")
+    return _normalizar(bruto) if bruto is not None else None
+
+
 def usa_actions(owner: str, repo: str) -> bool:
     """True se o repositório tem ao menos um workflow do GitHub Actions."""
     corpo = cliente_http.get_json(f"/repos/{owner}/{repo}/actions/workflows", {"per_page": 1})
