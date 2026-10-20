@@ -62,6 +62,7 @@ lab03/
         concordancia.py    # kappa de Fleiss e consenso da amostra-ouro                    (S02-05)
         avaliar_heuristica.py  # precisão, recall e F1 da heurística de release corretiva (S02-13)
         descritiva.py      # mediana, IQR e faixas DORA das RQ 01 a 04                     (S03-04)
+        rq05_spearman.py   # correlação de Spearman entre frequência de deploy e CFR (RQ 05) (S03-05)
         rq06_fatores.py    # métricas por fator, com Holm e tamanho de efeito (RQ 06)      (S03-06)
         rq07_sensibilidade.py  # sensibilidade da classificação a C1, C2 e C3 (RQ 07)      (S03-08)
         saida/             # tabelas e figuras das análises (versionadas)
@@ -183,6 +184,7 @@ python -m analise.rq07_sensibilidade
 | Comando | O que faz | Observações |
 |---|---|---|
 | `python -m analise.descritiva` | Mediana, IQR e faixas DORA das RQ 01 a 04, com histogramas | Cerca de 10 segundos. As figuras `.png` são regeneradas e o Git as mostra como alteradas, porque o arquivo não sai idêntico byte a byte; as tabelas `.csv` saem iguais |
+| `python -m analise.rq05_spearman` | Correlação de Spearman entre a frequência de deploy e o CFR (a) e (b), com gráficos de dispersão | Cerca de 5 segundos. Repositórios com valor indefinido ficam fora do par; os empates (CFR igual a 0) usam o posto médio |
 | `python -m analise.rq06_fatores` | Compara as métricas entre grupos de linguagem, estrelas, contribuidores, idade e tipo de projeto (Kruskal-Wallis ou Mann-Whitney, correção de Holm, ε² e δ de Cliff) | Cerca de 10 segundos; `--variantes-b` inclui o lead time (b) e o CFR (b). O tipo de projeto só existe para a amostra-ouro; grupos com menos de 5 valores ficam fora do teste |
 | `python -m analise.rq07_sensibilidade` | Compara C1, C2 e C3 (% de mudança e kappa ponderado) | Precisa das colunas de C2 e C3 preenchidas em `repositorios.csv`. Com elas vazias, encerra com uma mensagem que aponta a coleta (`coleta.variantes_rq07: true`) |
 | `python -m analise.avaliar_heuristica --versao N` | Precisão, recall e F1 da heurística corretiva contra o consenso | Usa o token e a rede (as notas de cada release e os `compare`, cerca de 300 releases) e regrava a linha da versão em `versoes_heuristica.csv` |
