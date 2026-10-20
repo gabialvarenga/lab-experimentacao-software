@@ -19,6 +19,7 @@ Board do grupo: [Kanban](https://github.com/users/gabialvarenga/projects/9)
 | [docs/planejamento.md](docs/planejamento.md) | Calendário, decisões, Issues e fluxo das sprints 01 a 03 |
 | [docs/protocolo-rotulagem.md](docs/protocolo-rotulagem.md) | Critérios de rotulagem da amostra-ouro, regras de cegamento e regra de consenso |
 | [docs/dicionario-dados.md](docs/dicionario-dados.md) | Dicionário de dados: nome, tipo, unidade e fórmula ou origem de cada coluna dos CSVs |
+| [docs/heuristica-corretiva.md](docs/heuristica-corretiva.md) | Versões da heurística de release corretiva, F1 de cada uma e causas dos erros |
 
 ## Estrutura
 
@@ -43,7 +44,7 @@ lab03/
         conclusao.py       # sucesso, falha ou ignorado por `conclusion`                 (S01-07)
         frequencia.py      # RQ 01                                                       (S01-08)
         cfr.py             # RQ 03, variantes (a) (S01-10) e (b)                         (S02-03)
-        corretiva.py       # heurística de release corretiva, versão 1                   (S02-03)
+        corretiva.py       # heurística de release corretiva, versão 3; rework rate     (S02-03, S03-02)
         validacao.py       # precisão, recall e F1 da heurística                         (S02-03)
         recuperacao.py     # RQ 04                                                       (S01-10)
     tests/                 # pytest, um arquivo test_<módulo>.py por módulo
@@ -54,13 +55,20 @@ lab03/
         saida/             # funil.csv, repositorios.csv e o dataset final (versionados)
         amostra/           # amostra prevista pela sondagem, fatias da coleta e reservas (Sprint 02)
         coleta/            # registro da coleta de cada fatia, por integrante (Sprint 02)
-        rotulagem/         # planilhas da amostra-ouro e consenso (Sprint 02)
+        rotulagem/         # planilhas da amostra-ouro, kappa, consenso e versões da heurística (Sprint 02)
+        snapshots/         # retrato do quadro do GitHub Projects ao fim de cada sprint
     analise/               # um notebook ou script por RQ, reexecutável a partir do CSV (Sprint 03)
         sorteio.py         # sorteio da amostra-ouro e planilhas de rotulagem              (S02-04)
+        concordancia.py    # kappa de Fleiss e consenso da amostra-ouro                    (S02-05)
+        avaliar_heuristica.py  # precisão, recall e F1 da heurística de release corretiva (S02-13)
+        descritiva.py      # mediana, IQR e faixas DORA das RQ 01 a 04                     (S03-04)
+        rq06_fatores.py    # métricas por fator, com Holm e tamanho de efeito (RQ 06)      (S03-06)
+        rq07_sensibilidade.py  # sensibilidade da classificação a C1, C2 e C3 (RQ 07)      (S03-08)
+        saida/             # tabelas e figuras das análises (versionadas)
     artigo/                # template SBC (Sociedade Brasileira de Computação)
         main.tex
         secoes/            # introducao.tex, hipoteses-rq01-rq04.tex, hipoteses-rq05-rq08.tex, ...
-    docs/                  # planejamento e, na Sprint 02, dicionário de dados e protocolo de consenso
+    docs/                  # planejamento, dicionário de dados, protocolo de rotulagem e heurística corretiva
 ```
 
 O CI do Lab03 fica em `.github/workflows/lab03-testes.yml`, na raiz do repositório, e roda os testes desta pasta a cada push.
@@ -82,20 +90,33 @@ Regras da estrutura:
 
 Pré-requisitos: Python 3.12 e um token pessoal do GitHub.
 
+**Token.** Crie um token em *GitHub, Settings, Developer settings, Personal access tokens, Tokens (classic)*, **sem marcar nenhum escopo** (os repositórios são públicos). O pipeline lê o token só da variável de ambiente `GITHUB_TOKEN`; ele **não lê arquivo `.env`**. O token nunca é gravado em arquivo nem em log, e a pasta de cache não o contém.
+
+**Instalação.** Use um ambiente virtual. A instalação das dependências leva alguns minutos.
+
 ```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 cd lab03
 python -m pip install -r requirements.txt
+```
+
+No Linux ou macOS, ative com `source .venv/bin/activate`. **No Windows, mantenha o repositório e o ambiente virtual em um caminho curto** (por exemplo `C:\lab03`): em pastas muito profundas a instalação falha com `WinError 206` (caminho acima de 260 caracteres).
+
+Execução:
+
+```powershell
 $env:GITHUB_TOKEN = "<token>"
 python -m pipeline --config config.yaml
 ```
 
-No Linux ou macOS, use `export GITHUB_TOKEN=<token>` no lugar da terceira linha. Sem a variável `GITHUB_TOKEN`, o comando encerra com uma mensagem e não faz nenhuma chamada. O token não é gravado em arquivo nem em log.
+No Linux ou macOS, use `export GITHUB_TOKEN=<token>` no lugar da primeira linha. Sem a variável `GITHUB_TOKEN`, o comando encerra com uma mensagem e não faz nenhuma chamada. O token não é gravado em arquivo nem em log.
 
-O comando examina os candidatos por estrelas decrescentes, uma faixa de `selecao.faixas_estrelas` por vez, e para no 100º repositório aprovado no funil (`selecao.alvo_aprovados` do `config.yaml`).
+O comando examina os candidatos por estrelas decrescentes, uma faixa de `selecao.faixas_estrelas` por vez, e para no repositório aprovado de número `selecao.alvo_aprovados` do `config.yaml` (300).
 
-`coleta.paralelismo` no `config.yaml` define quantos candidatos são avaliados e quantas requisições ficam em andamento ao mesmo tempo. O resultado é contabilizado na ordem de estrelas, então as saídas são as mesmas com qualquer valor; com 1, a execução é sequencial. Acima de 5 não há ganho, porque o limite passa a ser a cota de 5.000 requisições por hora do token.
+`coleta.paralelismo` no `config.yaml` define quantos candidatos são avaliados e quantas requisições ficam em andamento ao mesmo tempo. O resultado é contabilizado na ordem de estrelas, então as saídas são as mesmas com qualquer valor; com 1, a execução é sequencial. Acima de 5 não há ganho, porque o limite passa a ser a cota de 5.000 requisições por hora do token. **Memória:** repositórios com milhares de tags ou de runs têm respostas muito grandes, e dois processos com paralelismo 5 ao mesmo tempo chegaram a esgotar a memória (`MemoryError`) numa máquina de 16 GB. Em máquinas menores, ou ao rodar mais de um processo, use `coleta.paralelismo: 2`.
 
-`coleta.variantes_rq07` (`true` ou `false`; padrão `true` quando ausente) liga ou desliga a coleta das variantes C2 (release e pré-release) e C3 (tag) da RQ 07. Com `false`, o pipeline não consulta a API para elas, as dez colunas delas (`n_prereleases`, `n_tags_janela`, `tags_ignoradas_404`, `frequencia_semana_c2`, `lead_time_b_h_c2`, `cfr_b_c2`, `frequencia_semana_c3`, `lead_time_b_h_c3`, `categoria_c2` e `categoria_c3`) ficam vazias, e as demais colunas e o funil não mudam. Serve para refazer a execução só pelo cache, como no congelamento do dataset da Sprint 02; o `config.yaml` do repositório traz `false`, e a Sprint 03 (S03-05) o liga para coletar C2 e C3.
+`coleta.variantes_rq07` (`true` ou `false`; padrão `true` quando ausente) liga ou desliga a coleta das variantes C2 (release e pré-release) e C3 (tag) da RQ 07. Com `false`, o pipeline não consulta a API para elas, as dez colunas delas (`n_prereleases`, `n_tags_janela`, `tags_ignoradas_404`, `frequencia_semana_c2`, `lead_time_b_h_c2`, `cfr_b_c2`, `frequencia_semana_c3`, `lead_time_b_h_c3`, `categoria_c2` e `categoria_c3`) ficam vazias, e as demais colunas e o funil não mudam. Serve para refazer a execução só pelo cache, como no congelamento do dataset da Sprint 02; o `config.yaml` do repositório traz `false`, e a coleta de C2 e C3 da Sprint 03 (S03-07) o liga.
 
 | Argumento | Efeito |
 |---|---|
@@ -139,6 +160,36 @@ Etapas do `funil.csv` (colunas `etapa`, `entrada`, `saida`, `motivo`):
 
 O `repositorios.csv` tem uma linha por repositório aprovado. Decimais usam ponto e precisão completa; métrica indefinida fica vazia. Nome, tipo, unidade e fórmula de cada coluna deste e dos demais arquivos de dados estão no [dicionário de dados](docs/dicionario-dados.md).
 
+## Teste rápido de replicação
+
+Para conferir a instalação sem gastar a cota do token, rode um único repositório pequeno, com cache vazio:
+
+```powershell
+Set-Content -Path um_repo.txt -Value "typicode/json-server" -Encoding ascii
+python -m pipeline --config config.yaml --repos um_repo.txt
+```
+
+No Linux ou macOS, crie o arquivo com `echo typicode/json-server > um_repo.txt`. Leva cerca de 20 segundos e grava `dados/saida/funil_subamostra.csv` e `dados/saida/repositorios_subamostra.csv` (o `--repos` não sobrescreve as tabelas da amostra). A linha desse repositório deve coincidir com a de `dados/saida/repositorios.csv` em todas as colunas, **exceto `estrelas`** (e, às vezes, `linguagem`), que variam com o dia da coleta. Diferenças em outras colunas indicam que a execução não reproduziu o estudo.
+
+## Reproduzir as análises
+
+Cada script de `analise/` lê só os arquivos de `dados/saida/` (e de `dados/rotulagem/`), sem nova coleta, e grava em `analise/saida/`:
+
+```powershell
+python -m analise.descritiva
+python -m analise.rq07_sensibilidade
+```
+
+| Comando | O que faz | Observações |
+|---|---|---|
+| `python -m analise.descritiva` | Mediana, IQR e faixas DORA das RQ 01 a 04, com histogramas | Cerca de 10 segundos. As figuras `.png` são regeneradas e o Git as mostra como alteradas, porque o arquivo não sai idêntico byte a byte; as tabelas `.csv` saem iguais |
+| `python -m analise.rq06_fatores` | Compara as métricas entre grupos de linguagem, estrelas, contribuidores, idade e tipo de projeto (Kruskal-Wallis ou Mann-Whitney, correção de Holm, ε² e δ de Cliff) | Cerca de 10 segundos; `--variantes-b` inclui o lead time (b) e o CFR (b). O tipo de projeto só existe para a amostra-ouro; grupos com menos de 5 valores ficam fora do teste |
+| `python -m analise.rq07_sensibilidade` | Compara C1, C2 e C3 (% de mudança e kappa ponderado) | Precisa das colunas de C2 e C3 preenchidas em `repositorios.csv`. Com elas vazias, encerra com uma mensagem que aponta a coleta (`coleta.variantes_rq07: true`) |
+| `python -m analise.avaliar_heuristica --versao N` | Precisão, recall e F1 da heurística corretiva contra o consenso | Usa o token e a rede (as notas de cada release e os `compare`, cerca de 300 releases) e regrava a linha da versão em `versoes_heuristica.csv` |
+| `python -m analise.concordancia` | Kappa de Fleiss e consenso da amostra-ouro | **Veja o aviso abaixo** |
+
+> **Aviso sobre `analise.concordancia`.** O comando regrava `kappa.csv`, `divergencias.csv` e `consenso.csv` só com a regra da maioria. As quatro decisões da reunião de consenso (`jestjs/jest` em `tipo_projeto`, `supabase/supabase` em `entregas_reais`, `babel/babel v7.29.3` e `spring-projects/spring-boot v4.0.3` em `corretiva`) e suas justificativas ficam **só** no `consenso.csv` versionado e na ata (`dados/rotulagem/ata_consenso.md`); regravar o arquivo as perde. O `kappa.csv` sai igual nos dois casos, porque o kappa é calculado antes do consenso. Para reproduzir os kappas sem tocar no consenso, rode o comando numa cópia da pasta (`--pasta`).
+
 ## Amostra-ouro
 
 ```powershell
@@ -171,6 +222,8 @@ Saídas em `dados/rotulagem/`:
 cd lab03
 pytest --cov=metricas --cov-report=term-missing
 ```
+
+Não precisam de token nem de rede. A suíte tem mais de 570 testes e leva de 1 a 3 minutos; a cobertura exigida do pacote `metricas` é de 80% (o CI reprova abaixo disso).
 
 ## Definições adotadas
 
