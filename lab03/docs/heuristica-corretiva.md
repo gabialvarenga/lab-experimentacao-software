@@ -33,4 +33,6 @@ A heurística de `metricas/corretiva.py` decide se uma release é corretiva (RQ 
 
 ## Pipeline e cache
 
-A v3 precisa do texto das release notes. O pipeline passou a guardar o campo `body` da lista de releases (`CAMPOS_RELEASE`) e `releases_com_commits` devolve `notas` em cada item. As respostas de releases já gravadas no cache antes desta mudança não têm esse campo: nelas `notas` fica `None` e a regra cai no caminho dos commits (sem notas). Para o `cfr_b` e o `rework_rate` do CSV final usarem as notas, as páginas de `/releases` precisam ser baixadas de novo (apagar do cache só essas páginas) antes da S03-03.
+A v3 precisa do texto das release notes. O pipeline passou a guardar o campo `body` da lista de releases (`CAMPOS_RELEASE`) e `releases_com_commits` devolve `notas` em cada item. Respostas de releases gravadas por versões antigas do pipeline podem não ter esse campo; nelas `notas` fica `None` e a regra cai no caminho dos commits (sem notas).
+
+No cache usado para congelar o dataset (S03-03), todos os 22.113 deploys da janela dos 300 repositórios têm as notas, então o `cfr_b` e o `rework_rate` do CSV usam a v3 completa. Quem repetir a coleta do zero grava o campo `body` desde o início; quem reutilizar um cache de uma versão antiga do pipeline deve conferir se as releases têm `notas` e, se faltar, apagar do cache só as páginas de `/releases` para baixá-las de novo.
