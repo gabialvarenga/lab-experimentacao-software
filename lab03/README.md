@@ -117,7 +117,7 @@ O comando examina os candidatos por estrelas decrescentes, uma faixa de `selecao
 
 `coleta.paralelismo` no `config.yaml` define quantos candidatos são avaliados e quantas requisições ficam em andamento ao mesmo tempo. O resultado é contabilizado na ordem de estrelas, então as saídas são as mesmas com qualquer valor; com 1, a execução é sequencial. Acima de 5 não há ganho, porque o limite passa a ser a cota de 5.000 requisições por hora do token. **Memória:** repositórios com milhares de tags ou de runs têm respostas muito grandes, e dois processos com paralelismo 5 ao mesmo tempo chegaram a esgotar a memória (`MemoryError`) numa máquina de 16 GB. Em máquinas menores, ou ao rodar mais de um processo, use `coleta.paralelismo: 2`.
 
-`coleta.variantes_rq07` (`true` ou `false`; padrão `true` quando ausente) liga ou desliga a coleta das variantes C2 (release e pré-release) e C3 (tag) da RQ 07. Com `false`, o pipeline não consulta a API para elas, as dez colunas delas (`n_prereleases`, `n_tags_janela`, `tags_ignoradas_404`, `frequencia_semana_c2`, `lead_time_b_h_c2`, `cfr_b_c2`, `frequencia_semana_c3`, `lead_time_b_h_c3`, `categoria_c2` e `categoria_c3`) ficam vazias, e as demais colunas e o funil não mudam. Serve para refazer a execução só pelo cache, como no congelamento do dataset da Sprint 02; o `config.yaml` do repositório traz `false`, e a coleta de C2 e C3 da Sprint 03 (S03-07) o liga.
+`coleta.variantes_rq07` (`true` ou `false`; padrão `true` quando ausente) liga ou desliga a coleta das variantes C2 (release e pré-release) e C3 (tag) da RQ 07. Com `false`, o pipeline não consulta a API para elas, as dez colunas delas (`n_prereleases`, `n_tags_janela`, `tags_ignoradas_404`, `frequencia_semana_c2`, `lead_time_b_h_c2`, `cfr_b_c2`, `frequencia_semana_c3`, `lead_time_b_h_c3`, `categoria_c2` e `categoria_c3`) ficam vazias, e as demais colunas e o funil não mudam. Serve para refazer a execução só pelo cache, como no congelamento do dataset da Sprint 02; o `config.yaml` do repositório traz `true`, como na coleta de C2 e C3 da Sprint 03 (S03-07), e o `repositorios.csv` versionado tem as dez colunas preenchidas.
 
 | Argumento | Efeito |
 |---|---|
@@ -147,7 +147,7 @@ Saídas em `dados/saida/`:
 |---|---|
 | `funil.csv` | Repositórios restantes e motivo de descarte em cada etapa da seleção |
 | `repositorios.csv` | Metadados e métricas por repositório aprovado |
-| `funil_subamostra.csv`, `repositorios_subamostra.csv` | As mesmas tabelas quando o comando roda com `--repos`, para não sobrescrever as da amostra |
+| `funil_subamostra.csv`, `repositorios_subamostra.csv` | As mesmas tabelas quando o comando roda com `--repos`, para não sobrescrever as da amostra. O Git ignora `*_subamostra.csv` |
 
 Etapas do `funil.csv` (colunas `etapa`, `entrada`, `saida`, `motivo`):
 
@@ -186,7 +186,7 @@ python -m analise.rq07_sensibilidade
 | `python -m analise.descritiva` | Mediana, IQR e faixas DORA das RQ 01 a 04, com histogramas | Cerca de 10 segundos. As figuras `.png` são regeneradas e o Git as mostra como alteradas, porque o arquivo não sai idêntico byte a byte; as tabelas `.csv` saem iguais |
 | `python -m analise.rq05_spearman` | Correlação de Spearman entre a frequência de deploy e o CFR (a) e (b), com gráficos de dispersão | Cerca de 5 segundos. Repositórios com valor indefinido ficam fora do par; os empates (CFR igual a 0) usam o posto médio |
 | `python -m analise.rq06_fatores` | Compara as métricas entre grupos de linguagem, estrelas, contribuidores, idade e tipo de projeto (Kruskal-Wallis ou Mann-Whitney, correção de Holm, ε² e δ de Cliff) | Cerca de 10 segundos; `--variantes-b` inclui o lead time (b) e o CFR (b). O tipo de projeto só existe para a amostra-ouro; grupos com menos de 5 valores ficam fora do teste |
-| `python -m analise.rq07_sensibilidade` | Compara C1, C2 e C3 (% de mudança e kappa ponderado) | Precisa das colunas de C2 e C3 preenchidas em `repositorios.csv`. Com elas vazias, encerra com uma mensagem que aponta a coleta (`coleta.variantes_rq07: true`) |
+| `python -m analise.rq07_sensibilidade` | Compara C1, C2 e C3 (% de mudança e kappa ponderado) | Lê `dados/saida/repositorios.csv`, que traz as colunas de C2 e C3 preenchidas nos 300 repositórios (`--csv` aponta outro arquivo). Se as colunas estiverem vazias, encerra com uma mensagem que aponta a coleta (`coleta.variantes_rq07: true`) |
 | `python -m analise.avaliar_heuristica --versao N` | Precisão, recall e F1 da heurística corretiva contra o consenso | Usa o token e a rede (as notas de cada release e os `compare`, cerca de 300 releases) e regrava a linha da versão em `versoes_heuristica.csv` |
 | `python -m analise.concordancia` | Kappa de Fleiss e consenso da amostra-ouro | **Veja o aviso abaixo** |
 

@@ -46,7 +46,7 @@ Etapas, em ordem:
 
 O dataset: uma linha por repositório aprovado no funil. `full_name` é a chave. As colunas aparecem na ordem abaixo.
 
-O `repositorios.csv` versionado tem 30 colunas, na ordem das seções abaixo: as de metadados, contagens, métricas DORA e C1 (3.1 a 3.5), `rework_rate` (3.6) e as 10 de C2 e C3 (3.7). As 10 de C2 e C3 estão **vazias** neste arquivo, porque ele foi gerado com `coleta.variantes_rq07: false`; a Sprint 03 as preenche. `cfr_b` e `rework_rate` usam a versão 3 da heurística de release corretiva (seção 5.4 e `docs/heuristica-corretiva.md`).
+O `repositorios.csv` versionado tem 30 colunas, na ordem das seções abaixo: as de metadados, contagens, métricas DORA e C1 (3.1 a 3.5), `rework_rate` (3.6) e as 10 de C2 e C3 (3.7). As 10 de C2 e C3 estão **preenchidas** nos 300 repositórios (coleta da Sprint 03, com `coleta.variantes_rq07: true`; seção 3.7). `cfr_b` e `rework_rate` usam a versão 3 da heurística de release corretiva (seção 5.4 e `docs/heuristica-corretiva.md`).
 
 ### 3.1 Metadados
 
@@ -115,7 +115,9 @@ Cada métrica recebe uma nota (Elite 4, High 3, Medium 2, Low 1) pelos cortes ab
 
 ### 3.7 Colunas de C2 e C3 (RQ 07)
 
-São calculadas para a análise de sensibilidade da RQ 07 (C2: releases e pré-releases, lead time (b) e CFR (b); C3: tags, lead time (b) e CFR (a); o tempo de recuperação é o de C1 nas três). **Ficam vazias no CSV congelado da Sprint 02 e são preenchidas na Sprint 03** (S03-05). Definições da #161 (mesclada). A opção `coleta.variantes_rq07` do `config.yaml` liga e desliga a coleta: com `true` (padrão quando ausente) elas são preenchidas; com `false` (valor do repositório na Sprint 02), o pipeline não consulta a API para elas e as dez colunas saem vazias.
+São calculadas para a análise de sensibilidade da RQ 07 (C2: releases e pré-releases, lead time (b) e CFR (b); C3: tags, lead time (b) e CFR (a); o tempo de recuperação é o de C1 nas três). Ficaram vazias no CSV congelado da Sprint 02 e foram preenchidas na Sprint 03 (S03-07), nos 300 repositórios; as colunas de C1 não mudaram. Definições da #161 (mesclada). A opção `coleta.variantes_rq07` do `config.yaml` liga e desliga a coleta: com `true` (padrão quando ausente e valor atual do repositório) elas são preenchidas; com `false`, o pipeline não consulta a API para elas e as dez colunas saem vazias.
+
+Células vazias que sobram, por falta de dado e não por falha de coleta: `lead_time_b_h_c2`, `cfr_b_c2` e `categoria_c2` ficam vazias em `zed-industries/zed` (a API devolve HTTP 422 numa comparação de tags, e o pipeline deixa essas colunas de C2 vazias), e cinco colunas de C3 ficam vazias em `docling-project/docling` (HTTP 422 nas tags). Esses dois erros não entram no cache, então um rerun só pelo cache também recebe o erro e reproduz as mesmas células vazias. As demais vazias seguem as regras de cada coluna (por exemplo, sem releases corretivas não há tempo de recuperação).
 
 | Coluna | Tipo | Unidade | Fórmula ou origem |
 |---|---|---|---|
