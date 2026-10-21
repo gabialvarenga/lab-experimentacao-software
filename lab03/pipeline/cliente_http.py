@@ -32,6 +32,7 @@ ESPERAS_5XX = (1, 2, 4, 8)
 ESPERAS_SEM_CONEXAO = (1, 2, 4, 8, 15, 30, 60)
 ESPERA_MAXIMA_SEM_CONEXAO = 6 * 60 * 60
 MAX_ESPERAS_DE_LIMITE = 5
+TENTATIVAS_DE_GRAVACAO = 8  # espera 0,05 s, 0,1 s, 0,2 s... entre uma e outra
 MARGEM_RESET = 1
 CABECALHOS_GUARDADOS = (
     "link",
@@ -242,7 +243,16 @@ def _gravar_cache(url: str, status: int, corpo, cabecalhos: dict) -> None:
     try:
         with os.fdopen(descritor, "w", encoding="utf-8") as arquivo:
             json.dump({"url": url, "status": status, "cabecalhos": cabecalhos, "corpo": corpo}, arquivo)
-        os.replace(temporario, _arquivo_cache(url))  # atômico: Ctrl+C não deixa JSON pela metade
+        destino = _arquivo_cache(url)
+        for tentativa in range(TENTATIVAS_DE_GRAVACAO):
+            try:
+                os.replace(temporario, destino)  # atômico: Ctrl+C não deixa JSON pela metade
+                break
+            except PermissionError:
+                # No Windows, o destino pode estar aberto por outro processo (outra coleta, antivírus).
+                if tentativa == TENTATIVAS_DE_GRAVACAO - 1:
+                    raise
+                time.sleep(0.05 * 2**tentativa)
     except BaseException:
         if os.path.exists(temporario):
             os.remove(temporario)

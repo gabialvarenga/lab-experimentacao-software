@@ -516,3 +516,42 @@ def test_post_graphql_antes_de_configurar_levanta_erro(monkeypatch):
 
     with pytest.raises(RuntimeError):
         cliente_http.post_graphql("query { x }")
+
+
+def test_gravacao_do_cache_tenta_de_novo_quando_o_arquivo_esta_em_uso(rede, monkeypatch):
+    original = os.replace
+    falhas = []
+
+    def replace_instavel(origem, destino):
+        if len(falhas) < 2:
+            falhas.append(destino)
+            raise PermissionError(13, "Acesso negado")
+        return original(origem, destino)
+
+    monkeypatch.setattr(cliente_http.os, "replace", replace_instavel)
+    monkeypatch.setattr(cliente_http.time, "sleep", lambda segundos: None)
+    rede.enfileirar(RespostaFalsa(200, {"ok": 1}))
+
+    assert cliente_http.get_json("/repos/o/r") == {"ok": 1}
+
+    assert len(falhas) == 2
+    assert len(list(rede.pasta_cache.glob("*.json"))) == 1
+    assert list(rede.pasta_cache.glob("*.tmp")) == []
+
+
+def test_gravacao_do_cache_desiste_depois_de_varias_tentativas_e_limpa_o_temporario(rede, monkeypatch):
+    tentativas = []
+
+    def sempre_negado(origem, destino):
+        tentativas.append(destino)
+        raise PermissionError(13, "Acesso negado")
+
+    monkeypatch.setattr(cliente_http.os, "replace", sempre_negado)
+    monkeypatch.setattr(cliente_http.time, "sleep", lambda segundos: None)
+    rede.enfileirar(RespostaFalsa(200, {"ok": 1}))
+
+    with pytest.raises(PermissionError):
+        cliente_http.get_json("/repos/o/r")
+
+    assert len(tentativas) == cliente_http.TENTATIVAS_DE_GRAVACAO
+    assert list(rede.pasta_cache.glob("*.tmp")) == []
