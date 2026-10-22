@@ -65,6 +65,7 @@ lab03/
         rq05_spearman.py   # correlação de Spearman entre frequência de deploy e CFR (RQ 05) (S03-05)
         rq06_fatores.py    # métricas por fator, com Holm e tamanho de efeito (RQ 06)      (S03-06)
         rq07_sensibilidade.py  # sensibilidade da classificação a C1, C2 e C3 (RQ 07)      (S03-08)
+        rq08_rework.py     # rework rate: mediana, IQR e comparação com o CFR (b) (RQ 08) (S03-09)
         saida/             # tabelas e figuras das análises (versionadas)
     artigo/                # template SBC (Sociedade Brasileira de Computação)
         main.tex
@@ -187,6 +188,7 @@ python -m analise.rq07_sensibilidade
 | `python -m analise.rq05_spearman` | Correlação de Spearman entre a frequência de deploy e o CFR (a) e (b), com gráficos de dispersão | Cerca de 5 segundos. Repositórios com valor indefinido ficam fora do par; os empates (CFR igual a 0) usam o posto médio |
 | `python -m analise.rq06_fatores` | Compara as métricas entre grupos de linguagem, estrelas, contribuidores, idade e tipo de projeto (Kruskal-Wallis ou Mann-Whitney, correção de Holm, ε² e δ de Cliff) | Cerca de 10 segundos; `--variantes-b` inclui o lead time (b) e o CFR (b). O tipo de projeto só existe para a amostra-ouro; grupos com menos de 5 valores ficam fora do teste |
 | `python -m analise.rq07_sensibilidade` | Compara C1, C2 e C3 (% de mudança e kappa ponderado) | Lê `dados/saida/repositorios.csv`, que traz as colunas de C2 e C3 preenchidas nos 300 repositórios (`--csv` aponta outro arquivo). Se as colunas estiverem vazias, encerra com uma mensagem que aponta a coleta (`coleta.variantes_rq07: true`) |
+| `python -m analise.rq08_rework` | Mediana e IQR do *rework rate* e comparação com o CFR (b): Spearman, contagens de maior, menor e igual e Wilcoxon pareado unilateral com rank-biserial, mais histogramas e dispersão | Cerca de 5 segundos. Também lê a precisão, o recall e o F1 da heurística em `dados/rotulagem/versoes_heuristica.csv` e os grava na tabela. Repositório sem release avaliável fica fora (célula vazia, nunca 0); no Wilcoxon, os pares empatados são descartados e contados em `n_empates` |
 | `python -m analise.avaliar_heuristica --versao N` | Precisão, recall e F1 da heurística corretiva contra o consenso | Usa o token e a rede (as notas de cada release e os `compare`, cerca de 300 releases) e regrava a linha da versão em `versoes_heuristica.csv` |
 | `python -m analise.concordancia` | Kappa de Fleiss e consenso da amostra-ouro | **Veja o aviso abaixo** |
 
