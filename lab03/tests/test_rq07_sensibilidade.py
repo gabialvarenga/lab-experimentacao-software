@@ -188,3 +188,74 @@ def test_rodar_de_novo_gera_as_mesmas_saidas(repositorios, tmp_path):
     rq07.main(["--csv", repositorios, "--saida", str(saida)])
 
     assert (saida / "rq07.csv").read_text(encoding="utf-8") == primeira
+
+
+# métricas sozinhas
+
+COLUNAS_DAS_METRICAS = sorted({c for por_combinacao in rq07.METRICAS.values() for c in por_combinacao.values()})
+
+
+def valores_das_metricas(**preenchidos):
+    """Três repositórios, com as colunas das métricas em branco, exceto as de `preenchidos`."""
+    valores = {coluna: [None, None, None] for coluna in COLUNAS_DAS_METRICAS}
+    valores.update(preenchidos)
+    return valores
+
+
+def test_comparar_metrica_conta_as_notas_que_mudam_e_a_direcao():
+    # CFR: 0,10 e 0,50 são Elite e Low (notas 4 e 1); 0,20 e 0,20 são High nas duas
+    valores = valores_das_metricas(cfr_a=[0.10, 0.50, 0.20], cfr_b_c2=[0.50, 0.10, 0.20])
+
+    linha = rq07.comparar_metrica("cfr", "c1", "c2", valores)
+
+    assert (linha["n"], linha["n_mudaram"], linha["n_melhor"], linha["n_pior"]) == (3, 2, 1, 1)
+    assert linha["pct_mudanca"] == pytest.approx(200 / 3)
+
+
+def test_comparar_metrica_ignora_o_repositorio_sem_valor_em_um_dos_lados():
+    valores = valores_das_metricas(lead_time_a_h=[10, 100, None], lead_time_b_h_c2=[100, 1000, 10])
+
+    linha = rq07.comparar_metrica("lead_time", "c1", "c2", valores)
+
+    # só os dois primeiros entram: Elite->High e High->Medium (cada um desce uma nota)
+    assert (linha["n"], linha["n_mudaram"], linha["n_pior"], linha["pct_mudanca"]) == (2, 2, 2, 100.0)
+    assert linha["mediana_x"] == 55.0  # mediana dos valores definidos de C1, e não só dos pares
+    assert linha["mediana_y"] == 100.0
+
+
+def test_comparar_metrica_sem_nenhum_par_fica_vazia():
+    linha = rq07.comparar_metrica("frequencia", "c1", "c2", valores_das_metricas())
+
+    assert linha["n"] == 0 and linha["pct_mudanca"] is None and linha["mediana_x"] is None
+
+
+def test_cfr_de_c1_e_c3_e_o_mesmo_e_nunca_muda():
+    valores = valores_das_metricas(cfr_a=[0.1, 0.5, 0.2])
+
+    assert rq07.comparar_metrica("cfr", "c1", "c3", valores)["pct_mudanca"] == 0.0
+
+
+def test_ler_valores_sem_as_colunas_das_metricas_devolve_none(repositorios):
+    assert rq07.ler_valores(repositorios) is None
+
+
+def test_main_grava_a_tabela_por_metrica_quando_o_csv_traz_as_colunas(tmp_path):
+    cabecalho = CABECALHO + COLUNAS_DAS_METRICAS
+    linha = ["o/a", "Elite", "High", "High"] + ["0.1"] * len(COLUNAS_DAS_METRICAS)
+    vazia = ["o/b", "High", "High", "High"] + [""] * len(COLUNAS_DAS_METRICAS)
+    caminho = gravar_csv(tmp_path / "r.csv", [linha, vazia], cabecalho=cabecalho)
+    saida = tmp_path / "saida"
+
+    assert rq07.main(["--csv", caminho, "--saida", str(saida)]) == 0
+
+    metricas = ler_csv(saida / "rq07_metricas.csv")
+    assert len(metricas) == len(rq07.METRICAS) * 3
+    assert {l["metrica"] for l in metricas} == {"frequencia", "lead_time", "cfr"}
+
+
+def test_main_sem_as_colunas_das_metricas_nao_gera_a_tabela_por_metrica(repositorios, tmp_path):
+    saida = tmp_path / "saida"
+
+    assert rq07.main(["--csv", repositorios, "--saida", str(saida)]) == 0
+
+    assert not (saida / "rq07_metricas.csv").exists()

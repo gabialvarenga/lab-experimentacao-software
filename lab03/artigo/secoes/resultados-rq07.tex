@@ -1,0 +1,78 @@
+\section{Resultados da RQ 07}
+
+A RQ 07 compara a classificação geral dos repositórios nas três combinações de definições: C1 (releases, lead time (a) e CFR (a)), C2 (releases e pré-releases, lead time (b) e CFR (b)) e C3 (tags, lead time (b) e CFR (a)). O tempo de recuperação é o de C1 nas três. A comparação é feita repositório a repositório, pelo percentual que muda de categoria e pelo kappa de Cohen ponderado linear, interpretado pelas faixas de Landis e Koch~\cite{landis1977measurement}. Ficam fora do par os repositórios com C2 ou C3 indefinida: \texttt{zed-industries/zed} (sem lead time (b) e CFR (b) em C2) e \texttt{docling-project/docling} (sem as tags de C3), porque a API devolveu HTTP 422 em uma consulta de cada um. Por isso os pares têm 299, 299 e 298 repositórios.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Concordância entre as classificações gerais de cada par de combinações (Mudam = repositórios que trocam de categoria; Vizinha = trocas de uma só categoria; Sobem e Descem = sentido da troca de $x$ para $y$).}
+\label{tab:rq07_pares}
+\begin{tabular}{lrrrrrrl}
+\hline
+Par ($x \times y$) & n & Mudam & \% & Vizinha & Sobem & Descem & $\kappa$ \\
+\hline
+C1 $\times$ C2 & 299 & 90 & 30,1 & 83 & 26 & 64 & 0,544 (moderada) \\
+C1 $\times$ C3 & 299 & 65 & 21,7 & 61 & 49 & 16 & 0,685 (substancial) \\
+C2 $\times$ C3 & 298 & 85 & 28,5 & 82 & 81 & 4 & 0,591 (moderada) \\
+\hline
+\end{tabular}
+\end{table}
+
+Entre 21,7\% e 30,1\% dos repositórios mudam de categoria conforme a definição (Tabela~\ref{tab:rq07_pares}), 92\% a 97\% delas para uma categoria vizinha, e nenhum vai de \textit{Elite} para \textit{Low}, ou o contrário. A Figura~\ref{fig:rq07} mostra que, em C1$\times$C2, só 6 dos 24 repositórios \textit{Elite} de C1 continuam \textit{Elite} (13 passam a \textit{High} e 5 a \textit{Medium}), enquanto em C1$\times$C3 17 dos 24 continuam.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{rq07_matrizes.png}
+\caption{Matrizes de transição entre as categorias gerais de cada par de combinações (as linhas são a categoria na primeira combinação, e as colunas, na segunda).}
+\label{fig:rq07}
+\end{figure}
+
+A distribuição agregada também muda. Em C1, C2 e C3 há, respectivamente, 24, 11 e 28 repositórios \textit{Elite}, 131, 114 e 153 \textit{High}, 130, 158 e 109 \textit{Medium}, e 15, 16 e 9 \textit{Low}. A categoria mais comum é a \textit{High} em C1 (por um repositório) e em C3 (51,2\%), e a \textit{Medium} em C2 (52,8\%).
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Mudança de faixa de cada métrica entre as combinações: \% de repositórios cuja nota muda e, entre parênteses, quantos sobem e quantos descem de $x$ para $y$. O CFR de C1 e C3 é o mesmo (CFR (a)).}
+\label{tab:rq07_metricas}
+\begin{tabular}{lrrr}
+\hline
+ & C1 $\times$ C2 & C1 $\times$ C3 & C2 $\times$ C3 \\
+\hline
+Frequência de deploy & 10,7 (32/0) & 25,1 (75/0) & 15,1 (45/0) \\
+Lead time & 43,6 (66/64) & 46,6 (75/64) & 10,1 (21/9) \\
+CFR & 59,3 (29/147) & 0,0 (0/0) & 59,3 (147/29) \\
+Classificação geral & 30,1 (26/64) & 21,7 (49/16) & 28,5 (81/4) \\
+\hline
+\end{tabular}
+\end{table}
+
+A Tabela~\ref{tab:rq07_metricas} mostra de onde vêm as trocas. O CFR muda de faixa em 59,3\% dos repositórios entre C2 e as demais, e em 147 deles a de C2 é pior, porque a mediana do CFR (b) em C2 é de 17,0\% e a do (a), de 4,7\%. O lead time muda em 43,6\% a 46,6\% entre C1 e as outras combinações, nos dois sentidos (medianas de 255,7 h em C1, 264,1 h em C2 e 215,6 h em C3), mas em só 10,1\% entre C2 e C3, que usam a mesma variante. A frequência só sobe, e a mediana passa de 0,54 para 0,65 (C2) e 0,88 (C3) por semana. Como a categoria geral é a mediana de quatro notas, parte das trocas é absorvida: o CFR muda em 59,3\% dos repositórios entre C1 e C2, mas a classificação geral em 30,1\%.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Hipóteses da RQ 07 frente aos resultados.}
+\label{tab:hipoteses_rq07}
+\begin{tabular}{p{0.45\textwidth}p{0.45\textwidth}}
+\hline
+Hipótese & Resultado \\
+\hline
+Entre 20\% e 40\% dos repositórios mudam de categoria em cada par & Confirmada (21,7\% a 30,1\%) \\
+As mudanças são quase sempre para uma categoria vizinha & Confirmada (92\% a 97\%) \\
+Kappa ponderado moderado a substancial & Confirmada (0,544 a 0,685) \\
+C2 e C3 deslocam os repositórios para categorias melhores que C1 & Confirmada para C3 (49 sobem e 16 descem) e refutada para C2 (26 sobem e 64 descem) \\
+Pré-releases e tags aumentam a frequência de deploy & Confirmada (mediana de 0,54 para 0,65 e 0,88; nenhuma queda) \\
+O lead time (b) tende a ser menor que o (a) & Parcialmente confirmada (215,6 h em C3, mas 264,1 h em C2 contra 255,7 h em C1) \\
+A maior divergência é em C1$\times$C2 e a menor em C2$\times$C3 & Parcialmente confirmada: C1$\times$C2 é a maior (30,1\%; $\kappa$ = 0,544), mas a menor é C1$\times$C3 (21,7\%; $\kappa$ = 0,685) \\
+A variação por métrica é maior que a da classificação geral & Confirmada para o lead time e o CFR, refutada para a frequência \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Discussão}
+
+Confirmamos que a classificação geral muda para uma parcela relevante dos repositórios, quase sempre em uma categoria, com concordância moderada ou substancial. A escolha da definição não inverte o desempenho de um repositório, mas desloca a categoria de cerca de um em quatro, e pode mudar a conclusão agregada: a categoria mais comum é \textit{High} em C1 e C3 e \textit{Medium} em C2.
+
+Duas expectativas não se confirmaram. A primeira é a direção: só C3 leva os repositórios para categorias melhores, porque aumenta a frequência e mantém o CFR (a). Em C2, o CFR (b) é quase quatro vezes maior que o (a) (RQ 03) e puxa 147 repositórios para uma faixa pior, o que supera o ganho de frequência. A segunda é a ordem dos pares: a menor divergência é em C1$\times$C3, e não em C2$\times$C3. O que importa, portanto, não é quantas definições os pares compartilham, mas quais: C1 e C3 compartilham o CFR (a), a métrica que mais muda de faixa, e C2 e C3 diferem justamente nela. O lead time (b) só é menor que o (a) em C3, o que é coerente com a RQ 02, onde as duas variantes tiveram medianas próximas; não investigamos por que a diferença some em C2.
+
+Para as RQ 01 a RQ 06, isso significa que os valores por repositório (a categoria, o CFR) dependem da definição e devem ser lidos como estimativas, mas as conclusões gerais se mantêm: os repositórios continuam concentrados em \textit{High} e \textit{Medium}, e \textit{Elite} e \textit{Low} continuam minoritárias nas três combinações. A principal ameaça é a heurística de release corretiva, que sustenta o CFR (b) de C2: o seu F1 de 0,644 está abaixo da meta de 0,70, e os erros vão nos dois sentidos, de modo que a divergência de C2 pode estar exagerada ou subestimada.

@@ -13,6 +13,9 @@ Grava em `--saida` (padrão `analise/saida`):
 - `rq07.csv`: uma linha por par, com n, percentuais de mudança, direção e kappa;
 - `rq07_matrizes.csv`: matriz de transição de cada par, em formato longo (`de`, `para`, `n`);
 - `rq07_categorias.csv`: quantos repositórios há em cada categoria de cada combinação;
+- `rq07_metricas.csv`: o mesmo percentual de mudança para cada métrica sozinha (frequência, lead time e
+  CFR, que são as que variam entre as combinações), a partir da nota de cada uma. Só é gerado quando o
+  CSV traz as colunas das métricas de C2 e C3;
 - `rq07_matrizes.png`: as três matrizes de transição.
 
 As colunas de C2 e C3 só são preenchidas depois da coleta das variantes (S03-07).
@@ -29,6 +32,7 @@ import numpy as np
 from sklearn.metrics import cohen_kappa_score
 
 from analise.concordancia import interpretar
+from metricas.classificacao import nota_cfr, nota_frequencia, nota_lead_time
 from metricas.sensibilidade import percentual_mudanca
 
 CATEGORIAS = ("Low", "Medium", "High", "Elite")  # da pior para a melhor
@@ -37,6 +41,18 @@ PARES = tuple(itertools.combinations(COMBINACOES, 2))
 COLUNAS_RQ07 = (
     "combinacao_x", "combinacao_y", "n", "n_excluidos", "n_mudaram", "pct_mudanca",
     "n_melhor", "n_pior", "n_vizinha", "kappa_linear", "interpretacao",
+)  # fmt: skip
+
+# Coluna de cada métrica em cada combinação. O tempo de recuperação é o de C1 nas três, e fica de fora.
+METRICAS = {
+    "frequencia": {"c1": "frequencia_semana", "c2": "frequencia_semana_c2", "c3": "frequencia_semana_c3"},
+    "lead_time": {"c1": "lead_time_a_h", "c2": "lead_time_b_h_c2", "c3": "lead_time_b_h_c3"},
+    "cfr": {"c1": "cfr_a", "c2": "cfr_b_c2", "c3": "cfr_a"},
+}
+NOTAS = {"frequencia": nota_frequencia, "lead_time": nota_lead_time, "cfr": nota_cfr}
+COLUNAS_METRICAS = (
+    "metrica", "combinacao_x", "combinacao_y", "n", "n_mudaram", "pct_mudanca",
+    "n_melhor", "n_pior", "mediana_x", "mediana_y",
 )  # fmt: skip
 
 
@@ -80,6 +96,13 @@ def main(argv: list[str] | None = None) -> int:
             for categoria, n in distribuicao(categorias[c]).items()
         ],
     )
+    valores = ler_valores(args.csv)
+    if valores is not None:
+        _gravar(
+            os.path.join(args.saida, "rq07_metricas.csv"),
+            COLUNAS_METRICAS,
+            [comparar_metrica(m, x, y, valores) for m in METRICAS for x, y in PARES],
+        )
     figura(matrizes, os.path.join(args.saida, "rq07_matrizes.png"))
     for r in resultados:
         print(
@@ -127,6 +150,53 @@ def ler_categorias(caminho: str) -> dict[str, list[str | None]]:
     except OSError as erro:
         raise ErroDeAnalise(f"não foi possível ler {caminho}: {erro.strerror}") from erro
     return categorias
+
+
+def ler_valores(caminho: str) -> dict[str, list[float | None]] | None:
+    """Valores das colunas de `METRICAS`, na ordem das linhas; célula vazia vira `None`.
+
+    Devolve `None` quando o CSV não traz alguma dessas colunas (o `rq07_metricas.csv` não é gerado).
+    """
+    colunas = {coluna for por_combinacao in METRICAS.values() for coluna in por_combinacao.values()}
+    with open(caminho, encoding="utf-8", newline="") as arquivo:
+        leitor = csv.DictReader(arquivo)
+        if not colunas <= set(leitor.fieldnames or []):
+            return None
+        valores = {coluna: [] for coluna in colunas}
+        for linha in leitor:
+            for coluna in colunas:
+                texto = (linha[coluna] or "").strip()
+                valores[coluna].append(float(texto) if texto else None)
+    return valores
+
+
+def comparar_metrica(metrica: str, x: str, y: str, valores: dict) -> dict:
+    """Percentual de repositórios cuja nota da `metrica` muda entre as combinações `x` e `y`.
+
+    Compara as notas de 1 (Low) a 4 (Elite), só nos repositórios com a métrica definida nas duas
+    combinações. `n_melhor` e `n_pior` contam quem sobe ou desce de `x` para `y`. As medianas são
+    as dos valores definidos de cada combinação, e não só dos pares.
+    """
+    valores_x = valores[METRICAS[metrica][x]]
+    valores_y = valores[METRICAS[metrica][y]]
+    nota = NOTAS[metrica]
+    pares = [
+        (nota(a), nota(b)) for a, b in zip(valores_x, valores_y) if a is not None and b is not None
+    ]
+    definidos_x = [v for v in valores_x if v is not None]
+    definidos_y = [v for v in valores_y if v is not None]
+    return {
+        "metrica": metrica,
+        "combinacao_x": x,
+        "combinacao_y": y,
+        "n": len(pares),
+        "n_mudaram": sum(a != b for a, b in pares),
+        "pct_mudanca": 100 * sum(a != b for a, b in pares) / len(pares) if pares else None,
+        "n_melhor": sum(b > a for a, b in pares),
+        "n_pior": sum(b < a for a, b in pares),
+        "mediana_x": float(np.median(definidos_x)) if definidos_x else None,
+        "mediana_y": float(np.median(definidos_y)) if definidos_y else None,
+    }
 
 
 def comparar_par(x: str, y: str, cat_x: list, cat_y: list) -> dict:
