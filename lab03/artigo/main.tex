@@ -24,11 +24,11 @@ Belo Horizonte -- MG -- Brasil
 \maketitle
 
 \begin{abstract}
-  Resumo a ser escrito na Sprint 03.
+  DORA metrics (deployment frequency, lead time for changes, change failure rate and time to restore) are the reference for software delivery performance, but public repositories do not record deployments or production failures. We mined the four metrics from the 300 most popular GitHub repositories that use GitHub Actions, over one year (October 2025 to September 2026), using releases as a proxy for deployments and workflow runs as a proxy for failures. The median repository publishes 0.54 releases per week, has a lead time of about 11 days, a CI failure rate of 4.7\% (17.4\% when a failure is a release followed by a corrective release within 7 days) and recovers from a failed run in 2.6 hours. Deployment frequency and the delivery-based failure rate are positively correlated (Spearman $\rho = 0.50$), which does not support the claim that speed and stability are not a trade-off, partly by construction of the metric. Repository age is the characteristic most associated with performance. Changing the operational definitions moves 22\% to 30\% of the repositories to another overall category (weighted kappa from 0.54 to 0.69), and our heuristic for corrective releases reached an F1 of 0.64 against a manually labeled sample, so per-repository values should be read as estimates.
 \end{abstract}
 
 \begin{resumo}
-  Resumo a ser escrito na Sprint 03.
+  As métricas DORA (frequência de deploy, lead time, taxa de falha de mudanças e tempo de recuperação) são a referência para medir o desempenho de entrega de software, mas os repositórios públicos não registram deploys nem falhas em produção. Neste trabalho, mineramos as quatro métricas nos 300 repositórios mais populares do GitHub que usam GitHub Actions, em um ano (outubro de 2025 a setembro de 2026), com releases como aproximação de deploys e execuções de \textit{workflow} como aproximação de falhas. O repositório mediano publica 0,54 releases por semana, tem lead time de cerca de 11 dias, taxa de falha de CI de 4,7\% (17,4\% quando a falha é uma release seguida de uma release corretiva em até 7 dias) e se recupera de uma execução com falha em 2,6 horas. A frequência de deploy e a taxa de falha por entrega têm correlação positiva (Spearman $\rho = 0{,}50$), o que não sustenta que velocidade e estabilidade não sejam um \textit{trade-off}, em parte por construção da métrica. A idade do repositório é a característica mais associada ao desempenho. Trocar as definições operacionais move 22\% a 30\% dos repositórios para outra categoria geral (kappa ponderado de 0,54 a 0,69), e a nossa heurística de release corretiva alcançou F1 de 0,64 contra uma amostra rotulada manualmente, de modo que os valores por repositório devem ser lidos como estimativas.
 \end{resumo}
 
 \input{secoes/introducao}
@@ -40,6 +40,8 @@ Belo Horizonte -- MG -- Brasil
 \input{secoes/resultados-rq07}
 
 \input{secoes/ameacas}
+
+\input{secoes/conclusao}
 
 \bibliographystyle{sbc}
 \bibliography{referencias}
