@@ -277,3 +277,99 @@ Colunas dos arquivos de `dados/snapshots/`:
 | `tipo` | texto | Tipo do cartão (ex.: `Issue`) |
 | `status` | texto | Coluna do quadro (ex.: `Done`) |
 | `url` | texto | Endereço do cartão no GitHub |
+
+## 7. `analise/saida/`
+
+Tabelas gravadas pelos scripts de análise (`python -m analise.<nome>`), todas regeradas a partir de `dados/saida/repositorios.csv`. Os `.png` da pasta são figuras e não têm colunas. Os decimais usam ponto, e célula vazia quer dizer que a coluna não se aplica à linha. CFR e proporções estão em fração de 0 a 1.
+
+### 7.1 `descritiva.csv`, `faixas_por_metrica.csv` e `categorias_c1.csv` (RQ 01 a 04)
+
+`descritiva.csv`, uma linha por métrica (`frequencia_semana`, `lead_time_a_h`, `lead_time_b_h`, `cfr_a`, `cfr_b`, `recuperacao_mediana_h` e `proporcao_censurada`):
+
+| Coluna | Tipo | Unidade | Descrição |
+|---|---|---|---|
+| `metrica` | texto | — | Nome da coluna de `repositorios.csv`, ou `proporcao_censurada` (censurados ÷ `n_episodios` de cada repositório, seção 3.4) |
+| `n` | inteiro | repositórios | Repositórios com a métrica definida |
+| `n_indefinido` | inteiro | repositórios | Repositórios com a métrica vazia |
+| `mediana`, `q1`, `q3` | decimal | unidade da métrica | Mediana e quartis, com interpolação linear |
+| `minimo`, `maximo` | decimal | unidade da métrica | Menor e maior valor |
+
+`faixas_por_metrica.csv`, uma linha por métrica: `metrica` (texto) e as colunas `Elite`, `High`, `Medium` e `Low` (inteiros), com os repositórios que caem em cada faixa pelos cortes da seção 3.5, e `indefinido` (inteiro), com os que não têm a métrica. Os valores são lidos do CSV sem perda de precisão: um repositório com 12 releases na janela está exatamente no corte entre *Medium* e *Low*.
+
+`categorias_c1.csv`: `categoria` (`Elite`, `High`, `Medium` ou `Low`) e `n_repositorios` (inteiro), com a distribuição da coluna `categoria_c1`.
+
+### 7.2 `rq05.csv` (RQ 05)
+
+Uma linha por variante do CFR.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `variante` | texto | `cfr_a` ou `cfr_b`, correlacionada com `frequencia_semana` |
+| `n` | inteiro | Repositórios com os dois valores definidos |
+| `n_excluidos` | inteiro | Repositórios fora do par por valor indefinido |
+| `n_y_zero` | inteiro | Repositórios com CFR igual a 0, que geram empates (posto médio) |
+| `rho` | decimal | ρ de Spearman |
+| `p_valor` | decimal | p-valor bilateral de `scipy.stats.spearmanr` |
+| `direcao` | texto | `positiva` ou `negativa` |
+| `interpretacao` | texto | Magnitude de Cohen (1988): \|ρ\| < 0,1 desprezível; < 0,3 fraca; < 0,5 moderada; senão forte |
+
+### 7.3 `rq06.csv` e `rq06_grupos.csv` (RQ 06)
+
+`rq06.csv`, uma linha por combinação de fator e métrica:
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `fator` | texto | `linguagem`, `estrelas`, `contribuidores`, `idade` ou `tipo_projeto` (os três do meio em quartis) |
+| `metrica` | texto | `frequencia_semana`, `lead_time_a_h`, `cfr_a` ou `recuperacao_mediana_h` |
+| `status` | texto | `ok`, ou `sem grupos suficientes` quando restam menos de 2 grupos com ao menos 5 valores (o teste não é feito) |
+| `teste` | texto | `kruskal` (3 ou mais grupos) ou `mannwhitney` (2 grupos) |
+| `n` | inteiro | Repositórios que entram no teste |
+| `n_grupos` | inteiro | Grupos que entram no teste |
+| `grupos` | texto | Cada grupo e o seu n, no formato `grupo:n`, separados por `\|` |
+| `n_excluidos` | inteiro | Repositórios fora do teste por valor indefinido ou por grupo pequeno |
+| `estatistica` | decimal | H do Kruskal-Wallis ou U₁ do Mann-Whitney |
+| `p_bruto`, `p_holm` | decimal | p-valor do teste e p-valor corrigido por Holm sobre todos os testes executados |
+| `significativo_holm` | lógico | `True` quando `p_holm` < 0,05 |
+| `tipo_efeito` | texto | `epsilon2` (ε² = H ÷ (n − 1)) ou `cliff_delta` (δ = 2·U₁ ÷ (n₁·n₂) − 1) |
+| `tamanho_efeito` | decimal | Valor do tamanho de efeito |
+| `interpretacao_efeito` | texto | Para ε², Tomczak e Tomczak (2014): < 0,01 desprezível; < 0,08 pequeno; < 0,26 médio; senão grande. Para δ, Romano et al. (2006): \|δ\| < 0,147 desprezível; < 0,33 pequeno; < 0,474 médio; senão grande |
+
+`rq06_grupos.csv`, uma linha por grupo de cada fator e métrica: `fator`, `metrica`, `grupo`, `n` (inteiro), `mediana`, `q1` e `q3` (decimais, na unidade da métrica) e `faixa` (texto `mínimo-máximo` do valor do fator no quartil, vazia nos fatores categóricos).
+
+### 7.4 `rq07.csv`, `rq07_metricas.csv`, `rq07_categorias.csv` e `rq07_matrizes.csv` (RQ 07)
+
+`rq07.csv`, uma linha por par de combinações:
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `combinacao_x`, `combinacao_y` | texto | As duas combinações (`c1`, `c2` ou `c3`) |
+| `n` | inteiro | Repositórios com a categoria definida nas duas |
+| `n_excluidos` | inteiro | Repositórios fora do par por categoria indefinida |
+| `n_mudaram`, `pct_mudanca` | inteiro, decimal | Repositórios que mudam de categoria, e o percentual (de 0 a 100) |
+| `n_melhor`, `n_pior` | inteiro | Quantos sobem ou descem de `x` para `y` |
+| `n_vizinha` | inteiro | Mudanças de uma só categoria |
+| `kappa_linear` | decimal | Kappa de Cohen ponderado linear; vazio quando indefinido (uma só categoria nos dois lados) |
+| `interpretacao` | texto | Faixa de Landis e Koch (1977) |
+
+`rq07_metricas.csv`, uma linha por métrica (`frequencia`, `lead_time` ou `cfr`) e par: `metrica`, `combinacao_x`, `combinacao_y`, `n`, `n_mudaram`, `pct_mudanca`, `n_melhor` e `n_pior` (como acima, mas sobre a nota da métrica, e não sobre a categoria geral), e `mediana_x` e `mediana_y` (decimais, a mediana dos valores definidos de cada combinação). Só existe quando o CSV traz as colunas de C2 e C3.
+
+`rq07_categorias.csv`: `combinacao`, `categoria` e `n` (repositórios em cada categoria de cada combinação).
+
+`rq07_matrizes.csv`: matriz de transição de cada par em formato longo, com `combinacao_x`, `combinacao_y`, `de` (categoria em `x`), `para` (categoria em `y`) e `n`.
+
+### 7.5 `rq08.csv` (RQ 08)
+
+Uma linha por métrica (`rework_rate` e `cfr_b`). As colunas do par só são preenchidas na linha do `rework_rate`.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `metrica` | texto | `rework_rate` ou `cfr_b` |
+| `n`, `n_indefinido`, `n_zero` | inteiro | Repositórios com valor definido, com valor vazio e com valor igual a 0 |
+| `mediana`, `q1`, `q3`, `iqr`, `minimo`, `maximo` | decimal | Distribuição da métrica, em fração de 0 a 1 |
+| `comparado_com` | texto | Métrica contra a qual o `rework_rate` é comparado (`cfr_b`) |
+| `n_pares`, `n_excluidos` | inteiro | Repositórios com as duas métricas definidas, e os que ficam fora |
+| `rho`, `p_valor_spearman`, `direcao`, `interpretacao_rho` | decimal, decimal, texto, texto | Correlação de Spearman entre as duas, com a magnitude de Cohen (como em 7.2) |
+| `n_maior`, `n_menor`, `n_empates` | inteiro | Pares em que o `rework_rate` é maior, menor ou igual ao CFR (b) |
+| `w_mais`, `p_valor_wilcoxon` | decimal | Estatística W⁺ e p-valor do teste de Wilcoxon pareado unilateral (H1: `rework_rate` > `cfr_b`), com os empates descartados |
+| `rank_biserial`, `interpretacao_rank_biserial` | decimal, texto | Correlação rank-biserial pareada, como tamanho de efeito, e a sua magnitude |
+| `versao_heuristica`, `precisao_heuristica`, `recall_heuristica`, `f1_heuristica` | inteiro, decimal | Versão da heurística de release corretiva e a sua precisão, recall e F1 contra o consenso (seção 5.4). São os mesmos nas duas linhas, porque as duas métricas dependem da mesma heurística |

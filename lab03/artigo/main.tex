@@ -24,11 +24,11 @@ Belo Horizonte -- MG -- Brasil
 \maketitle
 
 \begin{abstract}
-  Resumo a ser escrito na Sprint 03.
+  The DORA metrics are the standard for measuring software delivery performance, but public repositories do not record deployments or production failures, so they must be inferred from proxies. We mined deployment frequency, lead time, change failure rate and recovery time from 300 popular GitHub repositories that use GitHub Actions, over one year, and validated our corrective-release heuristic against a manually labeled gold standard of 60 repositories (F1 of 0.644). Repositories deploy a median of 0.54 releases per week, with a median lead time of about 11 days, a CI-based failure rate of 4.7\% and a recovery time of 2.6 hours. Repository age is the factor most associated with performance. Changing the operational definition moves 22\% to 30\% of repositories to a different DORA category (weighted kappa of 0.54 to 0.69), so repository-level classifications should be read as estimates.
 \end{abstract}
 
 \begin{resumo}
-  Resumo a ser escrito na Sprint 03.
+  As métricas DORA são o padrão para medir o desempenho de entrega de software, mas repositórios públicos não registram deploys nem falhas em produção, e é preciso inferi-los por aproximações. Mineramos a frequência de deploy, o lead time, a taxa de falha de mudanças e o tempo de recuperação de 300 repositórios populares do GitHub que usam GitHub Actions, em um ano, e validamos a heurística de release corretiva contra uma amostra-ouro rotulada manualmente, com 60 repositórios (F1 de 0,644). Os repositórios publicam uma mediana de 0,54 releases por semana, com lead time mediano de cerca de 11 dias, taxa de falha de CI de 4,7\% e recuperação em 2,6 horas. A idade do repositório é o fator mais associado ao desempenho. Mudar a definição operacional leva de 22\% a 30\% dos repositórios a outra categoria DORA (kappa ponderado de 0,54 a 0,69), de modo que a classificação de cada repositório deve ser lida como estimativa.
 \end{resumo}
 
 \input{secoes/introducao}
@@ -37,9 +37,17 @@ Belo Horizonte -- MG -- Brasil
 
 \input{secoes/resultados-rq01-rq04}
 
+\input{secoes/resultados-rq05-rq06}
+
 \input{secoes/resultados-rq07}
 
+\input{secoes/resultados-rq08}
+
 \input{secoes/ameacas}
+
+\section*{Disponibilidade}
+
+O código, os dados, o dicionário de dados e as análises estão em \url{https://github.com/gabialvarenga/lab-experimentacao-software}, na pasta \texttt{lab03}, e o planejamento das sprints está no quadro do GitHub Projects do mesmo repositório.
 
 \bibliographystyle{sbc}
 \bibliography{referencias}
