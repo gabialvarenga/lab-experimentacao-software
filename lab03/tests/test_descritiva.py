@@ -8,6 +8,7 @@ from analise.descritiva import (
     categorias_c1,
     descrever,
     faixas_por_metrica,
+    ler_repositorios,
     main,
     proporcao_censurada,
 )
@@ -174,3 +175,17 @@ def test_main_e_reexecutavel(tmp_path):
     main(["--csv", str(csv), "--saida", str(saida)])
     assert (saida / "descritiva.csv").read_text(encoding="utf-8") == primeira
     assert os.path.isdir(saida)
+
+
+def test_ler_repositorios_preserva_o_valor_exato_no_corte_de_frequencia(tmp_path):
+    # 12 releases na janela são 1 por mês, o limite inferior da faixa Medium. O leitor padrão do
+    # pandas erra o último dígito (0,2301369863013698) e jogaria o repositório para Low.
+    corte = 12 / (365 / 7)
+    caminho = tmp_path / "repositorios.csv"
+    csv_completo(frequencia_semana=[corte, 2.0, 10.0, 0.05]).to_csv(caminho, index=False)
+
+    df = ler_repositorios(str(caminho))
+
+    assert df["frequencia_semana"][0] == corte
+    medium = linha(faixas_por_metrica(df, ["frequencia_semana"]), "frequencia_semana")["Medium"]
+    assert medium == 1

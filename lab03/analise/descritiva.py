@@ -94,7 +94,9 @@ def _argumentos(argv: list[str] | None) -> argparse.Namespace:
 def ler_repositorios(caminho: str) -> pd.DataFrame:
     if not os.path.isfile(caminho):
         raise ErroDeDescritiva(f"CSV não encontrado: {caminho}")
-    df = pd.read_csv(caminho)
+    # round_trip: o leitor padrão do pandas pode errar o último dígito de um decimal, e um valor
+    # exatamente no corte de uma faixa (como 12 releases na janela) cairia na faixa errada
+    df = pd.read_csv(caminho, float_precision="round_trip")
     faltando = [c for c in COLUNAS_OBRIGATORIAS if c not in df.columns]
     if faltando:
         raise ErroDeDescritiva(f"{caminho} não tem as colunas {', '.join(faltando)}")
