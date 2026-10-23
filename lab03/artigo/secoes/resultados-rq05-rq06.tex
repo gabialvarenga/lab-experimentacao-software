@@ -1,38 +1,58 @@
 \section{Resultados das RQ 05 e RQ 06}
 
+Esta seção relaciona velocidade e estabilidade (RQ 05) e compara as métricas entre grupos de repositórios (RQ 06). A Tabela~\ref{tab:hipoteses_rq05_rq06} resume o veredito de cada hipótese.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Hipóteses das RQ 05 e RQ 06 frente aos resultados.}
+\label{tab:hipoteses_rq05_rq06}
+\begin{tabular}{p{0.04\textwidth}p{0.47\textwidth}p{0.41\textwidth}}
+\hline
+RQ & Hipótese & Resultado \\
+\hline
+05 & CFR (a): correlação fraca com a frequência & Confirmada ($\rho = 0{,}16$) \\
+05 & CFR (b): correlação positiva e moderada & Confirmada, no limite com forte ($\rho = 0{,}50$) \\
+05 & As variantes levam a conclusões diferentes & Confirmada \\
+06 & Efeitos maiores em contribuidores e tipo & Parcial: só contribuidores, no lead time \\
+06 & Efeitos pequenos em estrelas, linguagem e idade & Refutada para idade e linguagem (lead time) \\
+06 & Poucos testes significativos após Holm & Confirmada (4 de 20) \\
+\hline
+\end{tabular}
+\end{table}
+
 \subsection{RQ 05: frequência de deploy e taxa de falha}
 
-A correlação de Spearman entre a frequência de deploy e o CFR (a) é positiva e fraca ($\rho = 0{,}162$; $p = 0{,}005$; $n = 300$), e com o CFR (b) é positiva e forte pela magnitude de Cohen ($\rho = 0{,}501$; $p < 0{,}001$; $n = 298$), no limite com a faixa moderada. A Figura~\ref{fig:rq05} mostra os dois gráficos. Há muitos empates em zero: 11 repositórios têm CFR (a) igual a 0 e 61 têm CFR (b) igual a 0, que recebem o posto médio.
+A correlação de Spearman entre a frequência de deploy e o CFR (a) é positiva e fraca ($\rho = 0{,}162$; $p = 0{,}005$; n = 300); com o CFR (b), é positiva e está no limite entre moderada e forte ($\rho = 0{,}501$; $p < 0{,}001$; n = 298), como mostra a Figura~\ref{fig:rq05}. Com o CFR (a), os dados estão em linha com o DORA: publicar mais vezes quase não se associa a mais falhas de CI. Com o CFR (b), sugerem um \textit{trade-off}, mas em boa parte por construção da métrica, como previsto na hipótese. Como esperado, as duas variantes levam a conclusões diferentes, e nenhuma das correlações implica causalidade.
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.48\textwidth]{rq05_cfr_a.png}\hfill
 \includegraphics[width=0.48\textwidth]{rq05_cfr_b.png}
-\caption{Frequência de deploy (escala logarítmica) e CFR de cada repositório: variante (a), à esquerda, e variante (b), à direita.}
+\caption{Frequência de deploy (escala logarítmica) contra CFR (a), à esquerda, e contra CFR (b), à direita.}
 \label{fig:rq05}
 \end{figure}
 
-Confirmamos as duas hipóteses. Para o CFR (a), a correlação é fraca ($|\rho| < 0{,}3$), de modo que a frequência de deploy explica pouco da taxa de falha de CI (cerca de 3\% da variação dos postos). O sinal é positivo e significativo, e não nulo: quem publica mais releases tem um pouco mais de execuções com falha. Para o CFR (b), a correlação positiva e moderada que esperávamos ficou no limite entre moderada e forte. As duas variantes levam a conclusões diferentes sobre o \textit{trade-off} entre velocidade e estabilidade: o CFR (a) indica quase independência, em linha com o DORA \cite{dora2024report}, e o CFR (b) indica que mais releases vêm com mais correções. Esse segundo resultado é em parte efeito da definição, pois quem publica mais releases tem mais chance de ter uma correção em até 7 dias, e não deve ser lido como prova de que a velocidade causa instabilidade.
-
 \subsection{RQ 06: características associadas ao desempenho}
 
-Foram feitos 20 testes (cinco fatores e quatro métricas), e só 4 continuam significativos após a correção de Holm, todos com $p < 0{,}001$ (Tabela~\ref{tab:rq06}). A idade tem o maior efeito: os repositórios mais novos publicam mais releases e têm lead time menor. Com mais contribuidores, o lead time também é maior. A linguagem se associa ao lead time com efeito médio. Nenhum fator se associa significativamente ao CFR (a) nem ao tempo de recuperação, e a popularidade (estrelas) e o tipo do projeto não mostram associação significativa com nenhuma métrica ($p$ ajustado de 0,54 a 1,0; o tipo cobre só 58 repositórios, 54 na recuperação).
+Dos 20 testes, só 4 permanecem significativos após a correção de Holm, três deles no lead time (a) (Tabela~\ref{tab:rq06}). O maior efeito é o da idade: do quartil mais novo para o mais antigo, o lead time mediano cresce de 51 h para 1\,024 h ($\varepsilon^2 = 0{,}365$, grande) e a frequência cai de 0,94 para 0,36 release por semana ($\varepsilon^2 = 0{,}118$, médio). Repositórios com mais contribuidores também têm lead time maior (de 131 h no primeiro quartil para 981 h no último; $\varepsilon^2 = 0{,}183$, médio), e a linguagem tem efeito médio no lead time, com medianas de 131 h em Python a 658 h no grupo \textit{outras}. O CFR (a) e a recuperação não diferem em nenhum fator. O tipo do projeto foi testado em 58 dos 60 repositórios da amostra-ouro (o grupo \textit{outro}, com 2, ficou abaixo do mínimo de 5), sem diferença significativa.
 
 \begin{table}[ht]
 \centering
 \small
-\caption{Comparações significativas após a correção de Holm (todas com $p < 0{,}001$) e medianas por grupo. Os quartis de idade vão de 110 a 931 dias (Q1) até 3.936 a 6.746 dias (Q4), e os de contribuidores, de 8 a 223 (Q1) até 1.070 a 9.908 (Q4).}
+\caption{Comparação das métricas entre os grupos de cada fator (Kruskal-Wallis): $\varepsilon^2$ e, entre parênteses, p corrigido por Holm sobre os 20 testes. Em negrito, os significativos ($p < 0{,}05$). Na recuperação, n é menor (284; 54 no tipo do projeto).}
 \label{tab:rq06}
-\begin{tabular}{llrp{0.32\textwidth}}
+\begin{tabular}{lrllll}
 \hline
-Fator e métrica & $\varepsilon^2$ & n & Mediana por grupo \\
+Fator & n & Frequência & Lead time (a) & CFR (a) & Recuperação \\
 \hline
-Idade e lead time (a) & 0,365 (grande) & 299 & Q1 a Q4: 51, 204, 477 e 1.024 h \\
-Contribuidores e lead time (a) & 0,183 (médio) & 299 & Q1 a Q4: 131, 179, 220 e 981 h \\
-Idade e frequência & 0,118 (médio) & 300 & Q1 a Q4: 0,94, 0,61, 0,35 e 0,36 por semana \\
-Linguagem e lead time (a) & 0,095 (médio) & 299 & Python 131 h, TypeScript 217 h e Rust 183 h; Go 567 h e outras 658 h \\
+Linguagem & 300 & 0,051 (0,14) & \textbf{0,095 (< 0,001)} & 0,036 (0,76) & 0,029 (1,00) \\
+Estrelas & 300 & 0,014 (1,00) & 0,018 (1,00) & 0,005 (1,00) & 0,009 (1,00) \\
+Contribuidores & 300 & 0,010 (1,00) & \textbf{0,183 (< 0,001)} & 0,008 (1,00) & 0,012 (1,00) \\
+Idade & 300 & \textbf{0,118 (< 0,001)} & \textbf{0,365 (< 0,001)} & 0,016 (1,00) & 0,038 (0,20) \\
+Tipo do projeto & 58 & 0,033 (1,00) & 0,042 (1,00) & 0,002 (1,00) & 0,123 (0,54) \\
 \hline
 \end{tabular}
 \end{table}
 
-Confirmamos que poucas comparações permanecem significativas (4 de 20), e que a popularidade e o tamanho do efeito da maioria são pequenos. As demais expectativas não se confirmaram. Esperávamos as maiores associações com os contribuidores e o tipo do projeto, mas a maior foi com a idade, que prevíamos pequena, e o tipo do projeto não apresentou nenhuma. Os contribuidores se associam ao lead time, mas no sentido oposto ao esperado: os projetos com mais contribuidores levam mais tempo, e não menos, para publicar o que foi escrito, sem efeito na frequência nem na recuperação. Uma explicação plausível, que não testamos, é que projetos mais antigos e maiores têm processos de release mais cautelosos e mais commits acumulados entre uma release e outra. A análise por fator isolado não separa idade e contribuidores, que podem andar juntos, e o tamanho do efeito da idade (grande) sugere que ela é o fator mais importante da amostra.
+O tipo do projeto não mostrou diferença, possivelmente por falta de poder, e a idade, de que esperávamos efeito pequeno, tem o maior. Uma explicação plausível, não testada, é que projetos mais antigos e maiores acumulam mudanças por mais tempo antes de cada release.
