@@ -1,0 +1,58 @@
+\section{Resultados das RQ 05 e RQ 06}
+
+Esta seção relaciona velocidade e estabilidade (RQ 05) e compara as métricas entre grupos de repositórios (RQ 06). A Tabela~\ref{tab:hipoteses_rq05_rq06} resume o veredito de cada hipótese.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Hipóteses das RQ 05 e RQ 06 frente aos resultados.}
+\label{tab:hipoteses_rq05_rq06}
+\begin{tabular}{p{0.04\textwidth}p{0.47\textwidth}p{0.41\textwidth}}
+\hline
+RQ & Hipótese & Resultado \\
+\hline
+05 & CFR (a): correlação fraca com a frequência & Confirmada ($\rho = 0{,}16$) \\
+05 & CFR (b): correlação positiva e moderada & Confirmada, no limite com forte ($\rho = 0{,}50$) \\
+05 & As variantes levam a conclusões diferentes & Confirmada \\
+06 & Efeitos maiores em contribuidores e tipo & Parcial: só contribuidores, no lead time \\
+06 & Efeitos pequenos em estrelas, linguagem e idade & Refutada para idade e linguagem (lead time) \\
+06 & Poucos testes significativos após Holm & Confirmada (4 de 20) \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{RQ 05: frequência de deploy e taxa de falha}
+
+A correlação de Spearman entre a frequência de deploy e o CFR (a) é positiva e fraca ($\rho = 0{,}162$; $p = 0{,}005$; n = 300); com o CFR (b), é positiva e está no limite entre moderada e forte ($\rho = 0{,}501$; $p < 0{,}001$; n = 298), como mostra a Figura~\ref{fig:rq05}. Com o CFR (a), os dados estão em linha com o DORA: publicar mais vezes quase não se associa a mais falhas de CI. Com o CFR (b), sugerem um \textit{trade-off}, mas em boa parte por construção da métrica, como previsto na hipótese. Como esperado, as duas variantes levam a conclusões diferentes, e nenhuma das correlações implica causalidade.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.48\textwidth]{rq05_cfr_a.png}\hfill
+\includegraphics[width=0.48\textwidth]{rq05_cfr_b.png}
+\caption{Frequência de deploy (escala logarítmica) contra CFR (a), à esquerda, e contra CFR (b), à direita.}
+\label{fig:rq05}
+\end{figure}
+
+\subsection{RQ 06: características associadas ao desempenho}
+
+Dos 20 testes, só 4 permanecem significativos após a correção de Holm, três deles no lead time (a) (Tabela~\ref{tab:rq06}). O maior efeito é o da idade: do quartil mais novo para o mais antigo, o lead time mediano cresce de 51 h para 1\,024 h ($\varepsilon^2 = 0{,}365$, grande) e a frequência cai de 0,94 para 0,36 release por semana ($\varepsilon^2 = 0{,}118$, médio). Repositórios com mais contribuidores também têm lead time maior (de 131 h no primeiro quartil para 981 h no último; $\varepsilon^2 = 0{,}183$, médio), e a linguagem tem efeito médio no lead time, com medianas de 131 h em Python a 658 h no grupo \textit{outras}. O CFR (a) e a recuperação não diferem em nenhum fator. O tipo do projeto foi testado em 58 dos 60 repositórios da amostra-ouro (o grupo \textit{outro}, com 2, ficou abaixo do mínimo de 5), sem diferença significativa.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Comparação das métricas entre os grupos de cada fator (Kruskal-Wallis): $\varepsilon^2$ e, entre parênteses, p corrigido por Holm sobre os 20 testes. Em negrito, os significativos ($p < 0{,}05$). Na recuperação, n é menor (284; 54 no tipo do projeto).}
+\label{tab:rq06}
+\begin{tabular}{lrllll}
+\hline
+Fator & n & Frequência & Lead time (a) & CFR (a) & Recuperação \\
+\hline
+Linguagem & 300 & 0,051 (0,14) & \textbf{0,095 (< 0,001)} & 0,036 (0,76) & 0,029 (1,00) \\
+Estrelas & 300 & 0,014 (1,00) & 0,018 (1,00) & 0,005 (1,00) & 0,009 (1,00) \\
+Contribuidores & 300 & 0,010 (1,00) & \textbf{0,183 (< 0,001)} & 0,008 (1,00) & 0,012 (1,00) \\
+Idade & 300 & \textbf{0,118 (< 0,001)} & \textbf{0,365 (< 0,001)} & 0,016 (1,00) & 0,038 (0,20) \\
+Tipo do projeto & 58 & 0,033 (1,00) & 0,042 (1,00) & 0,002 (1,00) & 0,123 (0,54) \\
+\hline
+\end{tabular}
+\end{table}
+
+O tipo do projeto não mostrou diferença, possivelmente por falta de poder, e a idade, de que esperávamos efeito pequeno, tem o maior. Uma explicação plausível, não testada, é que projetos mais antigos e maiores acumulam mudanças por mais tempo antes de cada release.

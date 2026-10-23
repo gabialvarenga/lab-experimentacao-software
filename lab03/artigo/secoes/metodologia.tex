@@ -2,30 +2,51 @@
 
 \subsection{Fonte de dados e seleção}
 
-Os dados vêm da API do GitHub (REST e, para as tags, GraphQL), consultada por um \textit{pipeline} em Python com cache em disco, que espera a renovação da cota e pode ser reexecutado sem novas requisições. A busca por repositórios com mais de 1.000 estrelas é dividida em faixas de estrelas, para contornar o teto de 1.000 resultados por consulta. Os candidatos são percorridos por estrelas decrescente até o 300º aprovado. Um repositório entra se usa o GitHub Actions, se publicou ao menos 5 releases na janela e se teve ao menos 50 execuções de \textit{workflow} válidas (com sucesso ou falha) no \textit{default branch}. A janela vai de 01/10/2025 a 30/09/2026, em UTC. Dos 5.620 candidatos encontrados, 712 foram examinados: 70 não usam o Actions, 296 têm menos de 5 releases e 46 têm menos de 50 execuções, restando 300. Como a seleção segue a ordem de estrelas, a amostra reúne os repositórios mais populares que passam no funil, e não é um sorteio (de 40.681 a 391.478 estrelas, mediana de 62.559). Como a API devolve no máximo 1.000 execuções por consulta, a janela é consultada mês a mês, e os meses que atingem o teto são refeitos por dia e por hora.
+Os dados vêm da API do GitHub (REST e, para as tags, GraphQL), consultada por um \textit{pipeline} próprio em Python, com cache em disco e retomada. Seguimos as definições operacionais comuns da disciplina: janela de 01/10/2025 a 30/09/2026 (UTC), apenas o \textit{default branch} e inclusão dos repositórios que usam o GitHub Actions e têm, na janela, ao menos 5 releases e 50 execuções de \textit{workflow} válidas. Os candidatos, com mais de 1.000 estrelas, foram percorridos por estrelas decrescente até o 300º aprovado (Tabela~\ref{tab:funil}). A amostra reúne, portanto, os repositórios mais populares que passam no funil, e não é um sorteio (de 40.681 a 391.478 estrelas, mediana de 62.559). Para não perder execuções em repositórios muito ativos, os meses que atingem o teto de 1.000 resultados da API são consultados de novo por dia e, se preciso, por hora.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Funil de seleção dos repositórios.}
+\label{tab:funil}
+\begin{tabular}{rrrrrr}
+\hline
+Candidatos & Examinados & Sem Actions & $<$ 5 releases & $<$ 50 execuções & Amostra final \\
+\hline
+5.620 & 712 & 70 & 296 & 46 & 300 \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Definições operacionais}
 \label{sec:definicoes}
 
-Um \textit{deploy} é uma release publicada na janela que não é rascunho nem pré-release. As métricas, calculadas por repositório, são:
+A Tabela~\ref{tab:definicoes} resume as definições, que seguem as comuns da disciplina, e as variantes usadas nas RQ 02, 03 e 07. Cada métrica recebe uma nota de 4 (\textit{Elite}) a 1 (\textit{Low}) pelos cortes adaptados do DORA \cite{dora2024report}, e a categoria geral é a mediana das notas, arredondada para baixo. A RQ 07 compara três combinações: C1 (release, lead time (a) e CFR (a)), C2 (release e pré-release, lead time (b) e CFR (b)) e C3 (tag, lead time (b) e CFR (a)). Duas decisões são do grupo: episódios que já começam falhando na janela são censurados, como os que não terminam nela; e o \textit{rework rate} só considera releases com commits conhecidos, o que exclui a primeira release da história.
 
-\begin{itemize}
-\item \textbf{Frequência de deploy:} deploys divididos pelas 52,14 semanas da janela.
-\item \textbf{Lead time:} tempo entre um commit e a publicação da release que o inclui. Na variante (a), cada release conta uma vez, com o seu commit mais antigo; na (b), conta cada commit. O resultado é a mediana do repositório.
-\item \textbf{CFR:} na variante (a), a proporção de execuções com falha entre as com sucesso ou falha, o que mede falha de CI e não de produção. Na (b), a proporção de releases seguidas, em até 7 dias, por uma release corretiva (Seção~\ref{sec:validacao}); as releases cujos 7 dias seguintes não cabem na janela ficam fora.
-\item \textbf{Tempo de recuperação:} em cada \textit{workflow}, o tempo entre a primeira falha e o sucesso seguinte, com a mediana dos episódios completos. Episódios que não terminam na janela, ou que já começam falhando, são censurados e não entram na mediana, mas são contados.
-\item \textbf{\textit{Rework rate}:} proporção de releases corretivas entre as avaliadas.
-\end{itemize}
-
-Cada métrica recebe uma nota de 4 (\textit{Elite}) a 1 (\textit{Low}) por cortes adaptados do relatório DORA \cite{dora2024report} (por exemplo, \textit{Elite} é 7 ou mais deploys por semana, lead time abaixo de 1 dia, CFR de até 15\% e recuperação abaixo de 1 hora). A categoria geral é a mediana das notas das métricas definidas, arredondada para baixo. A combinação C1 usa a frequência por release, o lead time (a) e o CFR (a); a C2 conta também as pré-releases como deploys e usa o lead time (b) e o CFR (b); e a C3 conta tags no lugar de releases e usa o lead time (b) e o CFR (a). A recuperação é a mesma nas três.
+\begin{table}[ht]
+\centering
+\small
+\caption{Definições operacionais e variantes (todas calculadas por repositório, na janela).}
+\label{tab:definicoes}
+\begin{tabular}{p{0.17\textwidth}p{0.75\textwidth}}
+\hline
+Métrica & Definição \\
+\hline
+Deploy & Release publicada, nem rascunho nem pré-release (variantes: com pré-releases; tags) \\
+Frequência & Deploys divididos pelas 52,14 semanas da janela \\
+Lead time & (a) release $-$ commit mais antigo, mediana das releases; (b) release $-$ cada commit, mediana dos commits \\
+CFR & (a) execuções com falha $\div$ (falhas + sucessos); (b) releases seguidas em até 7 dias por uma corretiva $\div$ releases avaliadas, sem as dos últimos 7 dias \\
+Recuperação & Mediana, por \textit{workflow}, do tempo da primeira falha ao sucesso seguinte; episódios sem início ou fim na janela são censurados \\
+\textit{Rework rate} & Releases corretivas $\div$ releases com commits conhecidos \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsection{Validação manual}
 \label{sec:validacao}
 
-A heurística de release corretiva e o tipo de projeto foram validados contra uma amostra-ouro de 60 repositórios, sorteados com semente fixa (42) da lista de aprovados previstos, com 5 releases sorteadas de cada um (300 releases). Os três autores rotularam a amostra de forma independente, sem ver a saída da heurística, segundo um protocolo escrito antes do sorteio: o tipo do projeto, se as releases são entregas reais ao usuário e se cada release é corretiva, a partir das \textit{release notes} e dos commits. O consenso é o rótulo da maioria, que existiu em todos os itens; os 55 itens com divergência (2--1) foram revisados em reunião, e nenhum rótulo mudou.
-
-O kappa de Fleiss, calculado antes do consenso, foi de 0,82 no tipo do projeto (quase perfeita), 0,19 nas entregas reais (leve) e 0,78 nas releases corretivas (substancial), segundo Landis e Koch \cite{landis1977measurement}. O valor baixo em entregas reais decorre da prevalência do rótulo ``sim'' (54 a 59 dos 60 repositórios): os três avaliadores concordaram em 53 deles (88\%). A heurística foi avaliada contra o consenso das 300 releases (73 corretivas). A versão 1, baseada no número da versão e em palavras-chave nos commits, teve F1 de 0,415; a versão 2, que lê as \textit{release notes}, 0,606; e a versão 3, que lê as notas por seção e exige maioria de commits de correção, 0,644 (precisão de 0,632 e \textit{recall} de 0,658). A meta de 0,70 não foi atingida, e a versão 3 é a usada nos resultados.
+Sorteamos 60 repositórios (semente 42) da lista prevista de aprovados e 5 releases de cada um (300 releases). Os três autores rotularam a amostra de forma independente, sem ver a saída da heurística, segundo um protocolo escrito antes do sorteio: o tipo do projeto, se as releases são entregas reais ao usuário e se cada release é corretiva. O consenso é o rótulo da maioria; os 55 itens com divergência (2--1) foram revisados em reunião, e nenhum rótulo mudou. O kappa de Fleiss foi de 0,82 no tipo do projeto (quase perfeita), 0,19 nas entregas reais (leve) e 0,78 nas releases corretivas (substancial) \cite{landis1977measurement}. O valor baixo em entregas reais decorre da prevalência do rótulo ``sim'': os três concordaram em 53 dos 60 repositórios (88\%). Contra o consenso (73 corretivas), a heurística de release corretiva teve F1 de 0,415 na versão 1 (número da versão e palavras-chave nos commits), de 0,606 na versão 2 (que lê as \textit{release notes}) e de 0,644 na versão 3 (notas lidas por seção e maioria de commits de correção; precisão de 0,632 e \textit{recall} de 0,658). A versão 3, usada no CFR (b) e no \textit{rework rate}, não atinge a meta de 0,70.
 
 \subsection{Análise estatística}
 
-As métricas são resumidas por mediana e intervalo interquartil. A RQ 05 usa a correlação de Spearman entre a frequência de deploy e cada variante do CFR. Na RQ 06, cada métrica é comparada entre os grupos de cada fator (linguagem, tipo do projeto, e quartis de estrelas, de contribuidores e de idade) pelo teste de Kruskal-Wallis ou, com dois grupos, de Mann-Whitney, com correção de Holm sobre todos os testes (nível de 0,05) e tamanho de efeito $\varepsilon^2$ ou $\delta$ de Cliff. O tipo do projeto só existe para os 60 repositórios da amostra-ouro, e grupos com menos de 5 valores ficam fora. A RQ 07 compara as categorias de cada par de combinações pelo percentual que muda e pelo kappa de Cohen ponderado linear.
+Como pede a disciplina, as métricas são resumidas por mediana e IQR; a RQ 05 usa a correlação de Spearman; a RQ 06, o teste de Kruskal-Wallis com correção de Holm sobre todos os testes e $\varepsilon^2$ como tamanho de efeito, sem os grupos com menos de 5 valores; e a RQ 07, o kappa de Cohen ponderado linear. Na RQ 08, o \textit{rework rate} é comparado ao CFR (b) pelo teste de Wilcoxon pareado unilateral.

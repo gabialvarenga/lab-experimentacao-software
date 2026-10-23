@@ -1,11 +1,6 @@
-\paragraph{RQ 01 (frequência de deploy).}
-Esperamos que a faixa \textit{Medium} (de uma release por mês a uma por semana) seja a mais comum, que a \textit{High} reúna uma parcela menor e que só uma minoria alcance a \textit{Elite} (sete ou mais por semana). Muitos projetos open-source fazem releases manuais ou por marcos, e estrelas indicam visibilidade, não cadência de entrega, de modo que a distribuição deve ser assimétrica. Como o critério de inclusão exige cinco releases na janela, a faixa \textit{Low} deve reunir os repositórios com cinco a onze releases no ano.
-
-\paragraph{RQ 02 (lead time).}
-Esperamos lead times medianos de dias a poucas semanas, com a maioria dos repositórios nas faixas \textit{Medium} e \textit{High}, porque as releases acumulam commits por semanas. A variante (a), medida a partir do commit mais antigo da release, deve dar valores maiores e mais repositórios na faixa \textit{Low} que a (b), já que basta um commit antigo ``esquecido'' para elevá-la; na (b), cada commit entra com o próprio lead time. Em ambas, a distribuição deve ter cauda longa.
-
-\paragraph{RQ 03 (taxa de falha de mudanças, CFR).}
-Esperamos CFR baixo para a maior parte dos repositórios, nas faixas \textit{Elite} (até 15\%) ou \textit{High} (até 30\%), com grande dispersão. A variante (a), de execuções de CI com falha, deve ser maior que a (b), de releases corretivas, porque inclui testes instáveis e problemas de infraestrutura que nunca chegam ao usuário.
-
-\paragraph{RQ 04 (tempo de recuperação).}
-Esperamos que a maior parte das falhas seja recuperada em menos de um dia, já que corrigir o CI costuma exigir um commit pequeno, com mediana na faixa \textit{High} e poucos repositórios \textit{Elite}. Esperamos também IQR amplo, cauda de episódios de dias ou semanas em projetos pouco ativos e uma parcela de episódios censurados.
+\begin{itemize}
+\item \textbf{RQ 01 (frequência de deploy):} a faixa \textit{Medium} deve ser a mais comum e a \textit{Elite}, minoria, porque muitos projetos fazem releases manuais ou por marcos, e estrelas indicam visibilidade, não cadência; a \textit{Low} deve reunir os repositórios com 5 a 11 releases no ano.
+\item \textbf{RQ 02 (lead time):} de dias a poucas semanas, na maioria \textit{Medium} e \textit{High}, com a variante (a) maior e com mais repositórios \textit{Low} que a (b), já que basta um commit antigo ``esquecido'' para elevá-la.
+\item \textbf{RQ 03 (CFR):} baixo na maioria dos repositórios (\textit{Elite} ou \textit{High}), com grande dispersão, e a variante (a) maior que a (b), por incluir testes instáveis e falhas de infraestrutura que não chegam ao usuário.
+\item \textbf{RQ 04 (tempo de recuperação):} menos de um dia, com mediana \textit{High}, poucos repositórios \textit{Elite}, IQR amplo, cauda de dias a semanas e uma parcela de episódios censurados.
+\end{itemize}

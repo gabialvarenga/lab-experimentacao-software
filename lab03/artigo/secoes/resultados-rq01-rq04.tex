@@ -24,7 +24,7 @@ Episódios censurados, \% & 289 & 11 & 1,1 & 0,0 & 5,3 & 0,0 & 100,0 \\
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.92\textwidth]{faixas_por_metrica.png}
+\includegraphics[width=0.75\textwidth]{faixas_por_metrica.png}
 \caption{Repositórios por faixa DORA em cada métrica (cinza: métrica indefinida).}
 \label{fig:faixas}
 \end{figure}
@@ -34,43 +34,33 @@ Episódios censurados, \% & 289 & 11 & 1,1 & 0,0 & 5,3 & 0,0 & 100,0 \\
 \small
 \caption{Hipóteses das RQ 01 a RQ 04 frente aos resultados.}
 \label{tab:hipoteses}
-\begin{tabular}{p{0.07\textwidth}p{0.62\textwidth}p{0.22\textwidth}}
+\begin{tabular}{p{0.04\textwidth}p{0.50\textwidth}p{0.38\textwidth}}
 \hline
 RQ & Hipótese & Resultado \\
 \hline
-01 & A faixa \textit{Medium} é a mais comum, a \textit{Elite} é minoria e a \textit{Low} reúne os repositórios com 5 a 11 releases & Confirmada (\textit{Medium} com 45\%, não maioria absoluta) \\
-02 & Lead time de dias a poucas semanas, na maioria \textit{Medium} e \textit{High} & Confirmada \\
-02 & A variante (a) é maior e tem mais repositórios \textit{Low} que a (b) & Refutada na distribuição agregada (94 \textit{Low} na (b) contra 88 na (a)) \\
+01 & \textit{Medium} mais comum, \textit{Elite} minoria, \textit{Low} com 5 a 11 releases & Confirmada (\textit{Medium} com 45\%) \\
+02 & Dias a poucas semanas, na maioria \textit{Medium} e \textit{High} & Confirmada \\
+02 & Variante (a) maior e com mais \textit{Low} que a (b) & Refutada (88 \textit{Low} contra 94) \\
 03 & CFR baixo na maioria, com grande dispersão & Confirmada \\
-03 & CFR (a) maior que CFR (b) & Refutada (mediana de 4,7\% contra 17,4\%) \\
-04 & Recuperação em menos de um dia, mediana \textit{High}, com censura & Confirmada \\
-04 & Poucos \textit{Elite}, IQR amplo e cauda de dias a semanas & Parcialmente confirmada (26,1\% \textit{Elite}, apenas 2 repositórios com uma semana ou mais) \\
+03 & CFR (a) maior que CFR (b) & Refutada (4,7\% contra 17,4\%) \\
+04 & Menos de um dia, mediana \textit{High}, com censura & Confirmada \\
+04 & Poucos \textit{Elite}, IQR amplo e cauda de dias a semanas & Parcial (26,1\% \textit{Elite}; IQR estreito) \\
 \hline
 \end{tabular}
 \end{table}
 
 \subsection{RQ 01: frequência de deploy}
 
-A mediana é de 0,54 releases por semana (IQR de 0,25 a 1,23). A faixa \textit{Medium} reúne 135 repositórios (45,0\%), seguida da \textit{High} (83; 27,7\%), da \textit{Low} (74; 24,7\%) e da \textit{Elite} (8; 2,7\%), e o repositório mais frequente publica 49,6 releases por semana, quase cem vezes a mediana. A hipótese se confirma, mas a \textit{Medium} é maioria relativa, e não absoluta. Chama a atenção a cauda lenta: um quarto dos projetos populares publica menos de uma release por mês, o que reforça que estrelas não indicam cadência de entrega.
+A faixa \textit{Medium} reúne 135 repositórios (45,0\%), seguida da \textit{High} (83; 27,7\%), da \textit{Low} (74; 24,7\%) e da \textit{Elite} (8; 2,7\%), e o repositório mais frequente publica 49,6 releases por semana, quase cem vezes a mediana. A \textit{Medium} é maioria relativa, e não absoluta. Chama a atenção a cauda lenta: um quarto dos projetos populares publica menos de uma release por mês, o que reforça que estrelas não indicam cadência de entrega.
 
 \subsection{RQ 02: lead time}
 
-O lead time mediano é de 255,7 h (10,7 dias) na variante (a) e de 277,0 h (11,5 dias) na (b), com distribuições parecidas (Figura~\ref{fig:lead}): na (a), 45 repositórios são \textit{Elite}, 76 \textit{High}, 90 \textit{Medium} e 88 \textit{Low}; na (b), 33, 83, 89 e 94.
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.48\textwidth]{hist_lead_time_a_h.png}\hfill
-\includegraphics[width=0.48\textwidth]{hist_lead_time_b_h.png}
-\caption{Distribuição do lead time por repositório (escala logarítmica): variante (a), por release, à esquerda; variante (b), por commit, à direita.}
-\label{fig:lead}
-\end{figure}
-
-Confirmamos lead times de dias a poucas semanas, com a maioria nas faixas \textit{Medium} e \textit{High}, mas refutamos que a (a) dê valores maiores na distribuição agregada: ela é maior em 58,9\% dos repositórios, mas por pouco. Uma explicação plausível, não testada, é que a (b) pondera cada commit e dá mais peso às releases grandes, enquanto a (a) dá o mesmo peso a cada release.
+O lead time mediano é de 10,7 dias na variante (a) e de 11,5 dias na (b), com distribuições parecidas: na (a), 45 repositórios são \textit{Elite}, 76 \textit{High}, 90 \textit{Medium} e 88 \textit{Low}; na (b), 33, 83, 89 e 94. A variante (a) é maior em 58,9\% dos repositórios, mas por pouco, e a diferença não aparece na distribuição agregada. Uma explicação plausível, não testada, é que a (b) pondera cada commit e dá mais peso às releases grandes, enquanto a (a) dá o mesmo peso a cada release.
 
 \subsection{RQ 03: taxa de falha de mudanças}
 
-O CFR (a), de execuções de CI com falha, tem mediana de 4,7\% (IQR de 2,3\% a 11,1\%), com 83,0\% dos repositórios \textit{Elite}. O CFR (b), de releases seguidas de uma corretiva em até 7 dias, tem mediana de 17,4\% (IQR de 5,9\% a 32,8\%), com 46,0\% \textit{Elite}, 24,2\% \textit{High}, 16,8\% \textit{Medium} e 13,1\% \textit{Low}. Confirmamos CFR baixo e disperso, mas refutamos que a (a) seja maior: ela é menor em 67,1\% dos repositórios, provavelmente porque divide as falhas por todas as execuções de CI, enquanto a (b) divide por poucas releases (mediana de 28). A (a) mede falha de \textit{pipeline}, e não de produção; a (b) se aproxima mais do DORA, mas depende de uma heurística com F1 de 0,644 (Seção~\ref{sec:validacao}) e deve ser lida como estimativa ruidosa.
+No CFR (a), 83,0\% dos repositórios são \textit{Elite}; no CFR (b), 46,0\% são \textit{Elite}, 24,2\% \textit{High}, 16,8\% \textit{Medium} e 13,1\% \textit{Low}. Ao contrário do esperado, a variante (a) é menor em 67,1\% dos repositórios, provavelmente porque divide as falhas por todas as execuções de CI, enquanto a (b) divide por poucas releases (mediana de 28). A (a) mede falha de \textit{pipeline}, e não de produção; a (b) se aproxima mais do DORA, mas depende da heurística de release corretiva (Seção~\ref{sec:validacao}) e deve ser lida como estimativa ruidosa.
 
 \subsection{RQ 04: tempo de recuperação}
 
-A mediana é de 2,56 h (IQR de 0,98 h a 6,59 h), e 90,5\% dos 284 repositórios com valor se recuperam em menos de um dia: 26,1\% são \textit{Elite}, 64,4\% \textit{High}, 8,8\% \textit{Medium} e 0,7\% \textit{Low}. Dezesseis ficam sem valor, por não terem episódio de falha completo, e 0,9\% dos 64\,672 episódios são censurados. Confirmamos a recuperação em menos de um dia, com mediana \textit{High}, mas não a cauda longa (só 2 repositórios chegam a uma semana, e o IQR é estreito) nem a escassez de \textit{Elite}, que são mais de um quarto.
+Dos 284 repositórios com valor, 90,5\% se recuperam em menos de um dia: 26,1\% são \textit{Elite}, 64,4\% \textit{High}, 8,8\% \textit{Medium} e 0,7\% \textit{Low}. Dezesseis ficam sem valor, por não terem episódio de falha completo, e 0,9\% dos 64\,672 episódios são censurados. A cauda longa esperada não aparece (só 2 repositórios chegam a uma semana, e o IQR é estreito), e os \textit{Elite} são mais de um quarto.
