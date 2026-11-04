@@ -52,6 +52,7 @@ python -m pytest --cov=lab04 --cov-report=term-missing --cov-fail-under=80
 | [docs/cenario.md](docs/cenario.md) | Pergunta, hipóteses, erros tipo I e II e expectativa antes de simular |
 | [docs/dicionario-dados.md](docs/dicionario-dados.md) | Nome, tipo, unidade e origem de cada coluna dos dados reais |
 | [docs/calibracao-lognormal.md](docs/calibracao-lognormal.md) | Descritiva, QQ-plot, justificativa da lognormal e parâmetros calibrados |
+| [docs/exemplo-simulado.md](docs/exemplo-simulado.md) | Dois conjuntos simulados (sem e com efeito), os dois testes aplicados e a interpretação |
 | [dados/reais/registro-coleta.md](dados/reais/registro-coleta.md) | Consultas, contagens por etapa e trocas da coleta (gerado) |
 
 ## Estrutura

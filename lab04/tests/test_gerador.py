@@ -1,9 +1,10 @@
 import math
+from pathlib import Path
 
 import numpy as np
 import pytest
 
-from lab04 import gerador
+from lab04 import calibracao, config, gerador, testes
 
 NORMAL = {"familia": "normal", "mu": 10.0, "sigma": 2.0}
 LOGNORMAL = {"familia": "lognormal", "mu": 1.0, "sigma": 1.0}
@@ -166,3 +167,50 @@ def test_delta_nao_finito_e_rng_invalido_levantam_erro():
 def test_aceita_inteiros_do_numpy_em_n_e_n_rep():
     A, _ = gerador.gerar_lote(NORMAL, 0, np.int64(5), np.int32(3), rng())
     assert A.shape == (3, 5)
+
+
+CALIBRACAO = {"com_bot": {"mu": 2.0, "sigma": 3.0}, "sem_bot": {"mu": 2.5, "sigma": 4.0}}
+
+
+def test_exemplo_simulado_devolve_amostras_e_o_resultado_dos_testes():
+    ex = gerador.exemplo_simulado(LOGNORMAL, 0.5, 30, 7)
+    assert {"cenario", "delta", "n", "semente", "a", "b", "resultado"} <= set(ex)
+    assert (ex["delta"], ex["n"], ex["semente"]) == (0.5, 30, 7)
+    a, b = gerador.gerar_amostra(LOGNORMAL, 0.5, 30, rng(7))
+    assert np.array_equal(ex["a"], a) and np.array_equal(ex["b"], b)
+    assert ex["resultado"] == testes.aplicar_testes(a, b)
+    assert {"welch_t", "welch_gl", "welch_p", "mw_u", "mw_p"} <= set(ex["resultado"])
+
+
+def test_exemplo_simulado_com_a_mesma_semente_repete_e_com_outra_muda():
+    um, dois = gerador.exemplo_simulado(LOGNORMAL, 0.5, 30, 7), gerador.exemplo_simulado(LOGNORMAL, 0.5, 30, 7)
+    assert np.array_equal(um["a"], dois["a"]) and um["resultado"] == dois["resultado"]
+    outro = gerador.exemplo_simulado(LOGNORMAL, 0.5, 30, 8)
+    assert not np.array_equal(um["a"], outro["a"]) and um["resultado"] != outro["resultado"]
+
+
+def test_cenario_calibrado_usa_o_mu_do_com_bot_o_sigma_medio_e_a_diferenca_de_mu():
+    cenario, delta = gerador.cenario_calibrado(CALIBRACAO)
+    assert cenario == {"familia": "lognormal", "mu": 2.0, "sigma": pytest.approx(math.sqrt(12.5))}
+    assert delta == pytest.approx(0.5)
+
+
+def test_exemplos_calibrados_sao_dois_um_sem_efeito_e_outro_com_o_efeito_observado():
+    ex = gerador.exemplos_calibrados(CALIBRACAO)
+    assert set(ex) == {"sem_efeito", "com_efeito"}
+    assert ex["sem_efeito"]["delta"] == 0 and ex["com_efeito"]["delta"] == pytest.approx(0.5)
+    assert ex["sem_efeito"]["semente"] == gerador.SEMENTE_SEM_EFEITO
+    assert ex["com_efeito"]["semente"] == gerador.SEMENTE_COM_EFEITO
+    assert all(e["n"] == 30 and e["a"].shape == e["b"].shape == (30,) for e in ex.values())
+    # as sementes são fixas: chamar de novo dá exatamente os mesmos exemplos
+    de_novo = gerador.exemplos_calibrados(CALIBRACAO)
+    assert np.array_equal(ex["sem_efeito"]["a"], de_novo["sem_efeito"]["a"])
+    assert ex["com_efeito"]["resultado"] == de_novo["com_efeito"]["resultado"]
+
+
+def test_exemplos_com_a_calibracao_versionada_usam_a_diferenca_dos_mu_reais():
+    versionada = calibracao.ler(Path(config.carregar()["pasta"]) / "dados" / "reais" / "calibracao.json")
+    cenario, delta = gerador.cenario_calibrado(versionada)
+    assert cenario["mu"] == versionada["com_bot"]["mu"]
+    assert delta == pytest.approx(versionada["sem_bot"]["mu"] - versionada["com_bot"]["mu"])
+    assert 0 < delta < 1
