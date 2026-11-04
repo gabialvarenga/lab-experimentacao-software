@@ -50,6 +50,8 @@ python -m pytest --cov=lab04 --cov-report=term-missing --cov-fail-under=80
 | [docs/planejamento.md](docs/planejamento.md) | Calendário, decisões, Issues e fluxo das sprints 01 e 02 e da entrega final |
 | [docs/protocolo-coleta.md](docs/protocolo-coleta.md) | Fonte, grupos, critérios, procedimento e amostragem dos dados reais |
 | [docs/cenario.md](docs/cenario.md) | Pergunta, hipóteses, erros tipo I e II e expectativa antes de simular |
+| [docs/dicionario-dados.md](docs/dicionario-dados.md) | Nome, tipo, unidade e origem de cada coluna dos dados reais |
+| [docs/calibracao-lognormal.md](docs/calibracao-lognormal.md) | Descritiva, QQ-plot, justificativa da lognormal e parâmetros calibrados |
 | [dados/reais/registro-coleta.md](dados/reais/registro-coleta.md) | Consultas, contagens por etapa e trocas da coleta (gerado) |
 
 ## Estrutura

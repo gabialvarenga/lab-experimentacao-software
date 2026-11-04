@@ -38,3 +38,12 @@ def test_coletar_sem_token_falha_com_mensagem(monkeypatch):
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     with pytest.raises(ValueError, match="GITHUB_TOKEN"):
         principal.main(["coletar"])
+
+
+def test_calibrar_chama_a_calibracao_com_o_config(monkeypatch):
+    from lab04 import calibracao
+
+    chamadas = []
+    monkeypatch.setattr(calibracao, "executar", lambda cfg: chamadas.append(cfg["calibracao"]["confianca"]))
+    assert principal.main(["calibrar"]) == 0
+    assert chamadas == [0.95]
