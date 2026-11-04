@@ -24,5 +24,5 @@ configuração próprias.
 | [lab01/](lab01/) | Características de repositórios populares do GitHub + setup do Kanban | Concluído |
 | [lab02/](lab02/) | Assistentes de IA vs. codificação manual: experimento controlado | Em andamento |
 | lab03/ | — | Ainda não iniciado |
-| lab04/ | — | Ainda não iniciado |
+| [lab04/](lab04/) | Testes de hipótese por dentro: simulação de Welch × Mann-Whitney e dashboard | Em andamento |
 | lab05/ | — | Ainda não iniciado |
