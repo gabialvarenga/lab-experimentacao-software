@@ -24,7 +24,17 @@ python -m lab04
 
 `python -m lab04` é o comando único: lê o CSV da coleta, roda as simulações e gera o dashboard em `dashboard/`. Todas as simulações usam a semente fixa de `config.yaml` (`numpy.random.default_rng(42)`), então os resultados se reproduzem.
 
-**Estado atual (Sprint 01):** o comando único é um esqueleto. Cada etapa avisa que ainda não foi implementada e sai com código 1; elas entram nas Issues indicadas em `python -m lab04 --help` e na estrutura abaixo. A coleta pela API (`python -m lab04 coletar`) precisa de `GITHUB_TOKEN` e fica fora do comando único.
+**Estado atual (Sprint 01):** o comando único é um esqueleto. As etapas `simular` e `dashboard` avisam que ainda não foram implementadas e saem com código 1; elas entram nas Issues indicadas na estrutura abaixo.
+
+**Coleta dos dados reais.** A coleta pela API fica fora do comando único, porque precisa de um token do GitHub; o `dados/reais/prs.csv` já está versionado. Para refazê-la:
+
+```bash
+export GITHUB_TOKEN=<token>      # PowerShell: $env:GITHUB_TOKEN = "<token>"
+cd lab04
+python -m lab04 coletar
+```
+
+Leva cerca de dez minutos, por causa da pausa de 20 s entre buscas que evita o limite secundário da API. As respostas ficam em `dados/reais/cache/` (fora do Git), então repetir o comando é rápido; apague a pasta para uma coleta nova. O comando regrava `dados/reais/prs.csv` e `dados/reais/registro-coleta.md`. As regras (janela, grupos, critérios e sorteio com semente 42) estão em [docs/protocolo-coleta.md](docs/protocolo-coleta.md).
 
 Testes:
 
@@ -38,6 +48,9 @@ python -m pytest --cov=lab04 --cov-report=term-missing --cov-fail-under=80
 | Documento | Descrição |
 |---|---|
 | [docs/planejamento.md](docs/planejamento.md) | Calendário, decisões, Issues e fluxo das sprints 01 e 02 e da entrega final |
+| [docs/protocolo-coleta.md](docs/protocolo-coleta.md) | Fonte, grupos, critérios, procedimento e amostragem dos dados reais |
+| [docs/cenario.md](docs/cenario.md) | Pergunta, hipóteses, erros tipo I e II e expectativa antes de simular |
+| [dados/reais/registro-coleta.md](dados/reais/registro-coleta.md) | Consultas, contagens por etapa e trocas da coleta (gerado) |
 
 ## Estrutura
 
