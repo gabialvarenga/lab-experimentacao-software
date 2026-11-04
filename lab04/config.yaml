@@ -19,3 +19,13 @@ coleta:
   saida: dados/reais/prs.csv
   registro: dados/reais/registro-coleta.md
   cache: dados/reais/cache
+
+# Descritiva e calibração da lognormal (S01-06). A entrada é a saída da coleta.
+# Caminhos relativos a esta pasta.
+calibracao:
+  piso_horas: 0.01              # somado às horas do grupo se alguma for 0 (log indefinido)
+  confianca: 0.95               # nível dos IC de μ e σ
+  repeticoes_bootstrap: 10000   # reamostragens do IC bootstrap de σ
+  descritiva: dados/reais/descritiva.csv
+  saida: dados/reais/calibracao.json
+  qqplot: docs/qqplot-lognormal.html
