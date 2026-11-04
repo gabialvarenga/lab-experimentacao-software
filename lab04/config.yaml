@@ -3,3 +3,19 @@
 # ele é lido da variável de ambiente GITHUB_TOKEN.
 
 semente: 42   # semente global; cada célula da simulação deriva a sua dela (S02-02)
+
+# Coleta dos dados reais (S01-04). As definições estão em docs/protocolo-coleta.md.
+# Caminhos relativos a esta pasta.
+coleta:
+  repositorio: supabase/supabase
+  janela:
+    inicio: 2026-08-01          # PRs mesclados nesse intervalo fechado, em UTC
+    fim: 2026-10-31
+  revisor: copilot-pull-request-reviewer   # app do revisor; o login da revisão é "<revisor>[bot]"
+  limite_revisao_horas: 1       # com_bot: primeira revisão até 1 h após a abertura
+  min_horas_ate_merge: 1        # os dois grupos: só PRs com mais de 1 h até o merge
+  por_mes: 10                   # PRs sorteados por mês de merge e por grupo (30 por grupo)
+  pausa_busca_s: 20             # pausa mínima entre buscas (limite secundário da API)
+  saida: dados/reais/prs.csv
+  registro: dados/reais/registro-coleta.md
+  cache: dados/reais/cache

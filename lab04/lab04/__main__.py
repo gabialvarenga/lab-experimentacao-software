@@ -14,8 +14,7 @@ import sys
 
 from lab04 import config
 
-ETAPAS = {
-    "coletar": "S01-04",
+PENDENTES = {
     "simular": "S02-02",
     "dashboard": "S01-11",
 }
@@ -25,17 +24,22 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m lab04", description=__doc__.split("\n")[0])
     parser.add_argument("--config", default=str(config.CONFIG_PADRAO), help="caminho do config.yaml")
     sub = parser.add_subparsers(dest="etapa")
-    for nome in ETAPAS:
+    for nome in ("coletar", *PENDENTES):
         sub.add_parser(nome)
     return parser
 
 
 def main(argv=None) -> int:
     args = _parser().parse_args(argv)
-    config.carregar(args.config)
-    etapas = [args.etapa] if args.etapa else ["simular", "dashboard"]
+    cfg = config.carregar(args.config)
+    if args.etapa == "coletar":
+        from lab04 import coleta
+
+        coleta.executar(cfg, config.token())
+        return 0
+    etapas = [args.etapa] if args.etapa else list(PENDENTES)
     for etapa in etapas:
-        print(f"etapa '{etapa}' ainda não implementada (Issue {ETAPAS[etapa]})", file=sys.stderr)
+        print(f"etapa '{etapa}' ainda não implementada (Issue {PENDENTES[etapa]})", file=sys.stderr)
     return 1
 
 
