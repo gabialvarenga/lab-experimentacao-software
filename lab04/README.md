@@ -22,9 +22,18 @@ cd lab04
 python -m lab04
 ```
 
-`python -m lab04` é o comando único: lê o CSV da coleta, roda as simulações e gera o dashboard em `dashboard/`. Todas as simulações usam a semente fixa de `config.yaml` (`numpy.random.default_rng(42)`), então os resultados se reproduzem.
+`python -m lab04` é o comando único: lê o CSV da coleta, roda as simulações, gera o dashboard em `dashboard/index.html` e o abre no navegador. Todas as simulações usam a semente fixa de `config.yaml` (`numpy.random.default_rng(42)`), então os resultados se reproduzem.
 
-**Estado atual (Sprint 01):** o comando único é um esqueleto. As etapas `simular` e `dashboard` avisam que ainda não foram implementadas e saem com código 1; elas entram nas Issues indicadas na estrutura abaixo.
+**Dashboard.** Para gerar só o dashboard e abri-lo no navegador:
+
+```bash
+cd lab04
+python -m lab04 dashboard              # --sem-abrir: só grava o HTML
+```
+
+Leva poucos segundos. O `dashboard/index.html` é um arquivo único, com o Plotly embutido, e abre sem internet (só os links do topo precisam de rede). Ele não é versionado: é regerado pelo comando.
+
+**Estado atual (Sprint 01):** o dashboard tem as seções 1 (cenário), 2 (os dados, G1) e 3 (como os testes funcionam, G2); as seções 4 a 7 aparecem como "em construção" até a Sprint 02. A etapa `simular` ainda não existe: sozinha, ela avisa e sai com código 1; no comando único, ela avisa e o dashboard é gerado mesmo assim.
 
 **Coleta dos dados reais.** A coleta pela API fica fora do comando único, porque precisa de um token do GitHub; o `dados/reais/prs.csv` já está versionado. Para refazê-la:
 
@@ -78,7 +87,7 @@ lab04/
     dados/
         reais/             # CSV da coleta, calibração e dicionário de dados
         simulacao/         # resultados de Q1, Q2 e Q3 (CSV)
-    dashboard/             # HTML gerado
+    dashboard/             # HTML gerado por `python -m lab04 dashboard` (fora do Git)
     docs/                  # planejamento, cenário, protocolo de coleta, respostas orais
 ```
 

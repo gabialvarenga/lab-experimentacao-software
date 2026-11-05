@@ -20,10 +20,40 @@ def test_help_sai_com_zero(capsys):
     assert "usage" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("etapa", [[], ["simular"], ["dashboard"]])
-def test_etapas_pendentes_avisam_e_saem_com_um(etapa, capsys):
-    assert principal.main(etapa) == 1
+def test_simular_pendente_avisa_e_sai_com_um(capsys):
+    assert principal.main(["simular"]) == 1
     assert "ainda não implementada" in capsys.readouterr().err
+
+
+@pytest.fixture
+def painel(monkeypatch):
+    """Substitui `montar` e o navegador; devolve as chamadas registradas."""
+    from lab04 import dashboard
+
+    chamadas = {"montar": [], "abrir": []}
+    monkeypatch.setattr(dashboard, "montar", lambda saida, cfg: chamadas["montar"].append((saida, cfg["semente"])))
+    monkeypatch.setattr(principal.webbrowser, "open", lambda uri: chamadas["abrir"].append(uri))
+    return chamadas
+
+
+def test_dashboard_gera_no_caminho_do_config_e_abre_no_navegador(painel, capsys):
+    assert principal.main(["dashboard"]) == 0
+    [(saida, semente)] = painel["montar"]
+    assert saida.as_posix().endswith("lab04/dashboard/index.html") and semente == 42
+    assert painel["abrir"] == [saida.resolve().as_uri()]
+    assert "Dashboard gravado em" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("argv", [["dashboard", "--sem-abrir"], ["--sem-abrir", "dashboard"]])
+def test_dashboard_sem_abrir_nao_abre_o_navegador(argv, painel):
+    assert principal.main(argv) == 0
+    assert len(painel["montar"]) == 1 and painel["abrir"] == []
+
+
+def test_comando_unico_avisa_simular_e_gera_o_dashboard(painel, capsys):
+    assert principal.main(["--sem-abrir"]) == 0
+    assert "'simular' ainda não implementada" in capsys.readouterr().err
+    assert len(painel["montar"]) == 1 and painel["abrir"] == []
 
 
 def test_coletar_chama_a_coleta_com_o_token(monkeypatch):
