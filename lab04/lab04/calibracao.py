@@ -171,7 +171,8 @@ def qq_figura(df: pd.DataFrame, piso: float = PISO_HORAS):
     from plotly.subplots import make_subplots
 
     figura = make_subplots(rows=1, cols=len(GRUPOS), subplot_titles=[f"{g} (r = …)" for g in GRUPOS])
-    cores = {"com_bot": "#1f77b4", "sem_bot": "#ff7f0e"}
+    from lab04.graficos import CORES_GRUPO as cores
+
     for coluna, grupo in enumerate(GRUPOS, start=1):
         pontos = qq_pontos(horas_do_grupo(df, grupo), piso)
         figura.layout.annotations[coluna - 1].text = f"{grupo} (r = {pontos['r']:.3f})"
