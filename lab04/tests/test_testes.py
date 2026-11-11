@@ -1,6 +1,8 @@
 import warnings
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 from scipy import stats
 
@@ -142,3 +144,95 @@ def test_vetorizado_sem_efeito_rejeita_perto_de_5_por_cento():
     v = testes.aplicar_testes_vetorizado(A, B)
     for p in v.values():
         assert abs((p < 0.05).mean() - 0.05) < 0.01
+
+
+# --- tabela dos dados reais (S02-10) ---
+
+
+def prs(a, b):
+    """CSV da coleta fictício: `a` é o grupo com_bot e `b` o sem_bot."""
+    return pd.DataFrame({"grupo": ["com_bot"] * len(a) + ["sem_bot"] * len(b), "horas_ate_merge": [*a, *b]})
+
+
+REAIS = pd.read_csv(Path(__file__).resolve().parent.parent / "dados" / "reais" / "prs.csv")
+
+
+def test_tabela_dados_reais_tem_uma_linha_por_teste_com_todas_as_colunas():
+    t = testes.tabela_dados_reais(prs(A, B))
+    assert list(t.columns) == testes.COLUNAS_TABELA and list(t["teste"]) == ["welch", "mann_whitney"]
+    assert list(t["estatistica_nome"]) == ["t", "U"] and list(t["medida_efeito"]) == ["hedges_g", "cliff_delta"]
+    assert np.isnan(t.loc[1, "graus_de_liberdade"]) and t.loc[0, "graus_de_liberdade"] == pytest.approx(3.448, abs=1e-3)
+
+
+def test_tabela_dados_reais_repete_os_numeros_de_aplicar_testes():
+    a, b = np.random.default_rng(0).lognormal(2.5, 1.5, 30), np.random.default_rng(1).lognormal(2.5, 1.5, 30)
+    r, t = testes.aplicar_testes(a, b), testes.tabela_dados_reais(prs(a, b)).set_index("teste")
+    assert t.loc["welch", "estatistica"] == r["welch_t"] and t.loc["welch", "p_valor"] == r["welch_p"]
+    assert t.loc["mann_whitney", "estatistica"] == r["mw_u"] and t.loc["mann_whitney", "p_valor"] == r["mw_p"]
+    assert t.loc["welch", "tamanho_efeito"] == r["hedges_g"] and t.loc["mann_whitney", "tamanho_efeito"] == r["cliff_delta"]
+    assert (t["razao_medianas"] == r["razao_medianas"]).all()   # a mesma nas duas linhas
+
+
+def test_tabela_dados_reais_do_csv_coletado():
+    t = testes.tabela_dados_reais(REAIS).set_index("teste")
+    assert t.loc["welch", "estatistica"] == pytest.approx(-1.1149, abs=1e-4) and t.loc["welch", "p_valor"] == pytest.approx(0.2739, abs=1e-4)
+    assert t.loc["welch", "graus_de_liberdade"] == pytest.approx(29.35, abs=1e-2)
+    assert t.loc["mann_whitney", "estatistica"] == 414 and t.loc["mann_whitney", "p_valor"] == pytest.approx(0.5997, abs=1e-4)
+    assert t.loc["welch", "tamanho_efeito"] == pytest.approx(-0.2841, abs=1e-4) and t.loc["welch", "magnitude"] == "pequeno"
+    assert t.loc["mann_whitney", "tamanho_efeito"] == pytest.approx(-0.08) and t.loc["mann_whitney", "magnitude"] == "negligível"
+    assert t["razao_medianas"].iloc[0] == pytest.approx(17.8381 / 17.1696, abs=1e-4)
+    assert not t["rejeita_h0"].any() and set(t["conclusao"]) == {"não rejeita H₀"}
+
+
+@pytest.mark.parametrize("g, esperado", [(0.0, "negligível"), (-0.19, "negligível"), (0.2, "pequeno"), (-0.49, "pequeno"),
+                                         (0.5, "médio"), (0.79, "médio"), (-0.8, "grande"), (3.0, "grande"), (float("nan"), "indefinido")])
+def test_magnitude_do_g_de_hedges(g, esperado):
+    assert testes.magnitude_hedges(g) == esperado
+
+
+@pytest.mark.parametrize("d, esperado", [(0.0, "negligível"), (-0.146, "negligível"), (0.147, "pequeno"), (0.32, "pequeno"),
+                                         (-0.33, "médio"), (0.473, "médio"), (0.474, "grande"), (-1.0, "grande"), (float("nan"), "indefinido")])
+def test_magnitude_do_delta_de_cliff(d, esperado):
+    assert testes.magnitude_cliff(d) == esperado
+
+
+def test_conclusao_muda_com_o_alfa():
+    a, b = np.random.default_rng(5).normal(0, 1, 30), np.random.default_rng(1005).normal(0.5, 1, 30)
+    p = testes.aplicar_testes(a, b)["welch_p"]
+    assert 0.01 < p < 0.05   # amostra escolhida: significativa a 5%, não a 1%
+    assert testes.tabela_dados_reais(prs(a, b), alfa=0.05).loc[0, "conclusao"] == "rejeita H₀"
+    assert testes.tabela_dados_reais(prs(a, b), alfa=0.01).loc[0, "conclusao"] == "não rejeita H₀"
+
+
+def test_dois_testes_que_rejeitam_e_efeito_grande():
+    t = testes.tabela_dados_reais(prs(np.arange(1.0, 31), np.arange(101.0, 131)))
+    assert t["rejeita_h0"].all() and set(t["conclusao"]) == {"rejeita H₀"}
+    assert t.loc[1, "tamanho_efeito"] == -1 and t.loc[1, "magnitude"] == "grande" and t.loc[0, "magnitude"] == "grande"
+
+
+def test_os_dois_testes_podem_discordar_nos_dois_sentidos():
+    r = np.random.default_rng(1)   # cauda pesada: os postos separam os grupos, as médias não
+    t = testes.tabela_dados_reais(prs(r.lognormal(0, 2, 30), r.lognormal(1.2, 2, 30))).set_index("teste")
+    assert not t.loc["welch", "rejeita_h0"] and t.loc["mann_whitney", "rejeita_h0"]
+    r = np.random.default_rng(0)   # seis PRs muito longos num grupo: a média separa, os postos não
+    a = np.concatenate([r.uniform(9, 11, 24), r.uniform(60, 90, 6)])
+    b = np.concatenate([r.uniform(9, 11, 24), r.uniform(10, 12, 6)])
+    t = testes.tabela_dados_reais(prs(a, b)).set_index("teste")
+    assert t.loc["welch", "rejeita_h0"] and not t.loc["mann_whitney", "rejeita_h0"]
+
+
+def test_dados_sem_variacao_deixam_os_dois_testes_indefinidos_sem_aviso():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        t = testes.tabela_dados_reais(prs([5.0, 5.0, 5.0], [5.0, 5.0, 5.0]))
+    assert set(t["conclusao"]) == {"indefinida"} and not t["rejeita_h0"].any()   # tudo empatado: p-valores NaN
+
+
+@pytest.mark.parametrize("df, mensagem", [
+    (prs([1.0], [1.0, 2.0]), "ao menos 2"),
+    (prs([1.0, 2.0], []), "ao menos 2"),
+    (REAIS.drop(columns="horas_ate_merge"), "faltam as colunas"),
+])
+def test_tabela_dados_reais_recusa_dados_invalidos(df, mensagem):
+    with pytest.raises(ValueError, match=mensagem):
+        testes.tabela_dados_reais(df)

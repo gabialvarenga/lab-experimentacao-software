@@ -7,7 +7,8 @@ vêm as 7 seções do enunciado, em ordem fixa:
 1. Cenário (pergunta, hipóteses e origem dos dados reais);
 2. Os dados (G1);
 3. Como os testes funcionam (G2, um por exemplo da S01-08);
-4. a 7. Erro tipo I, Poder, Dados reais e Conclusão: "em construção" até a S02.
+4., 5. e 7. Erro tipo I, Poder e Conclusão: "em construção" até a S02;
+6. Dados reais: a tabela dos dois testes nos PRs coletados, com a conclusão (S02-10).
 
 Os gráficos vêm de `graficos` pelo nome; se um ainda não existir ou falhar, a seção mostra um
 marcador com o motivo e o resto da página é gerado (`_figura_ou_marcador`).
@@ -16,10 +17,11 @@ marcador com o motivo e o resto da página é gerado (`_figura_ou_marcador`).
 import html
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
-from lab04 import calibracao, config, gerador, graficos
-from lab04.descritiva import GRUPOS
+from lab04 import calibracao, config, gerador, graficos, testes
+from lab04.descritiva import GRUPOS, horas_do_grupo
 
 TITULO = "Lab04: testes de hipótese por dentro (t de Welch × Mann-Whitney)"
 INTEGRANTES = ("Brenda Evers", "Carlos José Gomes Batista Figueiredo", "Gabriela Alvarenga Cardoso")
@@ -41,7 +43,6 @@ SECOES = (
 EM_CONSTRUCAO = {
     "erro-tipo-1": "G3, erro tipo I por situação, com IC de Wilson e linha em 5% (S02-08, S02-11)",
     "poder": "G4, curvas de poder por cenário (S02-09, S02-11)",
-    "dados-reais": "os dois testes aplicados aos dados reais, com estatística, p-valor e tamanho de efeito (S02-10)",
     "conclusao": "expectativa × resultado e a recomendação do grupo (S02-12)",
 }
 
@@ -176,6 +177,142 @@ def _secao_testes(figuras: _Figuras, exemplos: dict) -> str:
     return "".join(partes) + _texto("TEXTO_G2")
 
 
+NOMES_TESTE_TABELA = {"welch": "t de Welch", "mann_whitney": "Mann-Whitney"}
+O_QUE_COMPARA = {"welch": "as médias", "mann_whitney": "os postos"}
+NOMES_MEDIDA = {"hedges_g": "g de Hedges", "cliff_delta": "δ de Cliff"}
+LIMITACOES = (
+    "Limitações: só PRs mesclados entram na amostra (viés de seleção), o tamanho do PR e a atribuição da "
+    "revisão do Copilot não são controlados, e os dados vêm de um único repositório e de uma janela curta."
+)
+
+
+def _estatistica(linha) -> str:
+    """`t = −1,115 (gl = 29,35)` no Welch e `U = 414` no Mann-Whitney."""
+    valor = float(linha["estatistica"])
+    if linha["teste"] == "welch":
+        return f"{linha['estatistica_nome']} = {graficos._num(valor)} (gl = {graficos._num(linha['graus_de_liberdade'], 2)})"
+    return f"{linha['estatistica_nome']} = {graficos._num(valor, 0 if valor.is_integer() else 1)}"
+
+
+def tabela_dados_reais_html(tabela: pd.DataFrame, alfa: float = testes.ALFA) -> str:
+    """Tabela HTML da seção 6: uma linha por teste, com os números de `testes.tabela_dados_reais`."""
+    linhas = []
+    for _, r in tabela.iterrows():
+        linhas.append(
+            f"<tr><th>{_e(NOMES_TESTE_TABELA[r['teste']])}</th><td>{_e(O_QUE_COMPARA[r['teste']])}</td>"
+            f"<td>{_e(_estatistica(r))}</td><td>{_e(graficos._p_rotulo(r['p_valor']))}</td>"
+            f"<td>{_e(NOMES_MEDIDA[r['medida_efeito']])} = {_e(graficos._num(r['tamanho_efeito'], 2))} ({_e(r['magnitude'])})</td>"
+            f"<td>{_e(graficos._num(r['razao_medianas'], 2))}</td><td><strong>{_e(r['conclusao'])}</strong></td></tr>"
+        )
+    return (
+        "<table>\n<tr><th>Teste</th><th>Compara</th><th>Estatística</th><th>p-valor</th><th>Tamanho de efeito</th>"
+        f"<th>Razão de medianas (com bot ÷ sem bot)</th><th>Conclusão (α = {_e(graficos._num(alfa, 2))})</th></tr>\n"
+        + "\n".join(linhas)
+        + "\n</table>"
+    )
+
+
+def _sentido(tabela: pd.DataFrame) -> str:
+    """Para os testes que rejeitam H₀, de que lado está o efeito (vazio se nenhum rejeita)."""
+    por_teste = tabela.set_index("teste")
+    frases = []
+    if por_teste.loc["welch", "rejeita_h0"]:
+        menor = por_teste.loc["welch", "tamanho_efeito"] < 0
+        frases.append(f"o Welch aponta média {'menor' if menor else 'maior'} no grupo com bot")
+    if por_teste.loc["mann_whitney", "rejeita_h0"]:
+        menor = por_teste.loc["mann_whitney", "tamanho_efeito"] < 0
+        frases.append(f"o Mann-Whitney aponta que os PRs com bot tendem a demorar {'menos' if menor else 'mais'}")
+    return (" Nos testes que rejeitam, " + " e ".join(frases) + ".") if frases else ""
+
+
+def texto_dados_reais(tabela: pd.DataFrame, reais: pd.DataFrame, alfa: float = testes.ALFA) -> list:
+    """Os parágrafos da seção 6: concordância dos testes, efeito e importância prática, cautela e limitações.
+
+    O texto sai dos números da `tabela` e das horas de `reais`; se os dois testes discordam, o texto
+    diz e explica a divergência. Devolve uma lista de parágrafos (texto puro).
+    """
+    por_teste = tabela.set_index("teste")
+    w, m = por_teste.loc["welch"], por_teste.loc["mann_whitney"]
+    com, sem = horas_do_grupo(reais, "com_bot"), horas_do_grupo(reais, "sem_bot")
+    nivel = graficos._num(alfa, 2)
+    p_w, p_m = graficos._p_rotulo(w["p_valor"]), graficos._p_rotulo(m["p_valor"])
+    if "indefinida" in (w["conclusao"], m["conclusao"]):
+        decisao = (
+            f"Um dos testes não pôde ser calculado (p-valor do Welch: {p_w}; do Mann-Whitney: {p_m}), "
+            "por falta de variação nos dados."
+        )
+    elif w["rejeita_h0"] == m["rejeita_h0"]:
+        quais = "os dois testes rejeitam H₀" if w["rejeita_h0"] else "nenhum dos dois testes rejeita H₀"
+        decisao = (
+            f"Com α = {nivel}, {quais} (Welch: p = {p_w}; Mann-Whitney: p = {p_m}): os dois chegam à mesma "
+            "conclusão." + _sentido(tabela)
+        )
+    else:
+        decisao = (
+            f"Os dois testes discordam com α = {nivel}: o Welch {w['conclusao']} (p = {p_w}) e o Mann-Whitney "
+            f"{m['conclusao']} (p = {p_m}). Eles respondem a perguntas diferentes: o Welch compara médias, que os "
+            "PRs mais longos puxam, e o Mann-Whitney compara postos, que não dependem do tamanho dos valores "
+            "extremos; a divergência faz parte do resultado." + _sentido(tabela)
+        )
+
+    med_com, med_sem = float(np.median(com)), float(np.median(sem))
+    razao = float(w["razao_medianas"])
+    diferenca = med_com - med_sem
+    pct = abs(razao - 1) * 100
+    lado = "maior" if diferenca >= 0 else "menor"
+    limite = graficos._num(testes.DIFERENCA_RELEVANTE * 100, 0)
+    efeito = (
+        f"Tamanho de efeito: {NOMES_MEDIDA['hedges_g']} = {graficos._num(w['tamanho_efeito'], 2)} ({w['magnitude']}) e "
+        f"{NOMES_MEDIDA['cliff_delta']} = {graficos._num(m['tamanho_efeito'], 2)} ({m['magnitude']}). A mediana do grupo "
+        f"com bot ({graficos._num(med_com, 1)} h) é {graficos._num(abs(diferenca), 1)} h {lado} que a do grupo sem bot "
+        f"({graficos._num(med_sem, 1)} h), uma diferença de {graficos._num(pct, 0)}% (razão {graficos._num(razao, 2)})."
+    )
+    relevante = pct >= testes.DIFERENCA_RELEVANTE * 100 or bool({w["magnitude"], m["magnitude"]} & {"médio", "grande"})
+    if relevante:
+        efeito += f" Isso pode ter importância prática: a diferença chega a {limite}% ou o tamanho de efeito é médio ou grande."
+    else:
+        efeito += f" Isso não tem importância prática evidente: a diferença das medianas fica abaixo dos {limite}% que o grupo trata como relevantes."
+    sinais = {s for s in np.sign([w["tamanho_efeito"], m["tamanho_efeito"], razao - 1]) if s != 0}
+    if len(sinais) > 1:
+        efeito += (
+            " Os sinais das medidas não coincidem (a média, os postos e a razão de medianas apontam lados "
+            "diferentes), o que é esperado quando o efeito está perto de zero."
+        )
+
+    tamanhos = str(len(com)) if len(com) == len(sem) else f"{len(com)} e {len(sem)}"
+    if w["rejeita_h0"] or m["rejeita_h0"]:
+        cautela = (
+            "Rejeitar H₀ diz que a diferença seria improvável se H₀ fosse verdadeira, não que ela seja grande: "
+            "o que importa na prática é o tamanho de efeito."
+        )
+    else:
+        cautela = (
+            f"Não rejeitar H₀ não prova que não há efeito: com {tamanhos} PRs por grupo os testes têm pouco "
+            "poder para efeitos pequenos (G4), e o resultado mostra só que esta amostra não basta para "
+            "distinguir uma diferença."
+        )
+    return [decisao, efeito, cautela, LIMITACOES]
+
+
+def _secao_dados_reais(reais: pd.DataFrame, cfg: dict) -> str:
+    try:
+        tabela = testes.tabela_dados_reais(reais)
+        paragrafos = texto_dados_reais(tabela, reais)
+    except Exception as erro:  # o dashboard sai mesmo se a tabela falhar
+        return _marcador(f"Tabela indisponível: os testes nos dados reais falharam ({type(erro).__name__}: {erro}).")
+    n = reais["grupo"].value_counts()
+    legenda = (
+        f"{n.get('com_bot', 0)} PRs com bot e {n.get('sem_bot', 0)} sem bot; testes bicaudais; o Welch compara médias e o "
+        "Mann-Whitney compara postos. Magnitude: |g| < 0,2 negligível, < 0,5 pequeno, < 0,8 médio; |δ de Cliff| < 0,147 "
+        "negligível, < 0,33 pequeno, < 0,474 médio."
+    )
+    return (
+        tabela_dados_reais_html(tabela)
+        + f'<p class="legenda">{_e(legenda)}</p>'
+        + "".join(f'<p class="texto">{_e(p)}</p>' for p in paragrafos)
+    )
+
+
 def _pagina(cfg: dict) -> str:
     base = Path(cfg["pasta"])
     reais = pd.read_csv(base / cfg["coleta"]["saida"])
@@ -185,6 +322,7 @@ def _pagina(cfg: dict) -> str:
         "cenario": _secao_cenario(cfg, reais),
         "dados": _secao_dados(figuras, reais, exemplos),
         "testes": _secao_testes(figuras, exemplos),
+        "dados-reais": _secao_dados_reais(reais, cfg),
     }
     for ancora, previsto in EM_CONSTRUCAO.items():
         conteudo[ancora] = _marcador(f"Em construção: {previsto}.")

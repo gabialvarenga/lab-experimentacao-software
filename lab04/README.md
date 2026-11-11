@@ -211,6 +211,17 @@ Em α = 0,01 a classificação é a mesma. O Welch se afasta muito do nominal as
 
 **G4 (S02-09).** `graficos.g4(resultados)` desenha as curvas de poder: uma faceta por cenário, as curvas do Welch e do Mann-Whitney no mesmo gráfico (com símbolos e traços diferentes, para as curvas que quase coincidem em C0 continuarem legíveis) e a linha em 5% como referência; em δ = 0 a curva é o erro tipo I do G3. Cada faceta tem o seu eixo x: em C0 o efeito é δ em desvios-padrão e nos demais cenários os rótulos mostram a razão de medianas (δ está na escala log). O texto do gráfico é `graficos.TEXTO_G4`, e um teste confere os números dele contra `poder.csv`.
 
+### Os dois testes nos dados reais (S02-10)
+
+`testes.tabela_dados_reais(df)` aplica o Welch e o Mann-Whitney ao `prs.csv` e devolve a tabela da seção 6 do dashboard: uma linha por teste, com a estatística, o p-valor, o tamanho de efeito do teste (g de Hedges no Welch, que compara médias; δ de Cliff no Mann-Whitney, que compara postos), a magnitude, a razão de medianas (com bot ÷ sem bot) e a conclusão em α = 0,05. O texto da seção (`dashboard.texto_dados_reais`) sai dos números da tabela: diz se os dois testes concordam (e, se discordarem, explica a divergência), se o efeito tem importância prática, que não rejeitar H₀ não prova ausência de efeito e quais são as limitações do dado real.
+
+| Teste | Estatística | p-valor | Tamanho de efeito | Conclusão (α = 0,05) |
+|---|---|---|---|---|
+| t de Welch | t = −1,115 (gl = 29,35) | 0,274 | g de Hedges = −0,28 (pequeno) | não rejeita H₀ |
+| Mann-Whitney | U = 414 | 0,600 | δ de Cliff = −0,08 (negligível) | não rejeita H₀ |
+
+As medianas são 17,8 h (com bot) e 17,2 h (sem bot), uma diferença de 4% (razão 1,04). Os dois testes concordam e o efeito não tem importância prática evidente. **Magnitude:** Cohen (1988) para o g (|g| < 0,2 negligível, < 0,5 pequeno, < 0,8 médio) e Romano et al. (2006) para o δ de Cliff (< 0,147, < 0,33, < 0,474). **Importância prática:** o grupo trata como relevante uma diferença de 20% entre as medianas (`testes.DIFERENCA_RELEVANTE`), ou um efeito médio ou grande; é uma escolha do grupo e pode ser trocada. Isto contraria a expectativa do `docs/cenario.md` (seção 5) de que os dois testes rejeitariam H₀ nos dados reais; o texto do cenário não foi alterado, e a diferença é material para a conclusão e para a pergunta 13.
+
 ### GitHub Pages
 
 O dashboard será publicado em <https://gabialvarenga.github.io/lab-experimentacao-software/> (o mesmo endereço do link no topo do dashboard, `LINK_DASHBOARD` em `dashboard.py`). A publicação é a S02-13; antes dela o endereço pode responder 404. O site é habilitado em Settings > Pages do repositório.
