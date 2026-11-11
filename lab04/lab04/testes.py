@@ -6,12 +6,20 @@ tamanhos de efeito são `a` em relação a `b` (no Lab04, `a` = com_bot e `b` = 
 `aplicar_testes` serve a um par de amostras (dados reais, exemplo simulado e G2).
 `aplicar_testes_vetorizado` aplica os testes a milhares de pares de uma vez (simulação) e
 devolve só os p-valores; para cada linha dá o mesmo p-valor que `aplicar_testes`.
+
+`tabela_dados_reais` aplica os dois testes aos PRs coletados (S02-10) e devolve a tabela da seção 6
+do dashboard: uma linha por teste, com a estatística, o p-valor, o tamanho de efeito do teste (g de
+Hedges para o Welch, que compara médias; delta de Cliff para o Mann-Whitney, que compara postos), a
+leitura da magnitude, a razão de medianas e a decisão em α.
 """
 
 import warnings
 
 import numpy as np
+import pandas as pd
 from scipy import stats
+
+from lab04.descritiva import horas_do_grupo
 
 
 def _como_array(x, nome: str, minimo: int = 2) -> np.ndarray:
@@ -128,3 +136,67 @@ def aplicar_testes_vetorizado(A, B) -> dict:
                 metodo = metodo_mw(n1, n2, empate)
                 mw_p[linhas] = stats.mannwhitneyu(A[linhas], B[linhas], axis=1, alternative="two-sided", method=metodo).pvalue
     return {"welch_p": np.asarray(welch_p, dtype=float), "mw_p": mw_p}
+
+
+ALFA = 0.05
+# Magnitudes: Cohen (1988) para o g de Hedges e Romano et al. (2006) para o delta de Cliff.
+LIMITES_HEDGES = ((0.2, "negligível"), (0.5, "pequeno"), (0.8, "médio"))
+LIMITES_CLIFF = ((0.147, "negligível"), (0.33, "pequeno"), (0.474, "médio"))
+# Uma diferença de 20% entre as medianas é o que o grupo trata como relevante na prática (escolha do
+# grupo para a pergunta 14: o tempo até o merge é medido em horas, e 20% de 17 h são cerca de 3,5 h).
+DIFERENCA_RELEVANTE = 0.20
+COLUNAS_TABELA = [
+    "teste", "estatistica_nome", "estatistica", "graus_de_liberdade", "p_valor", "medida_efeito",
+    "tamanho_efeito", "magnitude", "razao_medianas", "rejeita_h0", "conclusao",
+]
+
+
+def _magnitude(valor: float, limites) -> str:
+    if np.isnan(valor):
+        return "indefinido"
+    for limite, nome in limites:
+        if abs(valor) < limite:
+            return nome
+    return "grande"
+
+
+def magnitude_hedges(g: float) -> str:
+    """`negligível` (|g| < 0,2), `pequeno` (< 0,5), `médio` (< 0,8) ou `grande`; `indefinido` se NaN."""
+    return _magnitude(g, LIMITES_HEDGES)
+
+
+def magnitude_cliff(delta: float) -> str:
+    """`negligível` (|δ| < 0,147), `pequeno` (< 0,33), `médio` (< 0,474) ou `grande`; `indefinido` se NaN."""
+    return _magnitude(delta, LIMITES_CLIFF)
+
+
+def _decisao(p: float, alfa: float) -> tuple:
+    if np.isnan(p):
+        return False, "indefinida"
+    return (True, "rejeita H₀") if p < alfa else (False, "não rejeita H₀")
+
+
+def tabela_dados_reais(df: pd.DataFrame, alfa: float = ALFA) -> pd.DataFrame:
+    """Welch e Mann-Whitney aplicados aos dados reais: uma linha por teste (S02-10).
+
+    `df` é o CSV da coleta (`grupo` e `horas_ate_merge`); o grupo A é `com_bot` e o B é `sem_bot`.
+    Colunas de `COLUNAS_TABELA`: o nome (`t` ou `U`) e o valor da estatística, os graus de
+    liberdade (só no Welch), o p-valor bicaudal, a medida de efeito do teste (`hedges_g` no Welch,
+    `cliff_delta` no Mann-Whitney) com o valor e a magnitude, a razão de medianas (com_bot ÷
+    sem_bot, a mesma nas duas linhas), `rejeita_h0` e a `conclusao` em `alfa`. Os efeitos são de A
+    em relação a B, como em `aplicar_testes`. Levanta `ValueError` se faltam colunas ou se um grupo
+    tem menos de 2 PRs.
+    """
+    r = aplicar_testes(horas_do_grupo(df, "com_bot"), horas_do_grupo(df, "sem_bot"))
+    linhas = []
+    for teste, nome, estatistica, gl, p, medida, valor, magnitude in (
+        ("welch", "t", r["welch_t"], r["welch_gl"], r["welch_p"], "hedges_g", r["hedges_g"], magnitude_hedges(r["hedges_g"])),
+        ("mann_whitney", "U", r["mw_u"], float("nan"), r["mw_p"], "cliff_delta", r["cliff_delta"], magnitude_cliff(r["cliff_delta"])),
+    ):
+        rejeita, conclusao = _decisao(p, alfa)
+        linhas.append({
+            "teste": teste, "estatistica_nome": nome, "estatistica": estatistica, "graus_de_liberdade": gl,
+            "p_valor": p, "medida_efeito": medida, "tamanho_efeito": valor, "magnitude": magnitude,
+            "razao_medianas": r["razao_medianas"], "rejeita_h0": rejeita, "conclusao": conclusao,
+        })
+    return pd.DataFrame(linhas, columns=COLUNAS_TABELA)
