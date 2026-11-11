@@ -403,7 +403,7 @@ def test_csv_de_c2_e_c3_e_reproduzido_pelo_comando_do_readme(tmp_path):
 def test_registros_versionados_citam_o_mesmo_config_congelado():
     pasta = C2_C3.parent
     hash_do_config = simulacao.sha256(Path(CFG["pasta"]) / "config.yaml")
-    for nome, comando in [("c0_c1", "--cenarios C0 C1"), ("c2_c3", "--cenarios C2 C3")]:
+    for nome, comando in [("c0_c1", "--cenarios C0 C1"), ("c2_c3", "--cenarios C2 C3"), ("c4", "--cenarios C4")]:
         registro = (pasta / f"registro-{nome}.md").read_text(encoding="utf-8")
         assert hash_do_config in registro and f"python -m lab04.simulacao {comando} --saida dados/simulacao/{nome}.csv" in registro
         assert "| p-valores NaN | welch: 0, mann_whitney: 0 |" in registro
@@ -438,3 +438,59 @@ def test_erro_tipo_i_de_c2_e_c3_do_mann_whitney_fica_perto_do_nominal():
     assert mw[mw["alfa"] == 0.05]["taxa"].between(0.04, 0.06).all()
     assert mw[mw["alfa"] == 0.01]["taxa"].between(0.005, 0.015).all()
     assert (welch["taxa"] < welch["alfa"]).all()
+
+
+# --- o CSV de C4 versionado (S02-05) ---
+
+C4 = Path(CFG["pasta"]) / "dados" / "simulacao" / "c4.csv"
+
+
+def test_csv_de_c4_tem_o_formato_e_o_numero_de_linhas_esperados():
+    tabela = csv(C4)
+    esperado = len(CENARIOS["C4"]["efeitos"]) * len(SIM["alfas"]) * 2
+    assert list(tabela.columns) == simulacao.COLUNAS and len(tabela) == esperado == 24
+    assert set(tabela["cenario"]) == {"C4"} and set(tabela["n_rep"]) == {10_000} and set(tabela["n"]) == {10}
+    assert len(tabela[["cenario", "delta", "alfa", "teste"]].drop_duplicates()) == len(tabela)
+    assert list(tabela["delta"].unique()) == CENARIOS["C4"]["efeitos"]
+
+
+def test_csv_de_c4_e_reproduzido_pelo_comando_do_readme(tmp_path):
+    arquivo = tmp_path / "config.yaml"
+    arquivo.write_text((Path(CFG["pasta"]) / "config.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    assert simulacao.main(["--config", str(arquivo), "--cenarios", "C4", "--saida", "dados/simulacao/c4.csv"]) == 0
+    pd.testing.assert_frame_equal(csv(tmp_path / "dados" / "simulacao" / "c4.csv"), csv(C4))
+
+
+def test_c4_usa_o_mann_whitney_assintotico_e_o_registro_diz_isso():
+    """n = 10 > 8 em cada grupo: o SciPy usa o p-valor assintótico (o exato fica para n ≤ 8)."""
+    assert simulacao.metodo_mw_do_cenario(CENARIOS["C4"]["n"]) == "asymptotic"
+    registro = (C4.parent / "registro-c4.md").read_text(encoding="utf-8")
+    assert "| Mann-Whitney | C4: asymptotic |" in registro
+
+
+def test_c4_nao_tem_empates_pois_a_lognormal_e_continua():
+    """Sem empates o método do Mann-Whitney não muda por repetição (casos de borda da S02-05)."""
+    cenario = CENARIOS["C4"]
+    for j, delta in enumerate(cenario["efeitos"]):
+        A, B = gerador.gerar_lote(cenario, delta, cenario["n"], 2000, simulacao.gerador_da_celula(42, POSICAO["C4"], j))
+        juntos = np.sort(np.concatenate([A, B], axis=1), axis=1)
+        assert not (np.diff(juntos, axis=1) == 0).any()
+
+
+def test_erro_tipo_i_de_c4_e_conservador_nos_dois_testes():
+    """n = 10: o Mann-Whitney fica perto do tamanho verdadeiro do teste (4,33% em α = 0,05) e o Welch bem abaixo."""
+    tabela = csv(C4)
+    h0 = tabela[tabela["delta"] == 0]
+    mw5 = h0[(h0["teste"] == "mann_whitney") & (h0["alfa"] == 0.05)]["taxa"].iloc[0]
+    assert mw5 == pytest.approx(0.0433, abs=0.0043)  # tamanho verdadeiro ± margem de Monte Carlo
+    assert (h0["taxa"] < h0["alfa"]).all()
+    assert h0[(h0["teste"] == "welch") & (h0["alfa"] == 0.05)]["taxa"].iloc[0] < 0.03
+
+
+def test_poder_de_c4_e_menor_que_o_de_c1_nos_dois_testes():
+    """Com n = 10 em vez de 30, o poder é menor em todos os efeitos maiores que 0."""
+    c1, c4 = csv(C0_C1), csv(C4)
+    c1 = c1[c1["cenario"] == "C1"].set_index(["delta", "alfa", "teste"])["taxa"]
+    c4 = c4.set_index(["delta", "alfa", "teste"])["taxa"]
+    efeitos_positivos = [i for i in c4.index if i[0] > 0]
+    assert all(c4[i] < c1[i] for i in efeitos_positivos)
