@@ -253,3 +253,123 @@ def test_grade_do_config_congelado_com_1000_repeticoes_reproduz_o_piloto_version
     versionado = csv(Path(CFG["pasta"]) / SIM["piloto"])
     pd.testing.assert_frame_equal(csv(tmp_path / "piloto.csv"), versionado)
     assert tabela.attrs["mw_metodo"] == {c["id"]: "asymptotic" for c in SIM["cenarios"]}
+
+
+# --- cenários à parte, registro e linha de comando (S02-03) ---
+
+
+def test_grade_so_dos_cenarios_pedidos_tem_as_mesmas_linhas_da_grade_inteira(tmp_path):
+    inteira = simulacao.rodar_grade(cfg_pequeno(tmp_path), saida="todos.csv")
+    so_b = simulacao.rodar_grade(cfg_pequeno(tmp_path), saida="b.csv", cenarios=["B"])
+    assert set(so_b["cenario"]) == {"B"} and so_b.attrs["mw_metodo"] == {"B": "asymptotic"}
+    pd.testing.assert_frame_equal(so_b, inteira[inteira["cenario"] == "B"].reset_index(drop=True))
+
+
+def test_a_ordem_dos_ids_em_cenarios_nao_importa(tmp_path):
+    a = simulacao.rodar_grade(cfg_pequeno(tmp_path), saida="a.csv", cenarios=["A", "B"])
+    b = simulacao.rodar_grade(cfg_pequeno(tmp_path), saida="b.csv", cenarios=["B", "A"])
+    pd.testing.assert_frame_equal(a, b)
+
+
+@pytest.mark.parametrize("cenarios", [["Z"], ["A", "Z"], []])
+def test_cenario_desconhecido_ou_lista_vazia_levanta_erro(tmp_path, cenarios):
+    with pytest.raises(ValueError, match="não estão no config"):
+        simulacao.rodar_grade(cfg_pequeno(tmp_path), cenarios=cenarios)
+
+
+def test_sha256_ignora_a_diferenca_entre_lf_e_crlf(tmp_path):
+    lf, crlf = tmp_path / "lf.txt", tmp_path / "crlf.txt"
+    lf.write_bytes(b"a: 1\nb: 2\n")
+    crlf.write_bytes(b"a: 1\r\nb: 2\r\n")
+    assert simulacao.sha256(lf) == simulacao.sha256(crlf)
+    lf.write_bytes(b"a: 1\nb: 3\n")
+    assert simulacao.sha256(lf) != simulacao.sha256(crlf)
+
+
+def test_registro_traz_comando_parametros_hash_e_erro_tipo_i(tmp_path):
+    cfg = cfg_pequeno(tmp_path)
+    caminho = Path(CFG["pasta"]) / "config.yaml"
+    tabela = simulacao.rodar_grade(cfg, cenarios=["A"])
+    texto = simulacao.registro(cfg, tabela, "python -m lab04.simulacao --cenarios A", caminho)
+    for trecho in [
+        "# Registro da simulação A",
+        "`python -m lab04.simulacao --cenarios A`",
+        "| Repetições por célula | 25 |",
+        "| α | 0.05, 0.01 |",
+        "| Semente | 42 |",
+        simulacao.sha256(caminho),
+        "| Linhas do CSV | 20 |",
+        "| Mann-Whitney | A: asymptotic |",
+        "## Erro tipo I (δ = 0)",
+    ]:
+        assert trecho in texto
+    assert texto.count("| A | 0.0") == 4  # δ = 0: 2 alfas × 2 testes
+    assert texto == simulacao.registro(cfg, tabela, "python -m lab04.simulacao --cenarios A", caminho)
+
+
+def test_main_grava_o_csv_e_o_registro_ao_lado(tmp_path, capsys):
+    arquivo = tmp_path / "config.yaml"
+    arquivo.write_text((Path(CFG["pasta"]) / "config.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    saida = "sim/c4.csv"
+    assert simulacao.main(["--config", str(arquivo), "--cenarios", "C4", "--saida", saida]) == 0
+    tabela = csv(tmp_path / saida)
+    assert set(tabela["cenario"]) == {"C4"} and set(tabela["n_rep"]) == {SIM["repeticoes"]}
+    registro = (tmp_path / "sim" / "registro-c4.md").read_text(encoding="utf-8")
+    assert f"--cenarios C4 --saida {saida}" in registro and simulacao.sha256(arquivo) in registro
+    assert "linhas em" in capsys.readouterr().out
+
+
+def test_main_sem_cenarios_roda_todos_e_usa_a_saida_do_config(tmp_path):
+    texto = (Path(CFG["pasta"]) / "config.yaml").read_text(encoding="utf-8")
+    arquivo = tmp_path / "config.yaml"
+    arquivo.write_text(texto.replace("repeticoes: 10000", "repeticoes: 20"), encoding="utf-8")
+    assert simulacao.main(["--config", str(arquivo)]) == 0
+    tabela = csv(tmp_path / SIM["saida"])
+    assert set(tabela["cenario"]) == set(c["id"] for c in SIM["cenarios"]) and set(tabela["n_rep"]) == {20}
+    assert (tmp_path / "dados" / "simulacao" / "registro-resultados.md").exists()
+
+
+# --- o CSV de C0 e C1 versionado (S02-03) ---
+
+C0_C1 = Path(CFG["pasta"]) / "dados" / "simulacao" / "c0_c1.csv"
+COMANDO_C0_C1 = ["--cenarios", "C0", "C1", "--saida", "dados/simulacao/c0_c1.csv"]
+
+
+def test_csv_de_c0_e_c1_tem_o_formato_e_o_numero_de_linhas_esperados():
+    tabela = csv(C0_C1)
+    esperado = sum(len(c["efeitos"]) for c in SIM["cenarios"] if c["id"] in ("C0", "C1")) * len(SIM["alfas"]) * 2
+    assert list(tabela.columns) == simulacao.COLUNAS and len(tabela) == esperado == 48
+    assert set(tabela["cenario"]) == {"C0", "C1"} and set(tabela["n_rep"]) == {10_000}
+    assert len(tabela[["cenario", "delta", "alfa", "teste"]].drop_duplicates()) == len(tabela)
+    assert (tabela[tabela["cenario"] == "C0"]["delta"].unique() == SIM["cenarios"][0]["efeitos"]).all()
+    assert (tabela[tabela["cenario"] == "C1"]["delta"].unique() == SIM["cenarios"][1]["efeitos"]).all()
+
+
+def test_csv_de_c0_e_c1_e_reproduzido_pelo_comando_do_readme(tmp_path):
+    arquivo = tmp_path / "config.yaml"
+    arquivo.write_text((Path(CFG["pasta"]) / "config.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    assert simulacao.main(["--config", str(arquivo), *COMANDO_C0_C1]) == 0
+    pd.testing.assert_frame_equal(csv(tmp_path / "dados" / "simulacao" / "c0_c1.csv"), csv(C0_C1))
+
+
+def test_c0_e_c1_na_grade_inteira_dao_as_mesmas_linhas_que_rodar_so_os_dois(tmp_path):
+    cfg = copy.deepcopy(CFG)
+    cfg["pasta"] = str(tmp_path)
+    inteira = simulacao.rodar_grade(cfg, saida="inteira.csv")
+    so = inteira[inteira["cenario"].isin(["C0", "C1"])].reset_index(drop=True)
+    pd.testing.assert_frame_equal(so, csv(C0_C1), check_dtype=False)
+
+
+def test_registro_versionado_cita_o_hash_do_config_congelado():
+    """Se o config.yaml mudar depois da simulação, este teste falha: a simulação precisa ser refeita."""
+    registro = (C0_C1.parent / "registro-c0_c1.md").read_text(encoding="utf-8")
+    assert simulacao.sha256(Path(CFG["pasta"]) / "config.yaml") in registro
+    assert "python -m lab04.simulacao --cenarios C0 C1 --saida dados/simulacao/c0_c1.csv" in registro
+
+
+def test_erro_tipo_i_de_c0_fica_perto_do_nominal():
+    """Q1: com δ = 0 e dados normais, as taxas ficam em torno de α (investigação da S02-03 no README)."""
+    tabela = csv(C0_C1)
+    c0 = tabela[(tabela["cenario"] == "C0") & (tabela["delta"] == 0)]
+    assert c0[c0["alfa"] == 0.05]["taxa"].between(0.04, 0.06).all()
+    assert c0[c0["alfa"] == 0.01]["taxa"].between(0.005, 0.015).all()

@@ -123,6 +123,34 @@ C0,0.0,30,1000,0.01,welch,5,0.005,0.002138,0.011651
 - Cada célula tem o seu gerador, `SeedSequence(42, spawn_key=(i, j))`, com `i` a posição do cenário e `j` a do efeito no config. O resultado não depende da ordem em que as células rodam nem de paralelismo.
 - O Mann-Whitney usa o p-valor assintótico com mais de 8 observações por grupo (todos os cenários: n = 30 e 10); o método e a contagem de p-valores NaN (variância zero, que não contam como rejeição e geram aviso) ficam em `tabela.attrs`, porque o formato do CSV é fixo.
 
+### Simulações finais
+
+Cada simulação final roda com `python -m lab04.simulacao`, a partir da pasta `lab04/`: `--cenarios` escolhe os cenários (cada um mantém as sementes que tem na grade inteira) e `--saida` o CSV. Junto do CSV sai o registro `registro-<nome>.md`, com o comando, os parâmetros, a versão das bibliotecas e o SHA-256 do `config.yaml` (com fins de linha em LF) usado. Um teste falha se o `config.yaml` mudar depois da simulação, e outro refaz o comando e compara com o CSV versionado. Se uma execução for interrompida, rode o comando de novo: o resultado é o mesmo e o CSV nunca é editado à mão.
+
+| Issue | Cenários | Comando | CSV |
+|---|---|---|---|
+| S02-03 | C0 e C1 (Q1 e Q2) | `python -m lab04.simulacao --cenarios C0 C1 --saida dados/simulacao/c0_c1.csv` | `dados/simulacao/c0_c1.csv`, 48 linhas |
+
+O `config.yaml` usado nas simulações é o congelado na S02-01 (commit `dc4f478`, PR #261); seu hash está no registro. Resultados de C0 e C1 (poder, α = 0,05, 10.000 repetições):
+
+| δ em C0 (dp) | 0 | 0,2 | 0,4 | 0,6 | 0,8 | 1,0 |
+|---|---|---|---|---|---|---|
+| Welch | 4,6% | 11,5% | 33,2% | 63,0% | 86,6% | 96,6% |
+| Mann-Whitney | 4,4% | 10,8% | 31,4% | 60,1% | 84,3% | 95,9% |
+
+| δ em C1 (log) | 0 | 0,4 | 0,8 | 1,2 | 1,6 | 2,0 |
+|---|---|---|---|---|---|---|
+| Welch | 2,5% | 6,4% | 17,5% | 36,7% | 53,9% | 68,6% |
+| Mann-Whitney | 4,7% | 14,0% | 41,7% | 76,9% | 94,9% | 99,4% |
+
+**Erro tipo I de C0 (investigação).** A Issue pede investigar uma taxa de C0 fora de 5% ± 0,43 p.p. com n = 30. Em α = 0,05 o Mann-Whitney deu 4,43% (fora da faixa) e o Welch 4,63% (dentro do IC de Wilson, que contém 0,05); em α = 0,01 o Mann-Whitney deu 0,71%. Não é erro de código nem de semente:
+
+- O Mann-Whitney assintótico com n = 30 por grupo e sem empates tem tamanho verdadeiro de 4,79% em α = 0,05 e 0,92% em α = 0,01 (calculado pela distribuição exata de U): é conservador por construção (correção de continuidade e discretização), e 4,79% está dentro da faixa. A taxa observada de 4,43% fica 1,7 erros-padrão abaixo disso, ruído de Monte Carlo.
+- Outras seis sementes, com 10.000 repetições cada, deram 4,5% a 4,9% no Mann-Whitney e 4,8% a 5,1% no Welch. A semente 42 caiu no lado baixo dos dois.
+- O p-valor do Mann-Whitney do motor é igual ao de `scipy.stats.mannwhitneyu` linha a linha (conferido nesta investigação, com o método assintótico).
+
+Por isso os parâmetros e a semente ficam como estão (nada é alterado depois de ver os resultados); a classificação de cada teste como liberal, conservador ou ok é da S02-07.
+
 ### GitHub Pages
 
 O dashboard será publicado em <https://gabialvarenga.github.io/lab-experimentacao-software/> (o mesmo endereço do link no topo do dashboard, `LINK_DASHBOARD` em `dashboard.py`). A publicação é a S02-13; antes dela o endereço pode responder 404. O site é habilitado em Settings > Pages do repositório.
