@@ -52,6 +52,72 @@ cd lab04
 python -m pytest --cov=lab04 --cov-report=term-missing --cov-fail-under=80
 ```
 
+## Simulação: cenários, grade e formato do CSV
+
+Os parâmetros da simulação ficam na seção `simulacao` de [config.yaml](config.yaml) e estão **congelados** desde o merge da Issue #236: mudar qualquer valor exige refazer todas as simulações e justificar a mudança. A semente é 42 (`numpy.random.SeedSequence(42)`, com um gerador por célula). Cada célula (cenário × efeito) roda 10.000 repetições, com α = 0,05 e α = 0,01 contados na mesma execução.
+
+### Cenários e grade de efeitos
+
+O grupo A vem de `mu` e `sigma`; o grupo B é o A com o efeito δ (ver `gerador.py`). Em C0, δ é em desvios-padrão; nos demais, δ é somado ao μ da lognormal, e a razão de medianas é e^δ.
+
+| Cenário | Como é gerado | n por grupo | Efeitos δ | Pressuposto violado |
+|---|---|---|---|---|
+| C0 — controle | normal, μ = 0, σ = 1 | 30 | 0; 0,2; 0,4; 0,6; 0,8; 1,0 (dp) | nenhum |
+| C1 — referência | lognormal, μ = 2,6739 e σ = 1,6493 (de `dados/reais/calibracao.json`) | 30 | 0; 0,4; 0,8; 1,2; 1,6; 2,0 (log) | normalidade, no grau dos dados reais |
+| C2 — assimetria forte | C1 com σ = 2,0 | 30 | mesma grade de C1 | normalidade da média amostral |
+| C3 — outliers | C1 com ~5% das observações × 20, nos dois grupos | 30 | mesma grade de C1 | sensibilidade da média a extremos |
+| C4 — amostra pequena | C1 | 10 | mesma grade de C1 | aproximação assintótica dos testes |
+
+Observações sobre os valores:
+
+- O σ de C1 é o σ combinado dos dois grupos (raiz da média das variâncias de log(horas)), porque o gerador usa um σ só; o μ é o do grupo `com_bot`. A calibração tem σ = 1,48 (com bot) e 1,80 (sem bot).
+- C2 usa σ = 2,0, o limite superior da faixa de 1,5 a 2 do enunciado da Issue. Em relação ao σ combinado de C1 (1,65) o aumento é de 21%, mas a assimetria populacional sobe de ~65 para ~414.
+- C3 sorteia a contaminação por observação (probabilidade 0,05), então a fração de valores multiplicados é 5% em média, para qualquer n.
+- C4 tem n = 10 por grupo, acima de 8, então o Mann-Whitney usa o p-valor assintótico (`mw_metodo = asymptotic`), e não o exato.
+- O efeito observado nos dados reais (δ ≈ 0,35) fica perto do segundo ponto da grade log (0,4).
+
+### Piloto e calibração da grade
+
+O piloto roda a grade inteira com 1.000 repetições por célula e semente 42 (`python -m lab04.piloto`, cerca de 15 s) e grava `dados/simulacao/piloto.csv`. A grade foi calibrada nele, com o critério da Issue: a curva de poder de C1 vai de ~5% até perto de 100%.
+
+| δ em C1 (log) | 0 | 0,4 | 0,8 | 1,2 | 1,6 | 2,0 |
+|---|---|---|---|---|---|---|
+| Mann-Whitney, α = 0,05 | 4,1% | 14,1% | 42,6% | 76,5% | 95,3% | 99,7% |
+| Welch, α = 0,05 | 1,5% | 7,2% | 16,6% | 34,7% | 56,3% | 67,2% |
+
+O Welch fica abaixo de 5% em δ = 0 (conservador) e não chega perto de 100% na grade. Isso é resultado da lognormal e não da grade: levá-lo a 100% exigiria efeitos em que o Mann-Whitney ficaria no teto por quase toda a curva. Por isso a grade foi calibrada pelo Mann-Whitney. Em C2 a C4 a curva também não chega a 100% (C4 fica em 66% em δ = 2,0), pelo efeito do próprio cenário. O C0 usa uma grade própria, em desvios-padrão: a de C1 ficaria em ~99% ou 100% a partir do quarto ponto.
+
+### Formato do CSV de resultados
+
+Os CSVs de resultados ficam em `dados/simulacao/` (o do piloto é `piloto.csv`; o das simulações finais, `resultados.csv`). Têm **uma linha por (cenário, efeito, α, teste)**, em UTF-8, com cabeçalho, separador vírgula, ponto decimal e as colunas abaixo. Os gráficos G3 e G4 dependem só deste formato.
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `cenario` | texto | `C0` a `C4` |
+| `delta` | número | efeito δ da célula (desvios-padrão em C0, escala log nos demais) |
+| `n` | inteiro | tamanho de cada grupo |
+| `n_rep` | inteiro | repetições da célula (1.000 no piloto, 10.000 nas finais) |
+| `alfa` | número | nível de significância: `0.05` ou `0.01` |
+| `teste` | texto | `welch` ou `mann_whitney` (os nomes de `graficos.CORES_TESTE`) |
+| `rejeicoes` | inteiro | repetições com p-valor < `alfa` (p-valor NaN não conta como rejeição) |
+| `taxa` | número | `rejeicoes / n_rep`, com 6 casas |
+| `ic_inf`, `ic_sup` | número | limites do intervalo de Wilson de 95% para `taxa`, com 6 casas |
+
+Em δ = 0 a `taxa` é o erro tipo I; em δ ≠ 0 é o poder. As linhas saem ordenadas por cenário, efeito, α e teste, na ordem do config, e o arquivo não tem coluna de índice.
+
+Exemplo (primeiras linhas do piloto):
+
+```
+cenario,delta,n,n_rep,alfa,teste,rejeicoes,taxa,ic_inf,ic_sup
+C0,0.0,30,1000,0.05,welch,43,0.043,0.032079,0.057419
+C0,0.0,30,1000,0.05,mann_whitney,45,0.045,0.0338,0.059683
+C0,0.0,30,1000,0.01,welch,5,0.005,0.002138,0.011651
+```
+
+### GitHub Pages
+
+O dashboard será publicado em <https://gabialvarenga.github.io/lab-experimentacao-software/> (o mesmo endereço do link no topo do dashboard, `LINK_DASHBOARD` em `dashboard.py`). A publicação é a S02-13; antes dela o endereço pode responder 404. O site é habilitado em Settings > Pages do repositório.
+
 ## Documentação
 
 | Documento | Descrição |
@@ -69,7 +135,7 @@ python -m pytest --cov=lab04 --cov-report=term-missing --cov-fail-under=80
 ```
 lab04/
     README.md
-    config.yaml            # semente e, a partir da S02-01, cenários, grade de efeitos, repetições e alfas
+    config.yaml            # semente, coleta, calibração e, congelados na S02-01, cenários, grade, repetições e alfas
     requirements.txt       # dependências Python
     pytest.ini             # pythonpath e pasta de testes
     lab04/                 # pacote Python; `python -m lab04` é o ponto de entrada
@@ -80,6 +146,7 @@ lab04/
         calibracao.py      # parâmetros da lognormal a partir dos dados reais          (S01-06)
         gerador.py         # gerar_amostra e gerar_lote                                (S01-07)
         testes.py          # Welch, Mann-Whitney, tamanho de efeito                    (S01-05)
+        piloto.py          # piloto de 1.000 repetições e CSV de exemplo                (S02-01)
         simulacao.py       # motor: rejeições, IC de Wilson, SeedSequence              (S02-02)
         graficos.py        # g1, g2, g3, g4 em Plotly                                  (S01-09, 10; S02-08, 09)
         dashboard.py       # monta o HTML com as 7 seções                              (S01-11, S02-11)
