@@ -180,6 +180,33 @@ Resultados de C4, n = 10 por grupo (poder, 10.000 repetições; δ em escala log
 
 Por isso os parâmetros e a semente ficam como estão (nada é alterado depois de ver os resultados); a classificação de cada teste como liberal, conservador ou ok é da S02-07.
 
+### Resultados consolidados e classificação (S02-07)
+
+`python -m lab04.resultados`, a partir da pasta `lab04/`, junta `c0_c1.csv`, `c2_c3.csv` e `c4.csv` (e um `c5.csv` opcional, se existir) e grava, em `dados/simulacao/`:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `resultados.csv` | Tabela única, 120 linhas, no formato congelado na S02-01 (a concatenação dos três CSVs) |
+| `classificacao.csv` | Erro tipo I (δ = 0) por cenário, α e teste, com o desvio em pontos percentuais e a classificação |
+| `poder.csv` | Poder dos dois testes por cenário, efeito e α, com a vantagem do Mann-Whitney sobre o Welch em pontos percentuais |
+| `resumo-resultados.md` | As tabelas em texto e a resposta a "onde a vantagem muda de lado" |
+
+**Critério.** Com o intervalo de Wilson de 95% da taxa de erro tipo I e a referência α (5% ou 1%): **liberal** se o limite inferior está acima de α, **conservador** se o limite superior está abaixo de α, **ok** se o intervalo contém α. Com 10.000 repetições o intervalo é estreito (cerca de ±0,4 p.p. em 5%), então um desvio pequeno já classifica; por isso a coluna `desvio_pp` mostra o tamanho do desvio. A vantagem de poder só conta se a diferença passar de 1,96 erros-padrão; senão é `empate`. Os dois testes rodam nas mesmas amostras, então esse critério é conservador.
+
+**Erro tipo I** (20 combinações de cenário, α e teste: 12 conservadoras, 8 ok, nenhuma liberal):
+
+| Cenário | Welch (α = 0,05) | Mann-Whitney (α = 0,05) |
+|---|---|---|
+| C0 (normal) | ok (4,63%) | conservador (4,43%, desvio de −0,57 p.p.) |
+| C1 (lognormal calibrada) | conservador (2,47%) | ok (4,67%) |
+| C2 (assimetria forte) | conservador (1,98%) | ok (4,86%) |
+| C3 (outliers) | conservador (1,61%) | ok (4,96%) |
+| C4 (n = 10) | conservador (1,54%) | conservador (4,35%, desvio de −0,65 p.p.) |
+
+Em α = 0,01 a classificação é a mesma. O Welch se afasta muito do nominal assim que os dados deixam de ser normais (2,5 a 3,5 p.p. abaixo de 5%), e o Mann-Whitney fica a menos de 0,7 p.p. em todos os cenários.
+
+**Onde a vantagem de poder muda de lado.** Dentro de um cenário, nenhuma: o mesmo teste lidera em todos os efeitos em que há diferença. Entre cenários, sim: no controle normal (C0) o Welch lidera, por no máximo 3 p.p. (em α = 0,01, 3,9 p.p.); em C1, C2, C3 e C4 o Mann-Whitney lidera, com vantagem máxima entre 41 e 60 p.p. em α = 0,05. As saídas versionadas são conferidas por teste: se um CSV de simulação mudar, rode o comando de novo.
+
 ### GitHub Pages
 
 O dashboard será publicado em <https://gabialvarenga.github.io/lab-experimentacao-software/> (o mesmo endereço do link no topo do dashboard, `LINK_DASHBOARD` em `dashboard.py`). A publicação é a S02-13; antes dela o endereço pode responder 404. O site é habilitado em Settings > Pages do repositório.
@@ -214,6 +241,7 @@ lab04/
         testes.py          # Welch, Mann-Whitney, tamanho de efeito                    (S01-05)
         piloto.py          # piloto de 1.000 repetições e CSV de exemplo                (S02-01)
         simulacao.py       # motor: rejeições, IC de Wilson, SeedSequence              (S02-02)
+        resultados.py      # consolida os CSVs e classifica liberal/conservador/ok     (S02-07)
         graficos.py        # g1, g2, g3, g4 em Plotly                                  (S01-09, 10; S02-08, 09)
         dashboard.py       # monta o HTML com as 7 seções                              (S01-11, S02-11)
     tests/                 # pytest, um arquivo test_<módulo>.py por módulo
