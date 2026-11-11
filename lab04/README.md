@@ -78,7 +78,7 @@ Observações sobre os valores:
 
 ### Piloto e calibração da grade
 
-O piloto roda a grade inteira com 1.000 repetições por célula e semente 42 (`python -m lab04.piloto`, cerca de 15 s) e grava `dados/simulacao/piloto.csv`. A grade foi calibrada nele, com o critério da Issue: a curva de poder de C1 vai de ~5% até perto de 100%.
+O piloto roda a grade inteira com 1.000 repetições por célula e semente 42 (`python -m lab04.piloto`, alguns segundos) e grava `dados/simulacao/piloto.csv`. A grade foi calibrada nele, com o critério da Issue: a curva de poder de C1 vai de ~5% até perto de 100%.
 
 | δ em C1 (log) | 0 | 0,4 | 0,8 | 1,2 | 1,6 | 2,0 |
 |---|---|---|---|---|---|---|
@@ -113,6 +113,15 @@ C0,0.0,30,1000,0.05,welch,43,0.043,0.032079,0.057419
 C0,0.0,30,1000,0.05,mann_whitney,45,0.045,0.0338,0.059683
 C0,0.0,30,1000,0.01,welch,5,0.005,0.002138,0.011651
 ```
+
+### Motor de simulação
+
+`lab04/simulacao.py` (S02-02) roda a grade:
+
+- `simular(cenario, delta, n_rep, rng)` roda uma célula (cenário × efeito) e devolve uma linha por (α, teste) nas colunas acima. Gera os pares com `gerador.gerar_lote`, aplica `testes.aplicar_testes_vetorizado` e conta p-valores < α; o intervalo é o de Wilson de 95%.
+- `rodar_grade(cfg)` percorre todos os cenários e efeitos do config e grava `simulacao.saida` (10.000 repetições por célula). A grade completa leva cerca de 2 s.
+- Cada célula tem o seu gerador, `SeedSequence(42, spawn_key=(i, j))`, com `i` a posição do cenário e `j` a do efeito no config. O resultado não depende da ordem em que as células rodam nem de paralelismo.
+- O Mann-Whitney usa o p-valor assintótico com mais de 8 observações por grupo (todos os cenários: n = 30 e 10); o método e a contagem de p-valores NaN (variância zero, que não contam como rejeição e geram aviso) ficam em `tabela.attrs`, porque o formato do CSV é fixo.
 
 ### GitHub Pages
 
