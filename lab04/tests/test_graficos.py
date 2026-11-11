@@ -253,3 +253,153 @@ def test_simulacao_sob_h0_trata_empates_como_o_scipy(monkeypatch):
     A, B = com_empates(exemplo["cenario"], 0.0, 30, 50, np.random.default_rng([exemplo["semente"], 0]))
     p = stats.mannwhitneyu(A, B, axis=1, alternative="two-sided", method="asymptotic").pvalue
     assert 2 * stats.norm.sf(np.abs(sob_h0["mw_z"])) == pytest.approx(p, rel=1e-9)
+
+
+# --- G3: erro tipo I por situação simulada (S02-08) ---
+
+PASTA_SIMULACAO = PASTA / "dados" / "simulacao"
+RESULTADOS = pd.read_csv(PASTA_SIMULACAO / "resultados.csv")
+PILOTO = pd.read_csv(PASTA_SIMULACAO / "piloto.csv")
+
+
+def linha_h0(cenario, teste, taxa, n_rep=10_000, alfa=0.05, delta=0.0, largura=0.004):
+    return {"cenario": cenario, "delta": delta, "n": 30, "n_rep": n_rep, "alfa": alfa, "teste": teste,
+            "rejeicoes": round(taxa * n_rep), "taxa": taxa, "ic_inf": max(taxa - largura, 0), "ic_sup": min(taxa + largura, 1)}
+
+
+def sintetico(taxas, **kwargs):
+    """`taxas`: {cenario: (taxa_welch, taxa_mann_whitney)} com δ = 0."""
+    return pd.DataFrame([linha_h0(c, t, x, **kwargs) for c, par in taxas.items() for t, x in zip(("welch", "mann_whitney"), par)])
+
+
+@pytest.mark.parametrize("tabela_", [RESULTADOS, PILOTO], ids=["resultados", "piloto"])
+def test_fumaca_g3_devolve_figura_com_titulo_eixos_e_legenda(tabela_):
+    fig = graficos.g3(tabela_)
+    assert isinstance(fig, go.Figure)
+    assert [t.name for t in fig.data if t.showlegend is not False] == ["Welch", "Mann-Whitney", "Nível nominal (α = 5%)"]
+    assert fig.layout.title.text.startswith("G3") and "Wilson de 95%" in fig.layout.title.text
+    assert "Situação simulada" in fig.layout.xaxis.title.text
+    assert "Taxa de rejeição" in fig.layout.yaxis.title.text and "(%)" in fig.layout.yaxis.title.text
+    assert fig.layout.barmode == "group"
+
+
+def test_g3_usa_a_mesma_cor_de_cada_teste_do_g2():
+    fig = graficos.g3(RESULTADOS)
+    g2 = graficos.g2(exemplos()["sem_efeito"])
+    for traco in fig.data[:2]:
+        teste = {"Welch": "welch", "Mann-Whitney": "mann_whitney"}[traco.name]
+        assert traco.marker.color == graficos.CORES_TESTE[teste]
+    cores_g2 = {t.line.color for t in g2.data if getattr(t, "mode", None) == "lines" and t.line.color in graficos.CORES_TESTE.values()}
+    assert {t.marker.color for t in fig.data[:2]} == cores_g2
+
+
+def test_g3_desenha_a_taxa_em_percentual_e_o_ic_de_wilson_assimetrico_como_barra_de_erro():
+    fig = graficos.g3(RESULTADOS)
+    h0 = RESULTADOS[(RESULTADOS["delta"] == 0) & (RESULTADOS["alfa"] == 0.05)]
+    for traco, teste in zip(fig.data[:2], ("welch", "mann_whitney")):
+        linhas = h0[h0["teste"] == teste]
+        assert np.allclose(traco.y, linhas["taxa"] * 100)
+        assert np.allclose(traco.error_y.array, (linhas["ic_sup"] - linhas["taxa"]) * 100)
+        assert np.allclose(traco.error_y.arrayminus, (linhas["taxa"] - linhas["ic_inf"]) * 100)
+        assert traco.error_y.symmetric is False
+
+
+def test_g3_tem_a_linha_em_5_por_cento_e_um_grupo_por_cenario_na_ordem_da_tabela():
+    fig = graficos.g3(RESULTADOS)
+    assert [(s.y0, s.y1) for s in fig.layout.shapes] == [(5.0, 5.0)]
+    assert list(fig.data[0].x) == [graficos.NOMES_CENARIO[c] for c in ("C0", "C1", "C2", "C3", "C4")]
+    assert list(fig.data[0].x) == list(fig.data[1].x)
+
+
+def test_g3_no_nivel_de_1_por_cento_move_a_linha_e_usa_as_taxas_de_1_por_cento():
+    fig = graficos.g3(RESULTADOS, alfa=0.01)
+    assert [(s.y0, s.y1) for s in fig.layout.shapes] == [(1.0, 1.0)]
+    assert fig.data[0].y[0] == pytest.approx(0.89) and "α = 1%" in fig.data[2].name
+    assert fig.layout.yaxis.range[1] < 2.5   # a escala acompanha o nível, não os 5%
+
+
+def test_g3_desenha_so_os_cenarios_presentes_e_aceita_um_opcional_a_mais():
+    sem_c4 = RESULTADOS[RESULTADOS["cenario"] != "C4"]
+    assert len(graficos.g3(sem_c4).data[0].x) == 4
+    c5 = RESULTADOS[RESULTADOS["cenario"] == "C4"].assign(cenario="C5")
+    fig = graficos.g3(pd.concat([RESULTADOS, c5], ignore_index=True))
+    assert list(fig.data[0].x)[-1] == "C5"   # id sem nome cadastrado aparece como ele mesmo
+
+
+def test_g3_aceita_nomes_proprios_para_os_cenarios():
+    fig = graficos.g3(RESULTADOS, nomes={"C0": "controle"})
+    assert fig.data[0].x[0] == "controle" and fig.data[0].x[1] == graficos.NOMES_CENARIO["C1"]
+
+
+def test_g3_escala_comporta_a_barra_de_erro_maior_que_a_taxa():
+    tabela_ = sintetico({"A": (0.5, 0.3)}, largura=0.2)
+    fig = graficos.g3(tabela_)
+    assert fig.layout.yaxis.range[0] == 0 and fig.layout.yaxis.range[1] >= 70   # ic_sup de 70% cabe
+    assert np.allclose(fig.data[0].error_y.array, 20)
+    pequena = graficos.g3(sintetico({"A": (0.0, 0.001)}, largura=0.001))
+    assert pequena.layout.yaxis.range[1] >= 5   # a linha de 5% sempre cabe, mesmo com taxas minúsculas
+
+
+def test_g3_hover_traz_a_taxa_o_intervalo_as_rejeicoes_e_a_classificacao():
+    fig = graficos.g3(RESULTADOS)
+    welch_c1 = fig.data[0].customdata[1]
+    assert welch_c1[0] == "2,47%" and welch_c1[3:6] == [247, 10_000, 30] and welch_c1[6] == "conservador"
+    mw_c2 = fig.data[1].customdata[2]
+    assert mw_c2[0] == "4,86%" and mw_c2[6] == "ok"
+    assert "Classificação" in fig.data[0].hovertemplate and "IC de Wilson" in fig.data[0].hovertemplate
+
+
+def test_g3_marca_um_teste_liberal_na_classificacao_do_hover():
+    fig = graficos.g3(sintetico({"A": (0.07, 0.05)}, largura=0.003))
+    assert fig.data[0].customdata[0][6] == "liberal" and fig.data[1].customdata[0][6] == "ok"
+
+
+def test_g3_ignora_as_linhas_com_efeito():
+    com_efeito = pd.concat([RESULTADOS, RESULTADOS.assign(delta=0.4, taxa=0.9, ic_inf=0.89, ic_sup=0.91)])
+    assert np.allclose(graficos.g3(com_efeito).data[0].y, graficos.g3(RESULTADOS).data[0].y)
+
+
+@pytest.mark.parametrize("quebrar, mensagem", [
+    (lambda d: d.drop(columns="ic_sup"), "faltam as colunas.*ic_sup"),
+    (lambda d: d.assign(teste="t_de_student"), "testes desconhecidos"),
+    (lambda d: d[d["delta"] > 0], "não tem linhas de δ = 0"),
+])
+def test_g3_recusa_tabelas_invalidas(quebrar, mensagem):
+    with pytest.raises(ValueError, match=mensagem):
+        graficos.g3(quebrar(RESULTADOS))
+
+
+def test_g3_recusa_alfa_ausente():
+    with pytest.raises(ValueError, match="α = 0.1"):
+        graficos.g3(RESULTADOS, alfa=0.1)
+
+
+def test_texto_do_g3_tem_de_2_a_4_frases():
+    frases = [f for f in re.split(r"(?<=[.!?])\s+", graficos.TEXTO_G3.strip()) if f]
+    assert 2 <= len(frases) <= 4
+
+
+def _pct(x):
+    return f"{x * 100:.2f}%".replace(".", ",")
+
+
+def test_numeros_do_texto_do_g3_batem_com_a_classificacao_dos_resultados():
+    """Se os resultados mudarem, o texto precisa ser revisto: os números dele saem daqui."""
+    from lab04 import resultados
+
+    c = resultados.classificar(RESULTADOS)
+    c5 = c[c["alfa"] == 0.05].set_index(["cenario", "teste"])
+    mw = c5.xs("mann_whitney", level="teste")
+    welch = c5.xs("welch", level="teste")
+    texto = graficos.TEXTO_G3
+    assert f"entre {_pct(mw['taxa'].min())} e {_pct(mw['taxa'].max())}" in texto
+    for cenario in ("C0", "C4"):   # o Mann-Whitney conservador do texto
+        assert mw.loc[cenario, "classificacao"] == "conservador"
+        assert f"{mw.loc[cenario, 'desvio_pp']:.2f}".replace("-", "−").replace(".", ",") in texto
+    assert (mw.drop(["C0", "C4"])["classificacao"] == "ok").all()
+    assert welch.loc["C0", "classificacao"] == "ok" and f"({_pct(welch.loc['C0', 'taxa'])})" in texto
+    assert (welch.drop("C0")["classificacao"] == "conservador").all()
+    assert f"de {_pct(welch.drop('C0')['taxa'].min())} a {_pct(welch.drop('C0')['taxa'].max())}" in texto
+    assert "liberal" not in set(c["classificacao"])                    # "Nenhum teste foi liberal"
+    por_alfa = c.pivot_table(index=["cenario", "teste"], columns="alfa", values="classificacao", aggfunc="first")
+    assert (por_alfa[0.05] == por_alfa[0.01]).all()                    # "Com α = 1% a classificação é a mesma"

@@ -207,6 +207,8 @@ Em α = 0,01 a classificação é a mesma. O Welch se afasta muito do nominal as
 
 **Onde a vantagem de poder muda de lado.** Dentro de um cenário, nenhuma: o mesmo teste lidera em todos os efeitos em que há diferença. Entre cenários, sim: no controle normal (C0) o Welch lidera, por no máximo 3 p.p. (em α = 0,01, 3,9 p.p.); em C1, C2, C3 e C4 o Mann-Whitney lidera, com vantagem máxima entre 41 e 60 p.p. em α = 0,05. As saídas versionadas são conferidas por teste: se um CSV de simulação mudar, rode o comando de novo.
 
+**G3 (S02-08).** `graficos.g3(resultados)` desenha o erro tipo I de cada teste por cenário (barras agrupadas, linha em 5% e intervalo de Wilson de 95% como barra de erro), a partir de `resultados.csv` ou do `piloto.csv`; `alfa=0.01` desenha o nível de 1%. O texto do gráfico está em `graficos.TEXTO_G3`, e um teste confere os números dele contra a classificação. A inserção no dashboard é a S02-11.
+
 ### GitHub Pages
 
 O dashboard será publicado em <https://gabialvarenga.github.io/lab-experimentacao-software/> (o mesmo endereço do link no topo do dashboard, `LINK_DASHBOARD` em `dashboard.py`). A publicação é a S02-13; antes dela o endereço pode responder 404. O site é habilitado em Settings > Pages do repositório.
