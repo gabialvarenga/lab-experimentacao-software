@@ -131,6 +131,7 @@ Cada simulação final roda com `python -m lab04.simulacao`, a partir da pasta `
 |---|---|---|---|
 | S02-03 | C0 e C1 (Q1 e Q2) | `python -m lab04.simulacao --cenarios C0 C1 --saida dados/simulacao/c0_c1.csv` | `dados/simulacao/c0_c1.csv`, 48 linhas |
 | S02-04 | C2 e C3 (Q3: assimetria e outliers) | `python -m lab04.simulacao --cenarios C2 C3 --saida dados/simulacao/c2_c3.csv` | `dados/simulacao/c2_c3.csv`, 48 linhas |
+| S02-05 | C4 (Q3: amostra pequena) | `python -m lab04.simulacao --cenarios C4 --saida dados/simulacao/c4.csv` | `dados/simulacao/c4.csv`, 24 linhas |
 
 O `config.yaml` usado nas simulações é o congelado na S02-01 (commit `dc4f478`, PR #261); seu hash está no registro. Resultados de C0 e C1 (poder, α = 0,05, 10.000 repetições):
 
@@ -157,6 +158,19 @@ Resultados de C2 e C3 (poder, α = 0,05, 10.000 repetições; δ em escala log):
 | Mann-Whitney | 5,0% | 13,2% | 39,1% | 71,4% | 91,7% | 98,9% |
 
 Em C2 e C3 a hipótese nula é verdadeira em δ = 0: no C3 a contaminação (5% das observações × 20) vale nos dois grupos, inclusive em δ = 0, e A e B têm a mesma distribuição (teste de Kolmogorov-Smirnov sobre log(x) e fração contaminada de ~5% em cada grupo). Nenhum valor simulado overflowa: o máximo, em 10.000 repetições por célula, é da ordem de 10⁶ (σ = 2 e fator 20). Nos dois cenários o Welch é conservador em δ = 0 (taxa abaixo de α) e perde poder para o Mann-Whitney; a leitura é da S02-07.
+
+Resultados de C4, n = 10 por grupo (poder, 10.000 repetições; δ em escala log):
+
+| δ em C4 | 0 | 0,4 | 0,8 | 1,2 | 1,6 | 2,0 |
+|---|---|---|---|---|---|---|
+| Welch, α = 0,05 | 1,5% | 2,5% | 4,7% | 9,1% | 15,2% | 22,1% |
+| Mann-Whitney, α = 0,05 | 4,4% | 7,2% | 15,4% | 29,4% | 48,4% | 67,7% |
+| Welch, α = 0,01 | 0,0% | 0,2% | 0,4% | 0,8% | 1,7% | 3,0% |
+| Mann-Whitney, α = 0,01 | 0,7% | 1,5% | 4,0% | 10,2% | 21,6% | 37,0% |
+
+**Método do Mann-Whitney em C4.** Com n = 10 por grupo o SciPy usa o p-valor **assintótico** (a regra é: assintótico com mais de 8 observações em cada grupo ou com empates, exato nos demais casos), e não o exato. Isso fica registrado no `registro-c4.md` (`Mann-Whitney | C4: asymptotic`) e em `tabela.attrs["mw_metodo"]`. A lognormal é contínua e não houve empate em nenhuma das 60.000 repetições de C4, então o método é o mesmo em todas. O teste é conservador nesse tamanho: pela distribuição exata de U, o tamanho verdadeiro com n = 10 é 4,33% em α = 0,05 (observado: 4,35%) e 0,68% em α = 0,01 (observado: 0,74%). Com o p-valor exato o tamanho em α = 0,01 seria 0,89%. O Welch fica muito abaixo de α (1,5% e 0,04%).
+
+**C5 (variâncias e tamanhos desiguais) não foi feito.** É opcional na Issue e exigiria acrescentar um cenário ao `config.yaml` congelado, o que mudaria o hash citado nos registros de C0 a C4 e obrigaria a refazê-los, além de o gerador não aceitar variâncias nem tamanhos diferentes entre os grupos. Se for feito depois, o aviso sobre H₀ vale: com variâncias diferentes "médias iguais" deixa de ser "distribuições iguais", e a leitura do erro tipo I muda.
 
 **Erro tipo I de C0 (investigação).** A Issue pede investigar uma taxa de C0 fora de 5% ± 0,43 p.p. com n = 30. Em α = 0,05 o Mann-Whitney deu 4,43% (fora da faixa) e o Welch 4,63% (dentro do IC de Wilson, que contém 0,05); em α = 0,01 o Mann-Whitney deu 0,71%. Não é erro de código nem de semente:
 
