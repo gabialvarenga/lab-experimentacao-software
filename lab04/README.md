@@ -209,6 +209,8 @@ Em α = 0,01 a classificação é a mesma. O Welch se afasta muito do nominal as
 
 **G3 (S02-08).** `graficos.g3(resultados)` desenha o erro tipo I de cada teste por cenário (barras agrupadas, linha em 5% e intervalo de Wilson de 95% como barra de erro), a partir de `resultados.csv` ou do `piloto.csv`; `alfa=0.01` desenha o nível de 1%. O texto do gráfico está em `graficos.TEXTO_G3`, e um teste confere os números dele contra a classificação. A inserção no dashboard é a S02-11.
 
+**G4 (S02-09).** `graficos.g4(resultados)` desenha as curvas de poder: uma faceta por cenário, as curvas do Welch e do Mann-Whitney no mesmo gráfico (com símbolos e traços diferentes, para as curvas que quase coincidem em C0 continuarem legíveis) e a linha em 5% como referência; em δ = 0 a curva é o erro tipo I do G3. Cada faceta tem o seu eixo x: em C0 o efeito é δ em desvios-padrão e nos demais cenários os rótulos mostram a razão de medianas (δ está na escala log). O texto do gráfico é `graficos.TEXTO_G4`, e um teste confere os números dele contra `poder.csv`.
+
 ### GitHub Pages
 
 O dashboard será publicado em <https://gabialvarenga.github.io/lab-experimentacao-software/> (o mesmo endereço do link no topo do dashboard, `LINK_DASHBOARD` em `dashboard.py`). A publicação é a S02-13; antes dela o endereço pode responder 404. O site é habilitado em Settings > Pages do repositório.

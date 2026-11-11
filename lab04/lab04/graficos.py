@@ -1,5 +1,12 @@
 """Gráficos G1 a G4 em Plotly (S01-09, S01-10, S02-08, S02-09).
 
+G4 (`g4`): curvas de poder, a proporção de rejeições de cada teste em função do tamanho do efeito,
+uma faceta por cenário com as duas curvas no mesmo gráfico (Q2 e Q3). Cada faceta tem o seu eixo x:
+em C0 o efeito é δ em desvios-padrão; nos demais cenários δ está na escala log e os rótulos do eixo
+mostram a razão de medianas e^δ. Em δ = 0 a curva é o erro tipo I (o G3), e a linha em α serve de
+referência. As curvas usam símbolos e traços diferentes para continuarem legíveis onde se sobrepõem
+(C0). Como o G3, lê o formato de CSV congelado na S02-01.
+
 G3 (`g3`): erro tipo I de cada teste em cada situação simulada (Q1 e Q3), isto é, a taxa de rejeição
 com H₀ verdadeira (δ = 0). Barras agrupadas por cenário, uma por teste, com a linha no nível
 nominal (α = 5%) e o intervalo de Wilson de 95% como barra de erro. Lê o formato de CSV congelado
@@ -60,6 +67,8 @@ NOMES_CENARIO = {   # os nomes do config.yaml, para os rótulos do G3 e do G4
     "C3": "C3: outliers",
     "C4": "C4: amostra pequena (n = 10)",
 }
+UNIDADE_EFEITO = {"C0": "dp"}   # δ em desvios-padrão no controle normal; nos demais cenários, "log" (razão de medianas = e^δ)
+MAXIMO_DE_COLUNAS_G4 = 3
 COLUNAS_RESULTADOS = ("cenario", "delta", "n", "n_rep", "alfa", "teste", "rejeicoes", "taxa", "ic_inf", "ic_sup")
 N_H0 = 10_000  # conjuntos simulados sob H₀ no histograma do G2
 LIMITE_PADRAO = 4.0  # o eixo x do G2 vai de −4 a 4 ...
@@ -200,6 +209,17 @@ TEXTO_G3 = (
     "Nenhum teste foi liberal, então nenhum produz falsos positivos além do nível escolhido, mas um teste "
     "conservador detecta menos efeitos reais (G4). "
     "Com α = 1% a classificação é a mesma."
+)
+
+TEXTO_G4 = (
+    "O Mann-Whitney detecta o efeito melhor em C1 a C4, as situações em que os dados violam a normalidade: em C1, "
+    "com a mediana de B 3,3 vezes a de A (δ = 1,2), ele rejeita H₀ em 76,9% dos conjuntos e o Welch em 36,7%, e a "
+    "vantagem máxima de cada cenário fica entre 41 e 60 pontos percentuais. "
+    "No controle normal (C0) o Welch lidera, mas por no máximo 3,0 pontos percentuais, e as duas curvas quase se "
+    "sobrepõem. "
+    "A vantagem muda de lado entre os cenários, do Welch no caso normal para o Mann-Whitney em todos os outros, e "
+    "não muda ao longo do efeito dentro de nenhum deles. "
+    "Com α = 1% o quadro é o mesmo."
 )
 
 
@@ -402,6 +422,16 @@ def g2(exemplo: dict) -> go.Figure:
     return figura
 
 
+def _validar_resultados(resultados: pd.DataFrame) -> None:
+    """`ValueError` se faltam colunas do CSV de resultados ou se há um teste que os gráficos não conhecem."""
+    faltam = [c for c in COLUNAS_RESULTADOS if c not in resultados.columns]
+    if faltam:
+        raise ValueError(f"faltam as colunas {faltam} em resultados")
+    desconhecidos = sorted(set(resultados["teste"]) - set(NOMES_TESTE))
+    if desconhecidos:
+        raise ValueError(f"testes desconhecidos em resultados: {desconhecidos}")
+
+
 def g3(resultados: pd.DataFrame, alfa: float = ALFA, nomes: dict | None = None) -> go.Figure:
     """Erro tipo I de cada teste por situação simulada (Q1 e Q3), com a linha no nível nominal (S02-08).
 
@@ -412,12 +442,7 @@ def g3(resultados: pd.DataFrame, alfa: float = ALFA, nomes: dict | None = None) 
     Levanta `ValueError` se faltam colunas, se há um teste desconhecido ou se não há linha de δ = 0
     no nível pedido.
     """
-    faltam = [c for c in COLUNAS_RESULTADOS if c not in resultados.columns]
-    if faltam:
-        raise ValueError(f"faltam as colunas {faltam} em resultados")
-    desconhecidos = sorted(set(resultados["teste"]) - set(NOMES_TESTE))
-    if desconhecidos:
-        raise ValueError(f"testes desconhecidos em resultados: {desconhecidos}")
+    _validar_resultados(resultados)
     h0 = resultados[(resultados["delta"] == 0) & np.isclose(resultados["alfa"], alfa)]
     if h0.empty:
         raise ValueError(f"resultados não tem linhas de δ = 0 com α = {alfa}")
@@ -474,6 +499,103 @@ def g3(resultados: pd.DataFrame, alfa: float = ALFA, nomes: dict | None = None) 
         yaxis={"title": {"text": "Taxa de rejeição com H₀ verdadeira (%)"}, "range": [0, topo], "ticksuffix": "%"},
         barmode="group",
         legend={"orientation": "h", "y": -0.25},
+        template="plotly_white",
+    )
+    return figura
+
+def _rotulos_do_efeito(deltas, unidade: str) -> list:
+    """Rótulos do eixo x de uma faceta: δ em desvios-padrão (`dp`) ou a razão de medianas e^δ (`log`)."""
+    if unidade == "dp":
+        return [_num(d, 1) for d in deltas]
+    return [f"{_num(math.exp(d), 1)}×" for d in deltas]
+
+
+def g4(resultados: pd.DataFrame, alfa: float = ALFA, nomes: dict | None = None, unidades: dict | None = None) -> go.Figure:
+    """Curvas de poder dos dois testes por situação simulada (Q2 e Q3), uma faceta por cenário (S02-09).
+
+    `resultados` está no formato de CSV congelado na S02-01. Usa as linhas do nível `alfa` (5% por
+    padrão) e desenha, em cada faceta, a proporção de rejeições em função do efeito δ, com a curva
+    do Welch e a do Mann-Whitney no mesmo gráfico e a linha em `alfa` como referência (em δ = 0 a
+    curva é o erro tipo I). Cada faceta tem o seu eixo x: `unidades` diz, por cenário, se δ está em
+    desvios-padrão (`dp`, padrão em C0) ou na escala log (`log`, padrão nos demais), cujos rótulos
+    mostram a razão de medianas e^δ. `nomes` troca os rótulos dos cenários (padrão: `NOMES_CENARIO`).
+    Levanta `ValueError` se faltam colunas, se há um teste desconhecido ou se não há linhas de efeito
+    (δ > 0) no nível pedido.
+    """
+    _validar_resultados(resultados)
+    nivel_alfa = resultados[np.isclose(resultados["alfa"], alfa)]
+    if not (nivel_alfa["delta"] > 0).any():
+        raise ValueError(f"resultados não tem linhas com efeito (δ > 0) e α = {alfa}")
+    rotulos = {**NOMES_CENARIO, **(nomes or {})}
+    unidade_de = {**UNIDADE_EFEITO, **(unidades or {})}
+    cenarios = list(dict.fromkeys(nivel_alfa["cenario"]))
+    colunas = min(len(cenarios), MAXIMO_DE_COLUNAS_G4)
+    linhas = math.ceil(len(cenarios) / colunas)
+    classes = classificar(nivel_alfa[nivel_alfa["delta"] == 0]).set_index(["cenario", "teste"])["classificacao"]
+    pct = lambda valor: f"{_num(valor * 100, 2)}%"   # noqa: E731
+    nivel = f"{_num(alfa * 100, 0 if alfa * 100 == int(alfa * 100) else 1)}%"
+
+    figura = make_subplots(
+        rows=linhas, cols=colunas, shared_yaxes=True, horizontal_spacing=0.05, vertical_spacing=0.24 / linhas,
+        subplot_titles=[rotulos.get(c, c) for c in cenarios],
+    )
+    estilo = {"welch": {"symbol": "circle", "dash": "solid"}, "mann_whitney": {"symbol": "diamond", "dash": "dash"}}
+    for posicao, cenario in enumerate(cenarios):
+        linha, coluna = posicao // colunas + 1, posicao % colunas + 1
+        unidade = unidade_de.get(cenario, "log")
+        dados = nivel_alfa[nivel_alfa["cenario"] == cenario]
+        deltas = sorted(set(dados["delta"]))
+        for teste in NOMES_TESTE:
+            curva = dados[dados["teste"] == teste].sort_values("delta")
+            if curva.empty:
+                continue
+            figura.add_trace(
+                go.Scatter(
+                    x=curva["delta"], y=curva["taxa"] * 100, mode="lines+markers", name=NOMES_TESTE[teste],
+                    legendgroup=teste, showlegend=posicao == 0,
+                    line={"color": CORES_TESTE[teste], "width": 2.5, "dash": estilo[teste]["dash"]},
+                    marker={"color": CORES_TESTE[teste], "size": 8, "symbol": estilo[teste]["symbol"]},
+                    customdata=[
+                        [_num(r.delta, 1), f"{_num(math.exp(r.delta), 2)}×" if unidade == "log" else "—",
+                         pct(r.taxa), pct(r.ic_inf), pct(r.ic_sup), int(r.rejeicoes), int(r.n_rep), int(r.n),
+                         "erro tipo I" if r.delta == 0 else "poder", classes.get((cenario, teste), "—") if r.delta == 0 else ""]
+                        for r in curva.itertuples()
+                    ],
+                    hovertemplate=(
+                        f"<b>{NOMES_TESTE[teste]}</b>, {rotulos.get(cenario, cenario)}<br>δ = %{{customdata[0]}}"
+                        + ("  (razão de medianas %{customdata[1]})" if unidade == "log" else " desvio-padrão")
+                        + "<br>Taxa de rejeição (%{customdata[8]}): %{customdata[2]}<br>"
+                        "IC de Wilson de 95%: [%{customdata[3]}; %{customdata[4]}]<br>"
+                        "Rejeições: %{customdata[5]} de %{customdata[6]}<br>n = %{customdata[7]} por grupo"
+                        "<extra></extra>"
+                    ),
+                ),
+                row=linha, col=coluna,
+            )
+        titulo_x = "Efeito δ (desvios-padrão)" if unidade == "dp" else "Razão de medianas B/A (×)"
+        figura.update_xaxes(title_text=titulo_x, tickmode="array", tickvals=deltas,
+                            ticktext=_rotulos_do_efeito(deltas, unidade), row=linha, col=coluna)
+        if coluna == 1:
+            figura.update_yaxes(title_text="Proporção de rejeições de H₀ (%)", row=linha, col=coluna)
+    figura.add_trace(   # entrada de legenda para a linha de referência
+        go.Scatter(x=[None], y=[None], mode="lines", line={"color": COR_REJEICAO, "dash": "dot", "width": 2},
+                   name=f"Nível nominal (α = {nivel})")
+    )
+    figura.add_hline(y=alfa * 100, line={"color": COR_REJEICAO, "dash": "dot", "width": 2}, row="all", col="all")
+    figura.update_yaxes(range=[0, 103], ticksuffix="%")
+    figura.update_xaxes(zeroline=False)   # sem a linha vertical em δ = 0
+    repeticoes = " e ".join(f"{n:,}".replace(",", ".") for n in sorted(set(nivel_alfa["n_rep"])))
+    figura.update_layout(
+        title=(
+            "G4: poder dos testes por tamanho de efeito e situação simulada"
+            "<br><sup>Proporção de rejeições de H₀ com o efeito verdadeiro; em δ = 0 é o erro tipo I.</sup>"
+            f"<br><sup>α = {nivel}, {repeticoes} repetições por ponto"
+            + ("; fora de C0, o eixo x está na escala log de δ." if any(unidade_de.get(c, "log") == "log" for c in cenarios) else ".")
+            + "</sup>"
+        ),
+        legend={"orientation": "h", "y": -0.14 / linhas},
+        height=430 * linhas + 160,
+        margin={"t": 140},
         template="plotly_white",
     )
     return figura

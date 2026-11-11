@@ -403,3 +403,165 @@ def test_numeros_do_texto_do_g3_batem_com_a_classificacao_dos_resultados():
     assert "liberal" not in set(c["classificacao"])                    # "Nenhum teste foi liberal"
     por_alfa = c.pivot_table(index=["cenario", "teste"], columns="alfa", values="classificacao", aggfunc="first")
     assert (por_alfa[0.05] == por_alfa[0.01]).all()                    # "Com α = 1% a classificação é a mesma"
+
+
+# --- G4: curvas de poder (S02-09) ---
+
+
+def curvas(fig):
+    """Os traços das curvas de poder (os com dados), sem a entrada de legenda da linha de referência."""
+    return [t for t in fig.data if t.x is not None and len(t.x) and t.x[0] is not None]
+
+
+def linhas_do_csv(tabela_, cenario, teste, alfa=0.05):
+    d = tabela_[(tabela_["cenario"] == cenario) & (tabela_["teste"] == teste) & np.isclose(tabela_["alfa"], alfa)]
+    return d.sort_values("delta")
+
+
+@pytest.mark.parametrize("tabela_", [RESULTADOS, PILOTO], ids=["resultados", "piloto"])
+def test_fumaca_g4_devolve_figura_com_titulo_eixos_e_legenda(tabela_):
+    fig = graficos.g4(tabela_)
+    assert isinstance(fig, go.Figure)
+    assert [t.name for t in fig.data if t.showlegend is not False] == ["Welch", "Mann-Whitney", "Nível nominal (α = 5%)"]
+    assert fig.layout.title.text.startswith("G4") and "α = 5%" in fig.layout.title.text
+    titulos_x = [fig.layout[f"xaxis{'' if i == 1 else i}"].title.text for i in range(1, 6)]
+    assert titulos_x == ["Efeito δ (desvios-padrão)"] + ["Razão de medianas B/A (×)"] * 4
+    assert all("Proporção de rejeições" in fig.layout[a].title.text and "(%)" in fig.layout[a].title.text
+               for a in ("yaxis", "yaxis4"))   # o título do eixo y vai na primeira coluna de cada linha
+    assert fig.layout.yaxis.ticksuffix == "%" and tuple(fig.layout.yaxis.range) == (0, 103)
+
+
+def test_g4_tem_uma_faceta_por_cenario_com_duas_curvas_em_cada():
+    fig = graficos.g4(RESULTADOS)
+    assert [a.text for a in fig.layout.annotations] == [graficos.NOMES_CENARIO[c] for c in ("C0", "C1", "C2", "C3", "C4")]
+    assert len(curvas(fig)) == 10
+    por_faceta = {}
+    for t in curvas(fig):
+        por_faceta.setdefault(t.xaxis, []).append(t.name)
+    assert len(por_faceta) == 5 and all(sorted(n) == ["Mann-Whitney", "Welch"] for n in por_faceta.values())
+
+
+def test_g4_desenha_o_poder_em_percentual_na_grade_de_efeitos_de_cada_cenario():
+    fig = graficos.g4(RESULTADOS)
+    esperado = [(c, t) for c in ("C0", "C1", "C2", "C3", "C4") for t in ("welch", "mann_whitney")]
+    for traco, (cenario, teste) in zip(curvas(fig), esperado):
+        d = linhas_do_csv(RESULTADOS, cenario, teste)
+        assert list(traco.x) == list(d["delta"]) and len(traco.x) == 6 and traco.x[0] == 0
+        assert np.allclose(traco.y, d["taxa"] * 100)
+
+
+def test_g4_usa_as_cores_do_teste_e_simbolos_e_tracos_diferentes_para_as_curvas_coincidentes():
+    fig = graficos.g4(RESULTADOS)
+    for traco in curvas(fig):
+        teste = {"Welch": "welch", "Mann-Whitney": "mann_whitney"}[traco.name]
+        assert traco.line.color == graficos.CORES_TESTE[teste] == traco.marker.color
+    welch, mw = curvas(fig)[0], curvas(fig)[1]   # C0, onde as curvas quase coincidem
+    assert (welch.marker.symbol, welch.line.dash) != (mw.marker.symbol, mw.line.dash)
+    assert fig.data[0].line.color == graficos.g3(RESULTADOS).data[0].marker.color   # mesma cor do G3
+
+
+def test_g4_tem_a_linha_de_referencia_em_5_por_cento_em_todas_as_facetas():
+    fig = graficos.g4(RESULTADOS)
+    assert [(s.y0, s.y1) for s in fig.layout.shapes] == [(5.0, 5.0)] * 5
+    assert fig.data[-1].name == "Nível nominal (α = 5%)" and fig.data[-1].showlegend is not False
+
+
+def test_g4_rotula_o_eixo_com_desvios_padrao_em_c0_e_razao_de_medianas_nos_demais():
+    fig = graficos.g4(RESULTADOS)
+    assert list(fig.layout.xaxis.ticktext) == ["0,0", "0,2", "0,4", "0,6", "0,8", "1,0"]
+    assert list(fig.layout.xaxis2.ticktext) == ["1,0×", "1,5×", "2,2×", "3,3×", "5,0×", "7,4×"]
+    assert list(fig.layout.xaxis2.tickvals) == [0.0, 0.4, 0.8, 1.2, 1.6, 2.0]
+
+
+def test_g4_aceita_trocar_a_unidade_do_efeito_e_os_nomes_dos_cenarios():
+    fig = graficos.g4(RESULTADOS, unidades={"C0": "log", "C1": "dp"}, nomes={"C0": "controle"})
+    assert fig.layout.xaxis.title.text == "Razão de medianas B/A (×)"
+    assert fig.layout.xaxis2.title.text == "Efeito δ (desvios-padrão)"
+    assert fig.layout.annotations[0].text == "controle" and fig.layout.annotations[1].text == graficos.NOMES_CENARIO["C1"]
+
+
+def test_g4_no_nivel_de_1_por_cento_move_a_linha_e_usa_as_taxas_de_1_por_cento():
+    fig = graficos.g4(RESULTADOS, alfa=0.01)
+    assert [(s.y0, s.y1) for s in fig.layout.shapes] == [(1.0, 1.0)] * 5
+    assert np.allclose(curvas(fig)[0].y, linhas_do_csv(RESULTADOS, "C0", "welch", 0.01)["taxa"] * 100)
+    assert "α = 1%" in fig.data[-1].name
+
+
+@pytest.mark.parametrize("n_cenarios, linhas", [(1, 1), (2, 1), (3, 1), (4, 2), (5, 2), (6, 2)])
+def test_g4_distribui_as_facetas_em_ate_tres_colunas(n_cenarios, linhas):
+    base = RESULTADOS[RESULTADOS["cenario"] == "C1"]
+    tabela_ = pd.concat([base.assign(cenario=f"X{i}") for i in range(n_cenarios)], ignore_index=True)
+    fig = graficos.g4(tabela_)
+    assert len(curvas(fig)) == 2 * n_cenarios and len(fig.layout.annotations) == n_cenarios
+    assert fig.layout.height == 430 * linhas + 160
+    assert len({t.xaxis for t in curvas(fig)}) == n_cenarios
+
+
+def test_g4_desenha_so_os_cenarios_presentes():
+    sem_c4 = RESULTADOS[RESULTADOS["cenario"] != "C4"]
+    assert len(curvas(graficos.g4(sem_c4))) == 8
+
+
+def test_g4_a_primeira_ponta_da_curva_e_o_erro_tipo_i_do_g3():
+    g4 = graficos.g4(RESULTADOS)
+    g3 = graficos.g3(RESULTADOS)
+    for i, traco in enumerate(curvas(g4)):
+        barra = g3.data[i % 2]   # Welch e Mann-Whitney, na ordem dos cenários
+        assert traco.y[0] == pytest.approx(barra.y[i // 2])
+
+
+def test_g4_curvas_coincidentes_em_c0_continuam_com_duas_series_distintas():
+    welch, mw = curvas(graficos.g4(RESULTADOS))[:2]
+    assert np.abs(np.array(welch.y) - np.array(mw.y)).max() < 4   # quase se sobrepõem em C0 (até 3 p.p.)
+    assert not np.allclose(welch.y, mw.y)
+
+
+def test_g4_hover_traz_o_efeito_a_razao_de_medianas_o_poder_e_o_ic():
+    fig = graficos.g4(RESULTADOS)
+    mw_c1 = curvas(fig)[3]   # Mann-Whitney em C1
+    ponto = mw_c1.customdata[3]   # δ = 1,2
+    assert ponto[0] == "1,2" and ponto[1] == "3,32×" and ponto[2] == "76,86%" and list(ponto[5:8]) == [7686, 10_000, 30]
+    assert ponto[8] == "poder" and mw_c1.customdata[0][8] == "erro tipo I" and mw_c1.customdata[0][9] == "ok"
+    assert curvas(fig)[0].customdata[2][1] == "—"   # C0 não tem razão de medianas
+    assert "razão de medianas" in mw_c1.hovertemplate and "desvio-padrão" in curvas(fig)[0].hovertemplate
+
+
+@pytest.mark.parametrize("quebrar, mensagem", [
+    (lambda d: d.drop(columns="ic_inf"), "faltam as colunas.*ic_inf"),
+    (lambda d: d.assign(teste="t_de_student"), "testes desconhecidos"),
+    (lambda d: d[d["delta"] == 0], "não tem linhas com efeito"),
+])
+def test_g4_recusa_tabelas_invalidas(quebrar, mensagem):
+    with pytest.raises(ValueError, match=mensagem):
+        graficos.g4(quebrar(RESULTADOS))
+
+
+def test_g4_recusa_alfa_ausente():
+    with pytest.raises(ValueError, match="α = 0.1"):
+        graficos.g4(RESULTADOS, alfa=0.1)
+
+
+def test_texto_do_g4_tem_de_2_a_4_frases():
+    frases = [f for f in re.split(r"(?<=[.!?])\s+", graficos.TEXTO_G4.strip()) if f]
+    assert 2 <= len(frases) <= 4
+
+
+def test_numeros_do_texto_do_g4_batem_com_a_vantagem_de_poder_dos_resultados():
+    """Se os resultados mudarem, o texto precisa ser revisto: os números dele saem daqui."""
+    from lab04 import resultados
+
+    poder = resultados.vantagem_de_poder(RESULTADOS)
+    lid = resultados.lideres(poder)
+    texto = graficos.TEXTO_G4
+    c1 = poder[(poder["cenario"] == "C1") & (poder["alfa"] == 0.05) & (poder["delta"] == 1.2)].iloc[0]
+    assert f"{np.exp(1.2):.1f}".replace(".", ",") + " vezes" in texto
+    assert f"{c1['poder_mann_whitney'] * 100:.1f}%".replace(".", ",") in texto
+    assert f"{c1['poder_welch'] * 100:.1f}%".replace(".", ",") in texto
+    maximos = poder[poder["alfa"] == 0.05].groupby("cenario")["vantagem_pp"].apply(lambda s: s.abs().max())
+    demais = maximos[["C1", "C2", "C3", "C4"]]
+    assert f"entre {round(demais.min())} e {round(demais.max())} pontos" in texto
+    assert f"{maximos['C0']:.1f}".replace(".", ",") + " pontos percentuais" in texto
+    for alfa in (0.05, 0.01):   # Welch lidera o controle, Mann-Whitney os demais, e nada alterna: vale nos dois α
+        lider = lid[lid["alfa"] == alfa].set_index("cenario")["lider"]
+        assert lider["C0"] == "welch" and (lider.drop("C0") == "mann_whitney").all()
+    assert not lid["inverte_com_o_efeito"].any()
