@@ -1,5 +1,12 @@
 """Gráficos G1 a G4 em Plotly (S01-09, S01-10, S02-08, S02-09).
 
+G3 (`g3`): erro tipo I de cada teste em cada situação simulada (Q1 e Q3), isto é, a taxa de rejeição
+com H₀ verdadeira (δ = 0). Barras agrupadas por cenário, uma por teste, com a linha no nível
+nominal (α = 5%) e o intervalo de Wilson de 95% como barra de erro. Lê o formato de CSV congelado
+na S02-01 (`resultados.csv`, ou o `piloto.csv`) e desenha os cenários que estão na tabela; o hover
+traz a taxa, o intervalo, as rejeições e a classificação (liberal, conservador ou ok) de
+`resultados.classificar`.
+
 Cores e rótulos dos grupos ficam aqui para valerem em todo o dashboard: o `com_bot` é sempre o
 grupo A e o `sem_bot` o grupo B, como no gerador e em `testes.py`.
 
@@ -31,6 +38,7 @@ from scipy import stats
 
 from lab04 import calibracao, gerador
 from lab04.descritiva import GRUPOS, horas_do_grupo
+from lab04.resultados import classificar
 
 CORES_GRUPO = {"com_bot": "#1f77b4", "sem_bot": "#ff7f0e"}
 NOMES_GRUPO = {"com_bot": "Com bot (A)", "sem_bot": "Sem bot (B)"}
@@ -45,6 +53,14 @@ MAX_CLASSES = 40
 OPACIDADE = 0.6
 
 ALFA = 0.05
+NOMES_CENARIO = {   # os nomes do config.yaml, para os rótulos do G3 e do G4
+    "C0": "C0: controle (normal)",
+    "C1": "C1: referência (lognormal)",
+    "C2": "C2: assimetria forte",
+    "C3": "C3: outliers",
+    "C4": "C4: amostra pequena (n = 10)",
+}
+COLUNAS_RESULTADOS = ("cenario", "delta", "n", "n_rep", "alfa", "teste", "rejeicoes", "taxa", "ic_inf", "ic_sup")
 N_H0 = 10_000  # conjuntos simulados sob H₀ no histograma do G2
 LIMITE_PADRAO = 4.0  # o eixo x do G2 vai de −4 a 4 ...
 LIMITE_MAXIMO = 8.0  # ... e se estende até ±8 para incluir a estatística observada
@@ -173,6 +189,17 @@ TEXTO_G2 = (
     "Com a lognormal calibrada, o histograma do t fica achatado, com dois ombros, e só cerca de 2,5% dos "
     "conjuntos sob H₀ caem na região de rejeição, contra 5% do Mann-Whitney: com essa assimetria e n = 30, "
     "o Welch rejeita menos que o α nominal."
+)
+
+TEXTO_G3 = (
+    "Com H₀ verdadeira, o Mann-Whitney ficou perto de 5% em todas as situações, entre 4,35% e 4,96%; em C0 e "
+    "em C4 o desvio é pequeno (−0,57 e −0,65 pontos percentuais), mas o intervalo de 95% não alcança 5%, e por "
+    "isso o teste é classificado como conservador. "
+    "O Welch só ficou perto de 5% no controle normal (4,63%): em C1 a C4, em que os dados violam a normalidade, "
+    "ele rejeitou apenas de 1,54% a 2,47%, ou seja, ficou conservador e se desviou muito do nominal. "
+    "Nenhum teste foi liberal, então nenhum produz falsos positivos além do nível escolhido, mas um teste "
+    "conservador detecta menos efeitos reais (G4). "
+    "Com α = 1% a classificação é a mesma."
 )
 
 
@@ -369,6 +396,83 @@ def g2(exemplo: dict) -> go.Figure:
         title=f"G2: como os testes decidem, exemplo {caso}",
         barmode="overlay",
         bargap=0,
+        legend={"orientation": "h", "y": -0.25},
+        template="plotly_white",
+    )
+    return figura
+
+
+def g3(resultados: pd.DataFrame, alfa: float = ALFA, nomes: dict | None = None) -> go.Figure:
+    """Erro tipo I de cada teste por situação simulada (Q1 e Q3), com a linha no nível nominal (S02-08).
+
+    `resultados` está no formato de CSV congelado na S02-01. Usa as linhas de δ = 0 no nível `alfa`
+    (5% por padrão) e desenha um grupo de barras por cenário, na ordem em que aparecem na tabela,
+    uma barra por teste, com o intervalo de Wilson de 95% como barra de erro. `nomes` troca os
+    rótulos dos cenários (padrão: `NOMES_CENARIO`; um id desconhecido aparece como ele mesmo).
+    Levanta `ValueError` se faltam colunas, se há um teste desconhecido ou se não há linha de δ = 0
+    no nível pedido.
+    """
+    faltam = [c for c in COLUNAS_RESULTADOS if c not in resultados.columns]
+    if faltam:
+        raise ValueError(f"faltam as colunas {faltam} em resultados")
+    desconhecidos = sorted(set(resultados["teste"]) - set(NOMES_TESTE))
+    if desconhecidos:
+        raise ValueError(f"testes desconhecidos em resultados: {desconhecidos}")
+    h0 = resultados[(resultados["delta"] == 0) & np.isclose(resultados["alfa"], alfa)]
+    if h0.empty:
+        raise ValueError(f"resultados não tem linhas de δ = 0 com α = {alfa}")
+    classes = classificar(h0).set_index(["cenario", "teste"])["classificacao"]
+    rotulos = {**NOMES_CENARIO, **(nomes or {})}
+    cenarios = list(dict.fromkeys(h0["cenario"]))
+    x = [rotulos.get(c, c) for c in cenarios]
+    pct = lambda valor: f"{_num(valor * 100, 2)}%"   # noqa: E731
+    nivel = f"{_num(alfa * 100, 0 if alfa * 100 == int(alfa * 100) else 1)}%"
+
+    figura = go.Figure()
+    for teste in NOMES_TESTE:
+        linhas = h0[h0["teste"] == teste].set_index("cenario").reindex(cenarios)
+        figura.add_trace(
+            go.Bar(
+                x=x,
+                y=linhas["taxa"] * 100,
+                name=NOMES_TESTE[teste],
+                marker={"color": CORES_TESTE[teste]},
+                error_y={
+                    "type": "data", "symmetric": False,
+                    "array": (linhas["ic_sup"] - linhas["taxa"]) * 100,
+                    "arrayminus": (linhas["taxa"] - linhas["ic_inf"]) * 100,
+                    "color": "#333333", "thickness": 1.5, "width": 4,
+                },
+                customdata=[
+                    [pct(r.taxa), pct(r.ic_inf), pct(r.ic_sup), int(r.rejeicoes), int(r.n_rep), int(r.n),
+                     classes.get((c, teste), "—")]
+                    for c, r in zip(cenarios, linhas.itertuples())
+                ],
+                hovertemplate=(
+                    f"<b>{NOMES_TESTE[teste]}</b><br>%{{x}}<br>Taxa de rejeição: %{{customdata[0]}}<br>"
+                    "IC de Wilson de 95%: [%{customdata[1]}; %{customdata[2]}]<br>"
+                    "Rejeições: %{customdata[3]} de %{customdata[4]}<br>n = %{customdata[5]} por grupo<br>"
+                    "Classificação: %{customdata[6]}<extra></extra>"
+                ),
+            )
+        )
+    figura.add_trace(   # entrada de legenda para a linha, que o Plotly não lista sozinho
+        go.Scatter(x=[None], y=[None], mode="lines", line={"color": COR_REJEICAO, "dash": "dash", "width": 2},
+                   name=f"Nível nominal (α = {nivel})")
+    )
+    figura.add_hline(y=alfa * 100, line={"color": COR_REJEICAO, "dash": "dash", "width": 2})
+
+    topo = max(float((h0["ic_sup"] * 100).max()), alfa * 100) * 1.15
+    repeticoes = " e ".join(f"{n:,}".replace(",", ".") for n in sorted(set(h0["n_rep"])))
+    figura.update_layout(
+        title=(
+            "G3: erro tipo I de cada teste por situação simulada"
+            f"<br><sup>H₀ verdadeira (δ = 0), α = {nivel}; barras de erro: intervalo de Wilson de 95% "
+            f"({repeticoes} repetições por barra)</sup>"
+        ),
+        xaxis={"title": {"text": "Situação simulada (cenário)"}},
+        yaxis={"title": {"text": "Taxa de rejeição com H₀ verdadeira (%)"}, "range": [0, topo], "ticksuffix": "%"},
+        barmode="group",
         legend={"orientation": "h", "y": -0.25},
         template="plotly_white",
     )
