@@ -130,6 +130,7 @@ Cada simulação final roda com `python -m lab04.simulacao`, a partir da pasta `
 | Issue | Cenários | Comando | CSV |
 |---|---|---|---|
 | S02-03 | C0 e C1 (Q1 e Q2) | `python -m lab04.simulacao --cenarios C0 C1 --saida dados/simulacao/c0_c1.csv` | `dados/simulacao/c0_c1.csv`, 48 linhas |
+| S02-04 | C2 e C3 (Q3: assimetria e outliers) | `python -m lab04.simulacao --cenarios C2 C3 --saida dados/simulacao/c2_c3.csv` | `dados/simulacao/c2_c3.csv`, 48 linhas |
 
 O `config.yaml` usado nas simulações é o congelado na S02-01 (commit `dc4f478`, PR #261); seu hash está no registro. Resultados de C0 e C1 (poder, α = 0,05, 10.000 repetições):
 
@@ -142,6 +143,20 @@ O `config.yaml` usado nas simulações é o congelado na S02-01 (commit `dc4f478
 |---|---|---|---|---|---|---|
 | Welch | 2,5% | 6,4% | 17,5% | 36,7% | 53,9% | 68,6% |
 | Mann-Whitney | 4,7% | 14,0% | 41,7% | 76,9% | 94,9% | 99,4% |
+
+Resultados de C2 e C3 (poder, α = 0,05, 10.000 repetições; δ em escala log):
+
+| δ em C2 | 0 | 0,4 | 0,8 | 1,2 | 1,6 | 2,0 |
+|---|---|---|---|---|---|---|
+| Welch | 2,0% | 3,8% | 9,1% | 19,2% | 30,9% | 42,9% |
+| Mann-Whitney | 4,9% | 11,3% | 31,1% | 60,2% | 84,0% | 95,9% |
+
+| δ em C3 | 0 | 0,4 | 0,8 | 1,2 | 1,6 | 2,0 |
+|---|---|---|---|---|---|---|
+| Welch | 1,6% | 3,7% | 9,4% | 19,1% | 31,9% | 41,5% |
+| Mann-Whitney | 5,0% | 13,2% | 39,1% | 71,4% | 91,7% | 98,9% |
+
+Em C2 e C3 a hipótese nula é verdadeira em δ = 0: no C3 a contaminação (5% das observações × 20) vale nos dois grupos, inclusive em δ = 0, e A e B têm a mesma distribuição (teste de Kolmogorov-Smirnov sobre log(x) e fração contaminada de ~5% em cada grupo). Nenhum valor simulado overflowa: o máximo, em 10.000 repetições por célula, é da ordem de 10⁶ (σ = 2 e fator 20). Nos dois cenários o Welch é conservador em δ = 0 (taxa abaixo de α) e perde poder para o Mann-Whitney; a leitura é da S02-07.
 
 **Erro tipo I de C0 (investigação).** A Issue pede investigar uma taxa de C0 fora de 5% ± 0,43 p.p. com n = 30. Em α = 0,05 o Mann-Whitney deu 4,43% (fora da faixa) e o Welch 4,63% (dentro do IC de Wilson, que contém 0,05); em α = 0,01 o Mann-Whitney deu 0,71%. Não é erro de código nem de semente:
 

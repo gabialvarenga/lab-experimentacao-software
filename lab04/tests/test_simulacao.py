@@ -7,10 +7,11 @@ import pandas as pd
 import pytest
 from scipy import stats
 
-from lab04 import config, simulacao
+from lab04 import config, gerador, simulacao
 
 CFG = config.carregar()
 SIM = config.simulacao(CFG)
+CENARIOS = {c["id"]: c for c in SIM["cenarios"]}
 NORMAL = {"id": "N", "familia": "normal", "mu": 0.0, "sigma": 1.0, "n": 30}
 CONSTANTE = {"id": "K", "familia": "normal", "mu": 1.0, "sigma": 0.0, "n": 10}
 EFEITOS = [0.0, 0.5, 1.0, 1.5, 2.0]
@@ -373,3 +374,67 @@ def test_erro_tipo_i_de_c0_fica_perto_do_nominal():
     c0 = tabela[(tabela["cenario"] == "C0") & (tabela["delta"] == 0)]
     assert c0[c0["alfa"] == 0.05]["taxa"].between(0.04, 0.06).all()
     assert c0[c0["alfa"] == 0.01]["taxa"].between(0.005, 0.015).all()
+
+
+# --- o CSV de C2 e C3 versionado (S02-04) ---
+
+C2_C3 = Path(CFG["pasta"]) / "dados" / "simulacao" / "c2_c3.csv"
+COMANDO_C2_C3 = ["--cenarios", "C2", "C3", "--saida", "dados/simulacao/c2_c3.csv"]
+POSICAO = {c["id"]: i for i, c in enumerate(SIM["cenarios"])}
+
+
+def test_csv_de_c2_e_c3_tem_o_formato_e_o_numero_de_linhas_esperados():
+    tabela = csv(C2_C3)
+    esperado = sum(len(c["efeitos"]) for c in SIM["cenarios"] if c["id"] in ("C2", "C3")) * len(SIM["alfas"]) * 2
+    assert list(tabela.columns) == simulacao.COLUNAS and len(tabela) == esperado == 48
+    assert set(tabela["cenario"]) == {"C2", "C3"} and set(tabela["n_rep"]) == {10_000} and set(tabela["n"]) == {30}
+    assert len(tabela[["cenario", "delta", "alfa", "teste"]].drop_duplicates()) == len(tabela)
+    for id_ in ("C2", "C3"):
+        assert list(tabela[tabela["cenario"] == id_]["delta"].unique()) == CENARIOS[id_]["efeitos"]
+
+
+def test_csv_de_c2_e_c3_e_reproduzido_pelo_comando_do_readme(tmp_path):
+    arquivo = tmp_path / "config.yaml"
+    arquivo.write_text((Path(CFG["pasta"]) / "config.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    assert simulacao.main(["--config", str(arquivo), *COMANDO_C2_C3]) == 0
+    pd.testing.assert_frame_equal(csv(tmp_path / "dados" / "simulacao" / "c2_c3.csv"), csv(C2_C3))
+
+
+def test_registros_versionados_citam_o_mesmo_config_congelado():
+    pasta = C2_C3.parent
+    hash_do_config = simulacao.sha256(Path(CFG["pasta"]) / "config.yaml")
+    for nome, comando in [("c0_c1", "--cenarios C0 C1"), ("c2_c3", "--cenarios C2 C3")]:
+        registro = (pasta / f"registro-{nome}.md").read_text(encoding="utf-8")
+        assert hash_do_config in registro and f"python -m lab04.simulacao {comando} --saida dados/simulacao/{nome}.csv" in registro
+        assert "| p-valores NaN | welch: 0, mann_whitney: 0 |" in registro
+
+
+@pytest.mark.parametrize("id_", ["C2", "C3"])
+def test_valores_simulados_em_c2_e_c3_sao_finitos_e_positivos_sem_overflow(id_):
+    """σ alto e a contaminação × 20 geram valores enormes; nenhum vira inf, NaN ou ≤ 0."""
+    cenario = CENARIOS[id_]
+    for j, delta in enumerate(cenario["efeitos"]):
+        rng = simulacao.gerador_da_celula(42, POSICAO[id_], j)
+        A, B = gerador.gerar_lote(cenario, delta, cenario["n"], SIM["repeticoes"], rng)
+        for grupo in (A, B):
+            assert np.isfinite(grupo).all() and (grupo > 0).all() and grupo.max() < 1e100
+
+
+def test_em_c3_a_contaminacao_vale_nos_dois_grupos_e_h0_continua_verdadeira_em_delta_zero():
+    """Contaminar só um grupo mudaria H₀; em δ = 0 A e B têm a mesma distribuição."""
+    cenario, sem = CENARIOS["C3"], {k: v for k, v in CENARIOS["C3"].items() if k != "contaminacao"}
+    A, B = gerador.gerar_lote(cenario, 0.0, 30, 20_000, np.random.default_rng(7))
+    A0, B0 = gerador.gerar_lote(sem, 0.0, 30, 20_000, np.random.default_rng(7))
+    assert (A != A0).mean() == pytest.approx(0.05, abs=0.003)  # ~5% das observações do grupo A × 20
+    assert (B != B0).mean() == pytest.approx(0.05, abs=0.003)  # e do grupo B
+    assert stats.ks_2samp(np.log(A).ravel(), np.log(B).ravel()).pvalue > 0.01
+
+
+def test_erro_tipo_i_de_c2_e_c3_do_mann_whitney_fica_perto_do_nominal():
+    """Q1 em C2 e C3: com H₀ verdadeira o Mann-Whitney mantém α, e o Welch fica abaixo (conservador)."""
+    tabela = csv(C2_C3)
+    h0 = tabela[tabela["delta"] == 0]
+    mw, welch = h0[h0["teste"] == "mann_whitney"], h0[h0["teste"] == "welch"]
+    assert mw[mw["alfa"] == 0.05]["taxa"].between(0.04, 0.06).all()
+    assert mw[mw["alfa"] == 0.01]["taxa"].between(0.005, 0.015).all()
+    assert (welch["taxa"] < welch["alfa"]).all()
