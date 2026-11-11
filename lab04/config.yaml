@@ -33,3 +33,66 @@ calibracao:
 # Dashboard (S01-11). Caminho relativo a esta pasta; o HTML gerado não é versionado.
 dashboard:
   saida: dashboard/index.html
+
+# Simulação (S02-01). CONGELADO: cenários, grades, repetições, alfas e semente não mudam depois do
+# merge da Issue #236. Mudar qualquer valor exige refazer todas as simulações e justificar a mudança
+# (pergunta 13). Formato do CSV de resultados: README, seção "Formato do CSV de resultados".
+#
+# Cada cenário é lido por `gerador.gerar_lote` (familia, mu, sigma, contaminacao) e acrescenta:
+#   n                 tamanho de cada grupo;
+#   efeitos           grade do efeito δ, 6 valores começando em 0 (δ = 0 é a hipótese nula);
+#   unidade_efeito    "dp" (δ em desvios-padrão, normal) ou "log" (δ somado ao μ da lognormal,
+#                     razão de medianas = e^δ).
+# Os valores de mu e sigma de C1 vêm de dados/reais/calibracao.json (arredondados a 4 casas):
+# mu do grupo com_bot e sigma = raiz da média das variâncias dos dois grupos, como em
+# `gerador.cenario_calibrado`. Um teste confere que não se afastaram da calibração.
+#
+# Grade calibrada pelo piloto (1.000 repetições, semente 42; dados/simulacao/piloto.csv), α = 0,05:
+#   C0: o poder sobe de ~4% (δ = 0) a ~96% (δ = 1,0) nos dois testes.
+#   C1: o poder do Mann-Whitney sobe de 4% (δ = 0) a 99,7% (δ = 2,0), sem trecho plano. O Welch
+#       fica abaixo de 5% em δ = 0 e chega a só 67% em δ = 2,0: é resultado da lognormal, não
+#       falha da grade, e por isso a grade é calibrada pelo Mann-Whitney.
+#   C2 a C4 usam a grade de C1 e não chegam a 100% (C4 fica em 66%): é o efeito do cenário.
+#   O efeito observado nos dados reais (δ ≈ 0,35) fica perto do 2º ponto da grade log (0,4).
+simulacao:
+  repeticoes: 10000            # por célula (cenário × efeito); margem de ±0,43 p.p. em torno de 5%
+  repeticoes_piloto: 1000
+  alfas: [0.05, 0.01]          # contados na mesma execução
+  confianca_ic: 0.95           # nível do intervalo de Wilson das taxas
+  piloto: dados/simulacao/piloto.csv
+  saida: dados/simulacao/resultados.csv
+  cenarios:
+    - id: C0
+      nome: controle
+      pressuposto: nenhum (confirma o caso fácil)
+      familia: normal
+      mu: 0.0
+      sigma: 1.0
+      n: 30
+      unidade_efeito: dp
+      efeitos: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    - &c1
+      id: C1
+      nome: referência
+      pressuposto: normalidade, no grau observado nos dados reais
+      familia: lognormal
+      mu: 2.6739                 # calibracao.json: com_bot.mu
+      sigma: 1.6493              # calibracao.json: raiz de (σ_com² + σ_sem²) / 2
+      n: 30
+      unidade_efeito: log
+      efeitos: &grade_log [0.0, 0.4, 0.8, 1.2, 1.6, 2.0]
+    - <<: *c1
+      id: C2
+      nome: assimetria forte
+      pressuposto: normalidade da média amostral
+      sigma: 2.0                 # assimetria populacional ~414, contra ~65 em C1
+    - <<: *c1
+      id: C3
+      nome: outliers
+      pressuposto: sensibilidade da média a valores extremos
+      contaminacao: {p: 0.05, fator: 20}   # ~5% das observações × 20, nos dois grupos
+    - <<: *c1
+      id: C4
+      nome: amostra pequena
+      pressuposto: aproximação assintótica dos dois testes
+      n: 10
