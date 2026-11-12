@@ -74,7 +74,7 @@ Opcional se sobrar tempo: variâncias e tamanhos de grupo desiguais. Cuidado: co
 | Tema | Decisão proposta |
 |---|---|
 | Linguagem e bibliotecas | Python 3.12, NumPy, SciPy, pandas, Plotly (mesmo `requirements.txt` do Lab03, sem Streamlit) |
-| Dashboard | Página HTML estática gerada com Plotly, publicada no GitHub Pages. Sem servidor, sem *cold start* na apresentação, link estável para o topo do dashboard. Alternativa: Streamlit Community Cloud (mais interativo, mas pode hibernar) |
+| Dashboard | Página HTML estática gerada com Plotly, publicada no GitHub Pages. Sem servidor, sem *cold start* na apresentação, link estável para o topo do dashboard. Alternativa: Streamlit Community Cloud (mais interativo, mas pode hibernar). **Revisto em 12/11/2026:** o professor pediu um dashboard dinâmico; o grupo acrescentou um app Streamlit (`app.py`, aberto com `python -m lab04 app`), rodado localmente na apresentação, e manteve o HTML estático como plano B |
 | Separação | A simulação grava CSVs em `dados/`; o dashboard só lê os CSVs. Rodar 10.000 repetições nunca bloqueia a abertura da página |
 | Comando único | `python -m lab04` lê o CSV da coleta, roda as simulações e gera o dashboard (a coleta pela API fica em comando à parte). Detalhado no README em S02-13 |
 | Gráficos | Mesma cor por teste em todos os gráficos (Welch e Mann-Whitney), título, eixos com nome e unidade, legenda. G3 com IC de Wilson e linha em 5%; G4 uma faceta por cenário |
