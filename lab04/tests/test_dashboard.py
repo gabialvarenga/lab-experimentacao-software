@@ -38,8 +38,7 @@ def test_secoes_1_a_3_tem_texto_e_graficos(pagina):
     assert "Pergunta." in cenario and "H₀" in cenario and "H₁" in cenario
     assert graficos.TEXTO_G1 in dados and dados.count('class="plotly-graph-div"') == 1
     assert graficos.TEXTO_G2 in testes and testes.count('class="plotly-graph-div"') == 2
-    for secao in (*secoes[3:5], secoes[6]):   # seções 4, 5 e 7
-        assert "Em construção" in secao and "plotly-graph-div" not in secao
+    assert "Em construção" in secoes[6] and "plotly-graph-div" not in secoes[6]   # seção 7
     assert "Em construção" not in secoes[5] and "<table>" in secoes[5]   # seção 6: a tabela dos dados reais
 
 
@@ -69,7 +68,7 @@ def test_grafico_ausente_ou_com_erro_vira_marcador(monkeypatch, tmp_path):
     pagina = saida.read_text(encoding="utf-8")
     assert "g1 ainda não foi implementado" in pagina
     assert pagina.count("g2 falhou (RuntimeError: sem dados)") == 2
-    assert "plotly-graph-div" not in pagina
+    assert pagina.count('class="plotly-graph-div"') == 2   # só o G3 e o G4: as seções 2 e 3 ficam com marcadores
     assert all(f'<section id="{ancora}">' in pagina for ancora, _ in dashboard.SECOES)
 
 
@@ -78,6 +77,79 @@ def test_texto_ausente_nao_quebra_a_pagina(monkeypatch, tmp_path):
     saida = tmp_path / "index.html"
     dashboard.montar(saida)
     assert "<h2>3. Como os testes funcionam</h2>" in saida.read_text(encoding="utf-8")
+
+
+# --- seções 4 e 5: erro tipo I (G3) e poder (G4) (S02-11) ---
+
+
+def secao(pagina, ancora):
+    return pagina.split(f'<section id="{ancora}">')[1].split("</section>")[0]
+
+
+def test_so_a_secao_7_continua_em_construcao():
+    assert set(dashboard.EM_CONSTRUCAO) == {"conclusao"}
+
+
+@pytest.mark.parametrize("ancora, nome", [("erro-tipo-1", "G3"), ("poder", "G4")])
+def test_secoes_4_e_5_tem_o_grafico_a_legenda_e_o_texto(pagina, ancora, nome):
+    trecho = secao(pagina, ancora)
+    assert trecho.count('class="plotly-graph-div"') == 1 and f"{nome}: " in trecho
+    assert "n = 30 por grupo (10 em C4)" in trecho
+    assert f'<p class="texto">{getattr(graficos, f"TEXTO_{nome}")}</p>' in trecho
+    assert "Em construção" not in trecho
+
+
+def test_pagina_tem_os_cinco_graficos_com_o_plotly_embutido_uma_vez(pagina):
+    assert pagina.count('class="plotly-graph-div"') == 5   # G1, os dois G2, G3 e G4
+    assert pagina.count("plotly.js v") == 1
+
+
+def test_texto_da_secao_4_bate_com_o_classificacao_csv():
+    """O texto do G3 contra o CSV versionado da S02-07 (o teste do G3 confere a classificação recalculada)."""
+    cfg = config.carregar()
+    c = pd.read_csv(f"{cfg['pasta']}/dados/simulacao/classificacao.csv")
+    texto = graficos.TEXTO_G3
+    por_teste = {t: grupo.set_index(["alfa", "cenario"])["classificacao"] for t, grupo in c.groupby("teste")}
+    assert "liberal" not in set(c["classificacao"]) and "Nenhum teste foi liberal" in texto
+    mw, welch = por_teste["mann_whitney"][0.05], por_teste["welch"][0.05]
+    assert set(mw[mw == "conservador"].index) == {"C0", "C4"} and "em C0 e em C4" in texto
+    assert set(welch[welch == "ok"].index) == {"C0"} and "ficou conservador" in texto
+    for teste in por_teste.values():   # "Com α = 1% a classificação é a mesma"
+        assert (teste[0.05] == teste[0.01]).all()
+
+
+@pytest.mark.parametrize("nome", ["g3", "g4"])
+def test_g3_ou_g4_ausente_vira_marcador_so_na_sua_secao(monkeypatch, tmp_path, nome):
+    monkeypatch.delattr(graficos, nome)
+    saida = tmp_path / "index.html"
+    dashboard.montar(saida, config.carregar())
+    pagina = saida.read_text(encoding="utf-8")
+    ausente, presente = ("erro-tipo-1", "poder") if nome == "g3" else ("poder", "erro-tipo-1")
+    assert f"{nome} ainda não foi implementado" in secao(pagina, ausente)
+    assert "plotly-graph-div" not in secao(pagina, ausente)
+    assert secao(pagina, presente).count('class="plotly-graph-div"') == 1
+
+
+def test_resultados_ausentes_viram_marcador_nas_secoes_4_e_5_e_o_resto_da_pagina_sai(tmp_path):
+    cfg = config.carregar()
+    cfg["simulacao"] = {**cfg["simulacao"], "saida": "dados/simulacao/nao-existe.csv"}
+    saida = tmp_path / "index.html"
+    dashboard.montar(saida, cfg)
+    pagina = saida.read_text(encoding="utf-8")
+    for ancora in ("erro-tipo-1", "poder"):
+        trecho = secao(pagina, ancora)
+        assert "não foi possível ler dados/simulacao/nao-existe.csv (FileNotFoundError" in trecho
+        assert "plotly-graph-div" not in trecho
+    assert graficos.TEXTO_G3 in secao(pagina, "erro-tipo-1")
+    assert pagina.count('class="plotly-graph-div"') == 3   # G1 e os dois G2
+    assert all(f'<section id="{ancora}">' in pagina for ancora, _ in dashboard.SECOES)
+
+
+def test_tamanhos_lista_o_n_mais_comum_e_as_excecoes():
+    df = pd.DataFrame({"cenario": ["C0", "C0", "C1", "C4"], "n": [30, 30, 30, 10]})
+    assert dashboard._tamanhos(df) == "n = 30 por grupo (10 em C4)"
+    assert dashboard._tamanhos(df[df["n"] == 30]) == "n = 30 por grupo"
+    assert dashboard._tamanhos(pd.DataFrame({"cenario": ["C0"]})) == ""
 
 
 # --- seção 6: os dois testes nos dados reais (S02-10) ---

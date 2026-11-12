@@ -33,7 +33,7 @@ python -m lab04 dashboard              # --sem-abrir: só grava o HTML
 
 Leva poucos segundos. O `dashboard/index.html` é um arquivo único, com o Plotly embutido, e abre sem internet (só os links do topo precisam de rede). Ele não é versionado: é regerado pelo comando.
 
-**Estado atual (Sprint 01):** o dashboard tem as seções 1 (cenário), 2 (os dados, G1) e 3 (como os testes funcionam, G2); as seções 4 a 7 aparecem como "em construção" até a Sprint 02. A etapa `simular` ainda não existe: sozinha, ela avisa e sai com código 1; no comando único, ela avisa e o dashboard é gerado mesmo assim.
+**Estado atual (Sprint 02):** o dashboard tem as seções 1 (cenário), 2 (os dados, G1), 3 (como os testes funcionam, G2), 4 (erro tipo I, G3), 5 (poder, G4) e 6 (dados reais); a seção 7 (conclusão) aparece como "em construção" até a S02-12. As seções 4 e 5 leem `dados/simulacao/resultados.csv` e mostram os gráficos com α = 0,05; o efeito de α = 0,01 está no texto de cada uma. A etapa `simular` ainda não existe: sozinha, ela avisa e sai com código 1; no comando único, ela avisa e o dashboard é gerado mesmo assim.
 
 **Coleta dos dados reais.** A coleta pela API fica fora do comando único, porque precisa de um token do GitHub; o `dados/reais/prs.csv` já está versionado. Para refazê-la:
 
@@ -207,7 +207,7 @@ Em α = 0,01 a classificação é a mesma. O Welch se afasta muito do nominal as
 
 **Onde a vantagem de poder muda de lado.** Dentro de um cenário, nenhuma: o mesmo teste lidera em todos os efeitos em que há diferença. Entre cenários, sim: no controle normal (C0) o Welch lidera, por no máximo 3 p.p. (em α = 0,01, 3,9 p.p.); em C1, C2, C3 e C4 o Mann-Whitney lidera, com vantagem máxima entre 41 e 60 p.p. em α = 0,05. As saídas versionadas são conferidas por teste: se um CSV de simulação mudar, rode o comando de novo.
 
-**G3 (S02-08).** `graficos.g3(resultados)` desenha o erro tipo I de cada teste por cenário (barras agrupadas, linha em 5% e intervalo de Wilson de 95% como barra de erro), a partir de `resultados.csv` ou do `piloto.csv`; `alfa=0.01` desenha o nível de 1%. O texto do gráfico está em `graficos.TEXTO_G3`, e um teste confere os números dele contra a classificação. A inserção no dashboard é a S02-11.
+**G3 (S02-08).** `graficos.g3(resultados)` desenha o erro tipo I de cada teste por cenário (barras agrupadas, linha em 5% e intervalo de Wilson de 95% como barra de erro), a partir de `resultados.csv` ou do `piloto.csv`; `alfa=0.01` desenha o nível de 1%. O texto do gráfico está em `graficos.TEXTO_G3`, e um teste confere os números dele contra a classificação. No dashboard, o G3 é a seção 4 e o G4 a seção 5 (S02-11).
 
 **G4 (S02-09).** `graficos.g4(resultados)` desenha as curvas de poder: uma faceta por cenário, as curvas do Welch e do Mann-Whitney no mesmo gráfico (com símbolos e traços diferentes, para as curvas que quase coincidem em C0 continuarem legíveis) e a linha em 5% como referência; em δ = 0 a curva é o erro tipo I do G3. Cada faceta tem o seu eixo x: em C0 o efeito é δ em desvios-padrão e nos demais cenários os rótulos mostram a razão de medianas (δ está na escala log). O texto do gráfico é `graficos.TEXTO_G4`, e um teste confere os números dele contra `poder.csv`.
 
