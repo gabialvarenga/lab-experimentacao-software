@@ -418,7 +418,7 @@ def g2(exemplo: dict) -> go.Figure:
         title=f"G2: como os testes decidem, exemplo {caso}",
         barmode="overlay",
         bargap=0,
-        legend={"orientation": "h", "y": -0.25},
+        legend={"orientation": "h", "y": -0.42},
         template="plotly_white",
     )
     return figura

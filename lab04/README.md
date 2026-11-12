@@ -33,6 +33,10 @@ python -m lab04 dashboard              # --sem-abrir: só grava o HTML
 
 Leva poucos segundos. O `dashboard/index.html` é um arquivo único, com o Plotly embutido, e abre sem internet (só os links do topo precisam de rede). Ele não é versionado: é regerado pelo comando.
 
+A página é um painel em tema escuro, feito para rolar durante a apresentação: no topo ficam o título, os links e sete indicadores (KPIs) em uma linha; abaixo, as seções de 1 a 6, uma abaixo da outra, cada uma com o seu gráfico (ou tabela) e uma legenda de uma linha. O G3 e o G4 têm um seletor do nível de significância (α = 5% ou 1%) no cabeçalho, e os dois andam juntos; o G2 alterna entre o exemplo sem efeito e o com efeito. A seção 7 (Conclusão) não aparece; para trazê-la de volta, no fim da página e na folha de interpretação, mude `MOSTRAR_CONCLUSAO` para `True` em `lab04/dashboard.py`.
+
+Os textos de interpretação (o que cada gráfico mostra e o que o grupo conclui) ficam fora da tela, numa folha que abre com a tecla `i` (ou o botão "Interpretação") e fecha com `Esc`. Para uma página só com gráficos, tabelas e legendas, mude `MOSTRAR_INTERPRETACAO` para `False` em `lab04/dashboard.py`.
+
 **Estado atual (Sprint 02):** o dashboard tem as seções 1 (cenário), 2 (os dados, G1), 3 (como os testes funcionam, G2), 4 (erro tipo I, G3), 5 (poder, G4), 6 (dados reais) e 7 (conclusão: expectativa × resultado, recomendação e limitação principal); nenhuma seção está mais em construção. As seções 4 e 5 leem `dados/simulacao/resultados.csv` e mostram os gráficos com α = 0,05; o efeito de α = 0,01 está no texto de cada uma. A etapa `simular` ainda não existe: sozinha, ela avisa e sai com código 1; no comando único, ela avisa e o dashboard é gerado mesmo assim.
 
 **Coleta dos dados reais.** A coleta pela API fica fora do comando único, porque precisa de um token do GitHub; o `dados/reais/prs.csv` já está versionado. Para refazê-la:
