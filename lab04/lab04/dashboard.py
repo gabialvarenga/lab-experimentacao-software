@@ -1,23 +1,26 @@
-"""Montagem do dashboard em HTML com as 7 seções (S01-11, S02-11).
+"""Montagem do dashboard em HTML (S01-11, S02-11).
 
 `montar(saida)` grava uma página HTML estática única, com o Plotly.js embutido uma vez (a página
-abre sem internet). O topo tem os links do Kanban, do repositório e do próprio dashboard; depois
-vêm as 7 seções do enunciado, em ordem fixa:
+abre sem internet). Tema escuro; no topo, o título, os links e os sete indicadores (KPIs); depois, as
+seções de 1 a 6 uma abaixo da outra, em tela cheia, para rolar a página durante a apresentação:
 
 1. Cenário (pergunta, hipóteses e origem dos dados reais);
 2. Os dados (G1);
 3. Como os testes funcionam (G2, um por exemplo da S01-08);
-4. Erro tipo I (G3, α = 0,05) e 5. Poder (G4, α = 0,05), lidos de `resultados.csv` (S02-11);
-6. Dados reais: a tabela dos dois testes nos PRs coletados, com a conclusão (S02-10);
-7. Conclusão: expectativa × resultado, recomendação e limitação principal, com os commits da
-   expectativa e do `config.yaml` congelado (S02-12).
+4. Erro tipo I (G3) e 5. Poder (G4), lidos de `resultados.csv` (S02-11);
+6. Dados reais: a tabela dos dois testes nos PRs coletados, com a conclusão (S02-10).
 
-Os gráficos vêm de `graficos` pelo nome; se um ainda não existir ou falhar, a seção mostra um
-marcador com o motivo e o resto da página é gerado (`_figura_ou_marcador`). O mesmo vale para o
-`resultados.csv` das seções 4 e 5: se ele faltar ou não abrir, as duas mostram o marcador.
+A seção 7 (Conclusão, S02-12) não aparece: `MOSTRAR_CONCLUSAO = True` a traz de volta, no fim da
+página, e também na folha de interpretação. Cada seção tem uma legenda de uma linha. Os textos de
+interpretação ficam fora da tela, numa folha que abre com a tecla `i` (ou o botão "Interpretação") e
+fecha com `Esc`; `MOSTRAR_INTERPRETACAO = False` tira a folha e o botão. O nível de significância
+(α = 5% ou 1%) troca o G3 e o G4, e o G2 alterna entre o exemplo sem efeito e o com efeito. Os gráficos
+vêm de `graficos` pelo nome; se um ainda não existir ou falhar, a seção mostra um marcador com o motivo
+e o resto da página é gerado (`_figura_ou_marcador`). O mesmo vale para o `resultados.csv` das seções 4 e 5.
 """
 
 import html
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -25,6 +28,7 @@ import pandas as pd
 
 from lab04 import calibracao, config, gerador, graficos, testes
 from lab04.descritiva import GRUPOS, horas_do_grupo
+from lab04.resultados import classificar, lideres, vantagem_de_poder
 
 TITULO = "Lab04: testes de hipótese por dentro (t de Welch × Mann-Whitney)"
 INTEGRANTES = ("Brenda Evers", "Carlos José Gomes Batista Figueiredo", "Gabriela Alvarenga Cardoso")
@@ -41,29 +45,102 @@ SECOES = (
     ("erro-tipo-1", "4. Erro tipo I"),
     ("poder", "5. Poder"),
     ("dados-reais", "6. Dados reais"),
-    ("conclusao", "7. Conclusão"),
 )
+SECAO_CONCLUSAO = ("conclusao", "7. Conclusão")
+MOSTRAR_CONCLUSAO = False   # True: acrescenta a seção 7 (esperado × encontrado, recomendação e limitação)
 EM_CONSTRUCAO: dict = {}   # seções ainda sem conteúdo: {âncora: o que falta}; todas prontas desde a S02-12
+MOSTRAR_INTERPRETACAO = True   # False: sem a folha "Interpretação" (tecla i) e sem o botão que a abre
 
 ESTILO = """
-body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; color: #222; background: #fafafa; }
-header { background: #2b2d42; color: #fff; padding: 1.2rem 2rem; }
-header h1 { margin: 0 0 .4rem; font-size: 1.5rem; }
-header p { margin: .2rem 0; font-size: .9rem; opacity: .9; }
-nav.links a { color: #fff; margin-right: 1.2rem; font-weight: 600; }
-nav.links span.marcador { font-weight: 400; opacity: .75; }
-nav.indice { padding: .6rem 2rem; background: #edf2f4; font-size: .9rem; }
-nav.indice a { margin-right: 1rem; color: #2b2d42; }
-main { max-width: 1200px; margin: 0 auto; padding: 0 2rem 3rem; }
-section { background: #fff; margin: 1.5rem 0; padding: 1rem 1.5rem; border-radius: 8px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
-section h2 { margin-top: .3rem; color: #2b2d42; }
-p.texto, ul.texto { line-height: 1.55; max-width: 70rem; }
-p.legenda { color: #555; font-size: .9rem; margin-bottom: 0; }
-table { border-collapse: collapse; margin: .8rem 0; font-size: .95rem; }
-th, td { border: 1px solid #ccc; padding: .4rem .7rem; text-align: left; vertical-align: top; }
-th { background: #edf2f4; }
-div.marcador { border: 2px dashed #bbb; color: #666; padding: 1.5rem; text-align: center; border-radius: 6px; }
+html { background: #0b1020; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #e5e7eb; background: #0b1020; font-size: 16px; }
+a { color: #9db4ff; }
+header.topo { padding: 18px 28px 6px; max-width: 1560px; margin: 0 auto; box-sizing: border-box; }
+.marca h1 { margin: 0 0 4px; font-size: 22px; line-height: 1.25; color: #fff; }
+.marca p { margin: 0; font-size: 13px; color: #9ca3af; }
+nav.links { margin-top: 8px; font-size: 13px; }
+nav.links a { margin-right: 14px; font-weight: 600; text-decoration: none; border-bottom: 1px solid #4b5b8f; }
+nav.links span.marcador { color: #6b7280; }
+.acoes { margin-top: 8px; font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 12px; }
+.acoes button, #interpretacao button { cursor: pointer; background: #1f2a4a; color: #dbe4ff; border: 1px solid #34426b; border-radius: 6px;
+                                       padding: 5px 12px; font-size: 13px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 14px; }
+.kpi { background: #141a2e; border: 1px solid #232b45; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 8px 12px;
+       display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kpi.verde { border-left-color: #22c55e; } .kpi.ambar { border-left-color: #f59e0b; } .kpi.vermelho { border-left-color: #ef4444; }
+.kpi span { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+.kpi strong { font-size: 21px; line-height: 1.25; color: #fff; }
+.kpi small { font-size: 12px; color: #9ca3af; line-height: 1.3; }
+.controle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #9ca3af; }
+.controle label { cursor: pointer; padding: 3px 12px; border: 1px solid #34426b; border-radius: 999px; color: #cbd5e1; background: #141a2e; }
+.controle label:has(input:checked) { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+.controle input { position: absolute; opacity: 0; pointer-events: none; }
+.controle label:has(input:focus-visible) { outline: 2px solid #93c5fd; outline-offset: 2px; }
+[hidden] { display: none !important; }
+main.coluna { max-width: 1560px; margin: 0 auto; padding: 8px 28px 64px; box-sizing: border-box; }
+section { background: #141a2e; border: 1px solid #232b45; border-radius: 12px; padding: 14px 22px 16px; margin: 18px 0; }
+section .cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 30px; }
+section h2 { margin: 0; font-size: 21px; color: #9db4ff; letter-spacing: .01em; }
+section h3 { margin: 0 0 6px; font-size: 15px; color: #9db4ff; }
+section .corpo { position: relative; margin-top: 8px; }
+#dados .corpo { height: 460px; } #testes .corpo { height: 500px; } #erro-tipo-1 .corpo { height: 480px; } #poder .corpo { height: 680px; }
+section .corpo > div[data-painel] { height: 100%; }
+section .corpo .plotly-graph-div, section .corpo div[data-painel] > div { height: 100% !important; }
+p.legenda { margin: 8px 0 0; font-size: 13.5px; color: #8b95b0; line-height: 1.4; }
+.pergunta { margin: 10px 0; font-size: 18px; line-height: 1.5; padding: 12px 16px; background: #1b2540; border-radius: 10px; }
+.duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin: 8px 0; }
+.caixa { border: 1px solid #232b45; border-radius: 10px; padding: 10px 14px; background: #10162a; }
+.caixa p { margin: 4px 0; font-size: 14px; line-height: 1.5; color: #cbd5e1; }
+.fichas { display: flex; flex-wrap: wrap; gap: 8px; }
+.fichas span { background: #1b2540; border-radius: 999px; padding: 4px 13px; font-size: 14px; color: #cbd5e1; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 6px 0; }
+th, td { border: 1px solid #232b45; padding: 8px 12px; text-align: left; vertical-align: top; }
+th { background: #1b2540; color: #cbd5e1; font-weight: 600; }
+#dados-reais table { font-size: 16px; }
+.faixa-conclusao { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; align-items: start; margin-top: 8px; }
+.selos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.selo { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid #232b45;
+        border-radius: 8px; font-size: 14px; background: #10162a; min-width: 0; }
+.selo b { font-size: 11px; padding: 2px 9px; border-radius: 999px; color: #fff; white-space: nowrap; }
+.selo.sim b { background: #15803d; } .selo.parte b { background: #b45309; } .selo.nao b { background: #b91c1c; }
+div.marcador { border: 2px dashed #34426b; color: #8b95b0; padding: 1.2rem; text-align: center; border-radius: 8px; font-size: 14px; }
+#interpretacao { position: fixed; inset: 0; z-index: 50; overflow: auto; background: rgba(5, 8, 18, .97); padding: 28px 10vw 60px; color: #e5e7eb; }
+#interpretacao h2 { font-size: 22px; color: #fff; } #interpretacao h3 { font-size: 17px; color: #9db4ff; margin-top: 26px; }
+#interpretacao p.texto, #interpretacao ul.texto { line-height: 1.6; max-width: 70rem; font-size: 15px; }
+#interpretacao .cabecalho { display: flex; justify-content: space-between; align-items: center; }
+#interpretacao table { font-size: 14px; } #interpretacao p.legenda { font-size: 13px; }
+@media (max-width: 900px) { .faixa-conclusao { grid-template-columns: 1fr; } }
+"""
+
+SCRIPT = """
+function mostrar(grupo, valor) {
+  document.querySelectorAll('[data-painel="' + grupo + '"]').forEach(function (p) { p.hidden = p.dataset.valor !== valor; });
+  document.querySelectorAll('[data-painel="' + grupo + '"]:not([hidden]) .plotly-graph-div').forEach(function (g) {
+    if (window.Plotly) { Plotly.Plots.resize(g); }
+  });
+}
+document.querySelectorAll('input[data-grupo]').forEach(function (r) {
+  r.addEventListener('change', function () {
+    document.querySelectorAll('input[data-grupo="' + r.dataset.grupo + '"]').forEach(function (o) { o.checked = o.value === r.value; });
+    mostrar(r.dataset.grupo, r.value);
+  });
+});
+function redimensionar() {   // os gráficos são desenhados antes de o resto da página existir: ajusta ao tamanho final
+  document.querySelectorAll('.plotly-graph-div').forEach(function (g) {
+    if (window.Plotly && g.offsetParent !== null) { Plotly.Plots.resize(g); }
+  });
+}
+window.addEventListener('load', function () { redimensionar(); setTimeout(redimensionar, 300); });
+var folha = document.getElementById('interpretacao');
+function interpretacao(abrir) { if (folha) { folha.hidden = !abrir; } }
+var abrir = document.getElementById('abrir-interpretacao');
+if (abrir) { abrir.addEventListener('click', function () { interpretacao(true); }); }
+var fechar = document.getElementById('fechar-interpretacao');
+if (fechar) { fechar.addEventListener('click', function () { interpretacao(false); }); }
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') { interpretacao(false); }
+  else if ((e.key === 'i' || e.key === 'I') && folha && !e.ctrlKey && !e.metaKey && !e.altKey) { interpretacao(folha.hidden); }
+});
 """
 
 
@@ -80,14 +157,44 @@ def _marcador(texto: str) -> str:
     return f'<div class="marcador">{_e(texto)}</div>'
 
 
+def _compacto(figura, nome: str) -> None:
+    """Ajusta a figura ao painel de parede: fundo escuro e transparente, sem título, margens curtas e fonte pequena."""
+    figura.update_layout(
+        template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", title=None,
+        height=None, width=None, autosize=True, font={"size": 13, "color": "#e5e7eb"},
+        margin={"l": 50, "r": 16, "t": 40, "b": 30},
+    )
+    figura.update_annotations(font_size=13)
+    figura.update_xaxes(title_font={"size": 12}, title_standoff=6, automargin=True)   # a margem cresce até caber rótulo e título
+    figura.update_yaxes(title_font={"size": 12}, title_standoff=6, automargin=True)
+    if nome == "g1":   # títulos curtos: a contagem de PRs já está no painel 1
+        figura.for_each_annotation(lambda a: a.update(text=a.text.split(" (")[0]))
+    elif nome == "g2":   # a legenda do painel já diz o que cada elemento é
+        figura.update_layout(showlegend=False)
+        figura.update_annotations(selector={"bgcolor": "rgba(255,255,255,0.8)"}, bgcolor="rgba(20,26,46,0.9)")
+    elif nome == "g3":
+        figura.update_layout(legend={"orientation": "h", "x": 0.5, "xanchor": "center", "y": 1.0, "yanchor": "bottom"})
+    elif nome == "g4":   # a unidade do efeito vai no título da faceta, um só título no eixo y e a legenda na faceta vazia
+        figura.update_xaxes(title_text="")
+        figura.update_yaxes(title_text="")
+        figura.for_each_annotation(lambda a: a.update(text=a.text + (" · δ em dp" if a.text.startswith("C0") else " · razão de medianas (×)")))
+        figura.add_annotation(text="Rejeições de H₀ (%)", textangle=-90, xref="paper", yref="paper", x=-0.05, y=0.5,
+                              showarrow=False, font_size=12)
+        figura.update_layout(legend={"orientation": "v", "x": 0.72, "xanchor": "left", "y": 0.2, "yanchor": "top"})
+
+
 class _Figuras:
     """Converte figuras em HTML, embutindo o Plotly.js só na primeira."""
 
     def __init__(self):
         self.plotly_embutido = False
 
-    def html(self, figura) -> str:
-        trecho = figura.to_html(full_html=False, include_plotlyjs=not self.plotly_embutido, config={"responsive": True})
+    def html(self, figura, nome: str | None = None) -> str:
+        if nome:
+            _compacto(figura, nome)
+        trecho = figura.to_html(
+            full_html=False, include_plotlyjs=not self.plotly_embutido, config={"responsive": True, "displayModeBar": False}
+        )
         self.plotly_embutido = True
         return trecho
 
@@ -98,7 +205,7 @@ def _figura_ou_marcador(figuras: _Figuras, nome: str, *args) -> str:
     if funcao is None:
         return _marcador(f"Gráfico indisponível: {nome} ainda não foi implementado.")
     try:
-        return figuras.html(funcao(*args))
+        return figuras.html(funcao(*args), nome)
     except Exception as erro:  # o dashboard sai mesmo com um gráfico quebrado
         return _marcador(f"Gráfico indisponível: {nome} falhou ({type(erro).__name__}: {erro}).")
 
@@ -108,20 +215,103 @@ def _texto(nome: str) -> str:
     return f'<p class="texto">{_e(texto)}</p>' if texto else ""
 
 
-def _topo() -> str:
-    return f"""<header>
-<h1>{_e(TITULO)}</h1>
+def _legenda(texto: str) -> str:
+    return f'<p class="legenda">{_e(texto)}</p>'
+
+
+
+def _controle(grupo: str, opcoes, marcado: str, rotulo: str, sufixo: str = "") -> str:
+    """Seletor de botões de rádio; troca os painéis `_paineis(grupo, ...)` pelo JavaScript da página.
+
+    `sufixo` dá um `name` próprio a cada seletor do mesmo `grupo`, que o JavaScript mantém sincronizados.
+    """
+    nome = f"{grupo}-{sufixo}" if sufixo else grupo
+    botoes = "".join(
+        f'<label><input type="radio" name="{nome}" data-grupo="{grupo}" value="{valor}"'
+        f'{" checked" if valor == marcado else ""}>{_e(texto)}</label>'
+        for valor, texto in opcoes
+    )
+    return f'<div class="controle"><span>{_e(rotulo)}</span>{botoes}</div>'
+
+
+def _paineis(grupo: str, itens, marcado: str) -> str:
+    """Um painel por opção do seletor `grupo`; só o `marcado` começa visível."""
+    return "".join(
+        f'<div data-painel="{grupo}" data-valor="{valor}"{"" if valor == marcado else " hidden"}>{corpo}</div>'
+        for valor, corpo in itens
+    )
+
+
+ALFAS = (("5", "α = 5%", 0.05), ("1", "α = 1%", 0.01))
+
+
+def _topo(indicadores: str) -> str:
+    gerado = datetime.now().strftime("%d/%m/%Y %H:%M")
+    botao = '<button type="button" id="abrir-interpretacao">Interpretação (i)</button>' if MOSTRAR_INTERPRETACAO else ""
+    return f"""<header class="topo">
+<div class="marca"><h1>{_e(TITULO)}</h1>
 <p>{_e(" · ".join(INTEGRANTES))}</p>
 <nav class="links">
 <a href="{LINK_KANBAN}">Kanban (GitHub Projects)</a>
 <a href="{LINK_REPOSITORIO}">Repositório</a>
 <a href="{LINK_DASHBOARD}">Dashboard publicado</a> <span class="marcador">(publicação na S02-13)</span>
 </nav>
-</header>
-<nav class="indice">{"".join(f'<a href="#{ancora}">{_e(titulo)}</a>' for ancora, titulo in SECOES)}</nav>"""
+<div class="acoes">{botao}<span>Gerado em {gerado}</span></div></div>
+{indicadores or "<div></div>"}
+</header>""" 
 
 
-def _secao_cenario(cfg: dict, reais: pd.DataFrame) -> str:
+def _kpi(rotulo: str, valor: str, sub: str, tom: str = "") -> str:
+    return f'<div class="kpi {tom}"><span>{_e(rotulo)}</span><strong>{_e(valor)}</strong><small>{_e(sub)}</small></div>'
+
+
+def _faixa(valores) -> str:
+    """`4,35%–4,96%` a partir de taxas (proporções)."""
+    return f"{graficos._num(min(valores) * 100, 2)}%–{graficos._num(max(valores) * 100, 2)}%"
+
+
+def _indicadores(reais: pd.DataFrame, resultados) -> str:
+    """Faixa de KPIs: dados coletados, testes nos dados reais e resumo da simulação (α = 5%)."""
+    if reais.empty:
+        return ""
+    cartoes = []
+    try:
+        n = reais["grupo"].value_counts()
+        com, sem = horas_do_grupo(reais, "com_bot"), horas_do_grupo(reais, "sem_bot")
+        if not len(com) or not len(sem):
+            raise ValueError("falta um dos grupos")
+        cartoes.append(_kpi("PRs coletados", str(len(reais)), f"{n.get('com_bot', 0)} com bot · {n.get('sem_bot', 0)} sem bot"))
+        cartoes.append(_kpi("Mediana até o merge", f"{graficos._num(np.median(com), 1)} h · {graficos._num(np.median(sem), 1)} h",
+                            "com bot · sem bot"))
+        t = testes.tabela_dados_reais(reais).set_index("teste")
+        nenhum = not t["rejeita_h0"].any()
+        cartoes.append(_kpi("p-valor nos dados reais",
+                            f"{graficos._p_rotulo(t.loc['welch', 'p_valor'])} · {graficos._p_rotulo(t.loc['mann_whitney', 'p_valor'])}",
+                            "Welch · Mann-Whitney: " + ("nenhum rejeita H₀" if nenhum else "há rejeição de H₀ (α = 0,05)"),
+                            "verde" if nenhum else "ambar"))
+        cartoes.append(_kpi("Tamanho de efeito",
+                            f"g {graficos._num(t.loc['welch', 'tamanho_efeito'], 2)} · δ {graficos._num(t.loc['mann_whitney', 'tamanho_efeito'], 2)}",
+                            f"{t.loc['welch', 'magnitude']} · {t.loc['mann_whitney', 'magnitude']}"))
+    except Exception:  # sem os dados reais, a faixa mostra só o que conseguir
+        pass
+    if resultados is not None:
+        try:
+            c = classificar(resultados)
+            c5 = c[np.isclose(c["alfa"], 0.05)]
+            mw, welch = c5[c5["teste"] == "mann_whitney"]["taxa"], c5[c5["teste"] == "welch"]["taxa"]
+            cartoes.append(_kpi("Erro tipo I · Mann-Whitney", _faixa(mw), "α = 5%: perto do nominal em todos os cenários", "verde"))
+            cartoes.append(_kpi("Erro tipo I · Welch", _faixa(welch), "α = 5%: bem abaixo do nominal fora de C0", "ambar"))
+            l5 = lideres(vantagem_de_poder(resultados))
+            l5 = l5[np.isclose(l5["alfa"], 0.05)]
+            do_welch = ", ".join(l5[l5["lider"] == "welch"]["cenario"])
+            cartoes.append(_kpi("Maior poder", f"Mann-Whitney {int((l5['lider'] == 'mann_whitney').sum())}/{len(l5)}",
+                                f"cenários em que lidera · Welch: {do_welch}" if do_welch else "cenários em que lidera · Welch: nenhum"))
+        except Exception:
+            pass
+    return f'<div class="kpis">{"".join(cartoes)}</div>' if cartoes else ""
+
+
+def _cenario_detalhado(cfg: dict, reais: pd.DataFrame) -> str:
     c = cfg["coleta"]
     repositorio, revisor, limite = c["repositorio"], c["revisor"], c["limite_revisao_horas"]
     contagem = reais["grupo"].value_counts()
@@ -154,37 +344,59 @@ seção 6.</p>
 <a href="{LINK_PROTOCOLO}">protocolo de coleta</a>.</p>"""
 
 
+def _secao_cenario(cfg: dict, reais: pd.DataFrame) -> str:
+    c = cfg["coleta"]
+    contagem = reais["grupo"].value_counts()
+    n = {g: int(contagem.get(g, 0)) for g in GRUPOS}
+    return f"""<div class="cab"><h2>1. Cenário</h2></div>
+<p class="pergunta"><strong>Pergunta.</strong> O tempo até o merge de um PR do <code>{_e(c["repositorio"])}</code>
+muda quando ele recebe, em até {_e(c["limite_revisao_horas"])} h após a abertura, a revisão automática do Copilot?</p>
+<div class="caixa"><h3>Hipóteses (bicaudal, α = 0,05)</h3>
+<table>
+<tr><th></th><th>t de Welch</th><th>Mann-Whitney</th></tr>
+<tr><th>H₀</th><td>μ<sub>com</sub> = μ<sub>sem</sub></td><td>P(X<sub>com</sub> &gt; X<sub>sem</sub>) = ½</td></tr>
+<tr><th>H₁</th><td>μ<sub>com</sub> ≠ μ<sub>sem</sub></td><td>P(X<sub>com</sub> &gt; X<sub>sem</sub>) ≠ ½</td></tr>
+</table></div>
+<div class="caixa" style="margin-top:8px"><h3>Dados reais</h3>
+<div class="fichas"><span>{_e(c["repositorio"])}</span>
+<span>{_data(c["janela"]["inicio"])} a {_data(c["janela"]["fim"])}</span>
+<span>com bot: {n["com_bot"]} PRs</span><span>sem bot: {n["sem_bot"]} PRs</span>
+<span>{_e(c["por_mes"])} por mês e por grupo</span><span>semente {_e(cfg["semente"])}</span></div></div>
+<p class="legenda">X é o tempo até o merge, em horas. Detalhes: <a href="{LINK_CENARIO}">cenário</a> ·
+<a href="{LINK_PROTOCOLO}">protocolo de coleta</a>.</p>"""
+
+
 def _secao_dados(figuras: _Figuras, reais: pd.DataFrame, exemplos: dict) -> str:
     exemplo = exemplos["com_efeito"]
     return (
-        _figura_ou_marcador(figuras, "g1", reais, (exemplo["a"], exemplo["b"]))
-        + f'<p class="legenda">Simulados: lognormal calibrada nos dados reais, δ = {graficos._num(exemplo["delta"], 2)}, '
-        f'n = {exemplo["n"]} por grupo, semente {exemplo["semente"]}.</p>'
-        + _texto("TEXTO_G1")
+        '<div class="cab"><h2>2. Os dados</h2></div><div class="corpo">'
+        + _figura_ou_marcador(figuras, "g1", reais, (exemplo["a"], exemplo["b"]))
+        + "</div>"
+        + _legenda("G1: horas até o merge em escala log; dados reais à esquerda, simulados (lognormal calibrada, "
+                   f"δ = {graficos._num(exemplo['delta'], 2)}, n = {exemplo['n']} por grupo) à direita.")
     )
 
 
 def _secao_testes(figuras: _Figuras, exemplos: dict) -> str:
-    partes = []
-    for caso, descricao in (("sem_efeito", "H₀ verdadeira"), ("com_efeito", "H₀ falsa")):
+    itens, legendas = [], []
+    for valor, caso, descricao in (("sem", "sem_efeito", "H₀ verdadeira"), ("com", "com_efeito", "H₀ falsa")):
         exemplo = exemplos[caso]
-        partes.append(_figura_ou_marcador(figuras, "g2", exemplo))
-        partes.append(
-            f'<p class="legenda">Exemplo {caso.replace("_", " ")} ({descricao}): '
-            f'δ = {graficos._num(exemplo["delta"], 2)}, n = {exemplo["n"]} por grupo, semente {exemplo["semente"]}.</p>'
-        )
-    return "".join(partes) + _texto("TEXTO_G2")
+        itens.append((valor, _figura_ou_marcador(figuras, "g2", exemplo)))
+        legendas.append((valor, _legenda(
+            f"G2, exemplo {caso.replace('_', ' ')} ({descricao}): δ = {graficos._num(exemplo['delta'], 2)}, "
+            f"n = {exemplo['n']} por grupo, semente {exemplo['semente']}. Cinza: simulação sob H₀; vermelho: região de "
+            "rejeição; hachurado: p-valor; linha: estatística do exemplo.")))
+    seletor = _controle("g2", (("sem", "Sem efeito (H₀ verdadeira)"), ("com", "Com efeito (H₀ falsa)")), "sem", "Exemplo")
+    return (
+        f'<div class="cab"><h2>3. Como os testes funcionam</h2>{seletor}</div><div class="corpo">'
+        + _paineis("g2", itens, "sem") + "</div>" + _paineis("g2", legendas, "sem")
+    )
 
 
-LEGENDA_G3 = (
-    "Classificação (S02-07): liberal se o limite inferior do intervalo de Wilson de 95% fica acima de α, "
-    "conservador se o limite superior fica abaixo de α e ok se o intervalo contém α; a de cada barra aparece "
-    "ao passar o mouse, e a tabela completa, com α = 0,01, está em dados/simulacao/classificacao.csv."
-)
-LEGENDA_G4 = (
-    "Em δ = 0 a curva é o erro tipo I do G3; a vantagem de um teste sobre o outro em cada efeito, com α = 0,05 "
-    "e α = 0,01, está em dados/simulacao/poder.csv."
-)
+LEGENDA_G3 = "G3: taxa de rejeição com H₀ verdadeira; linha vermelha = α; barras de erro = intervalo de Wilson de 95%."
+LEGENDA_G4 = "G4: proporção de rejeições por tamanho de efeito; em δ = 0 é o erro tipo I; linha vermelha = α."
+NOMES_CURTOS_CENARIOS = {"C0": "C0 normal", "C1": "C1 lognormal", "C2": "C2 assimetria", "C3": "C3 outliers", "C4": "C4 n = 10"}
+TITULOS_SIMULACAO = {"g3": ("erro-tipo-1", "4. Erro tipo I"), "g4": ("poder", "5. Poder")}
 
 
 def _ler_resultados(cfg: dict):
@@ -206,15 +418,17 @@ def _tamanhos(resultados: pd.DataFrame) -> str:
     return f"n = {comum[0]} por grupo" + (f" ({excecoes})" if excecoes else "")
 
 
-def _secao_simulacao(figuras: _Figuras, resultados, marcador, grafico: str, legenda: str, texto: str) -> str:
-    """Seções 4 e 5: o gráfico `grafico` com α = 0,05, a legenda e o texto de `graficos.<texto>`."""
+def _secao_simulacao(figuras: _Figuras, resultados, marcador, grafico: str, legenda: str) -> str:
+    """Seções 4 e 5: o gráfico `grafico` em α = 5% e em α = 1% (o seletor da seção troca) e a legenda."""
+    titulo = TITULOS_SIMULACAO[grafico][1]
     if resultados is None:
-        return marcador + _texto(texto)
+        return f'<div class="cab"><h2>{titulo}</h2></div><div class="corpo">{marcador}</div>'
     tamanhos = _tamanhos(resultados)
+    itens = [(valor, _figura_ou_marcador(figuras, grafico, resultados, alfa, NOMES_CURTOS_CENARIOS)) for valor, _, alfa in ALFAS]
+    seletor = _controle("alfa", [(v, t) for v, t, _ in ALFAS], "5", "Nível de significância", sufixo=grafico)
     return (
-        _figura_ou_marcador(figuras, grafico, resultados)
-        + f'<p class="legenda">{_e((tamanhos + ". " if tamanhos else "") + legenda)}</p>'
-        + _texto(texto)
+        f'<div class="cab"><h2>{titulo}</h2>{seletor}</div><div class="corpo">' + _paineis("alfa", itens, "5") + "</div>"
+        + _legenda((tamanhos + ". " if tamanhos else "") + legenda)
     )
 
 
@@ -236,21 +450,21 @@ def _estatistica(linha) -> str:
 
 
 def tabela_dados_reais_html(tabela: pd.DataFrame, alfa: float = testes.ALFA) -> str:
-    """Tabela HTML da seção 6: uma linha por teste, com os números de `testes.tabela_dados_reais`."""
-    linhas = []
-    for _, r in tabela.iterrows():
-        linhas.append(
-            f"<tr><th>{_e(NOMES_TESTE_TABELA[r['teste']])}</th><td>{_e(O_QUE_COMPARA[r['teste']])}</td>"
-            f"<td>{_e(_estatistica(r))}</td><td>{_e(graficos._p_rotulo(r['p_valor']))}</td>"
-            f"<td>{_e(NOMES_MEDIDA[r['medida_efeito']])} = {_e(graficos._num(r['tamanho_efeito'], 2))} ({_e(r['magnitude'])})</td>"
-            f"<td>{_e(graficos._num(r['razao_medianas'], 2))}</td><td><strong>{_e(r['conclusao'])}</strong></td></tr>"
-        )
-    return (
-        "<table>\n<tr><th>Teste</th><th>Compara</th><th>Estatística</th><th>p-valor</th><th>Tamanho de efeito</th>"
-        f"<th>Razão de medianas (com bot ÷ sem bot)</th><th>Conclusão (α = {_e(graficos._num(alfa, 2))})</th></tr>\n"
-        + "\n".join(linhas)
-        + "\n</table>"
+    """Tabela HTML da seção 6: uma coluna por teste e uma linha por medida, com os números de `testes.tabela_dados_reais`."""
+    linhas = [r for _, r in tabela.iterrows()]
+    medidas = (
+        ("Compara", lambda r: _e(O_QUE_COMPARA[r["teste"]])),
+        ("Estatística", lambda r: _e(_estatistica(r))),
+        ("p-valor", lambda r: _e(graficos._p_rotulo(r["p_valor"]))),
+        ("Tamanho de efeito", lambda r: f"{_e(NOMES_MEDIDA[r['medida_efeito']])} = {_e(graficos._num(r['tamanho_efeito'], 2))} ({_e(r['magnitude'])})"),
+        ("Razão de medianas (com bot ÷ sem bot)", lambda r: _e(graficos._num(r["razao_medianas"], 2))),
+        (f"Conclusão (α = {graficos._num(alfa, 2)})", lambda r: f"<strong>{_e(r['conclusao'])}</strong>"),
     )
+    cabecalho = "".join(f"<th>{_e(NOMES_TESTE_TABELA[r['teste']])}</th>" for r in linhas)
+    corpo = "\n".join(
+        f"<tr><th>{_e(nome)}</th>" + "".join(f"<td>{formato(r)}</td>" for r in linhas) + "</tr>" for nome, formato in medidas
+    )
+    return f"<table>\n<tr><th>Medida</th>{cabecalho}</tr>\n{corpo}\n</table>"
 
 
 def _sentido(tabela: pd.DataFrame) -> str:
@@ -335,22 +549,15 @@ def texto_dados_reais(tabela: pd.DataFrame, reais: pd.DataFrame, alfa: float = t
     return [decisao, efeito, cautela, LIMITACOES]
 
 
-def _secao_dados_reais(reais: pd.DataFrame, cfg: dict) -> str:
-    try:
-        tabela = testes.tabela_dados_reais(reais)
-        paragrafos = texto_dados_reais(tabela, reais)
-    except Exception as erro:  # o dashboard sai mesmo se a tabela falhar
-        return _marcador(f"Tabela indisponível: os testes nos dados reais falharam ({type(erro).__name__}: {erro}).")
+def _secao_dados_reais(tabela, erro, reais: pd.DataFrame) -> str:
+    titulo = '<div class="cab"><h2>6. Dados reais</h2></div>'
+    if tabela is None:
+        return titulo + _marcador(f"Tabela indisponível: os testes nos dados reais falharam ({type(erro).__name__}: {erro}).")
     n = reais["grupo"].value_counts()
-    legenda = (
-        f"{n.get('com_bot', 0)} PRs com bot e {n.get('sem_bot', 0)} sem bot; testes bicaudais; o Welch compara médias e o "
-        "Mann-Whitney compara postos. Magnitude: |g| < 0,2 negligível, < 0,5 pequeno, < 0,8 médio; |δ de Cliff| < 0,147 "
-        "negligível, < 0,33 pequeno, < 0,474 médio."
-    )
     return (
-        tabela_dados_reais_html(tabela)
-        + f'<p class="legenda">{_e(legenda)}</p>'
-        + "".join(f'<p class="texto">{_e(p)}</p>' for p in paragrafos)
+        titulo + '<div class="corpo">' + tabela_dados_reais_html(tabela) + "</div>"
+        + _legenda(f"{n.get('com_bot', 0)} PRs com bot e {n.get('sem_bot', 0)} sem bot; testes bicaudais; "
+                   "g de Hedges (médias) e δ de Cliff (postos) como tamanhos de efeito.")
     )
 
 
@@ -446,12 +653,36 @@ TEXTO_LIMITACAO = (
 )
 
 
+RECOMENDACAO_CURTA = (
+    "Mann-Whitney para o tempo até o merge de PRs (cauda longa, cerca de 30 PRs por grupo): erro tipo I de 4,67% "
+    "contra 2,47% do Welch e poder até 41 p.p. maior (C1). Welch só com dados aproximadamente normais ou se a pergunta "
+    "for sobre médias."
+)
+LIMITACAO_CURTA = (
+    "Os cenários simulam grupos com a mesma forma e variância (C5 não foi feito); os dados reais vêm de um repositório, "
+    "de uma janela curta e de 30 PRs por grupo."
+)
+CLASSE_DO_SELO = (("Sim", "sim", "Confirmado"), ("Em parte", "parte", "Em parte"), ("Não", "nao", "Não confirmado"))
+NOMES_CURTOS_SITUACOES = (   # (início do rótulo da seção 7, rótulo curto do selo)
+    ("C0", "C0 normal"), ("C1", "C1 lognormal"), ("C2", "C2 assimetria"), ("C3", "C3 outliers"), ("C4", "C4 n = 10"),
+    ("Onde a vantagem", "Muda de lado"), ("α = 0,01", "α = 1%"), ("Dados reais", "Dados reais"),
+)
+
+
+def _selo(situacao: str, confirmou: str) -> str:
+    nome = next((curto for prefixo, curto in NOMES_CURTOS_SITUACOES if situacao.startswith(prefixo)), situacao)
+    for inicio, classe, rotulo in CLASSE_DO_SELO:
+        if confirmou.startswith(inicio):
+            return f'<div class="selo {classe}" title="{_e(situacao)}"><span>{_e(nome)}</span><b>{_e(rotulo)}</b></div>'
+    return f'<div class="selo" title="{_e(situacao)}"><span>{_e(nome)}</span><b>{_e(confirmou)}</b></div>'
+
+
 def _link_commit(chave: str) -> str:
     sha, data, _ = COMMITS[chave]
     return f'<a href="{LINK_COMMIT}{sha}"><code>{sha[:7]}</code></a> ({data})'
 
 
-def _secao_conclusao() -> str:
+def _conclusao_detalhada() -> str:
     linhas = "\n".join(
         f"<tr><th>{_e(situacao)}</th><td>{'<br>'.join(f'“{_e(c)}”' for c in citacoes)}</td>"
         f"<td>{_e(resultado)}</td><td>{_e(confirmou)}</td></tr>"
@@ -475,26 +706,64 @@ percentuais (p.p.) da seção 5; dados reais da seção 6.</p>
 <p class="texto"><strong>Limitação principal.</strong> {_e(TEXTO_LIMITACAO)}</p>"""
 
 
+def _secao_conclusao() -> str:
+    selos = "".join(_selo(situacao, confirmou) for situacao, _, _, confirmou in EXPECTATIVA_X_RESULTADO)
+    return (
+        '<div class="cab"><h2>7. Conclusão</h2></div><div class="faixa-conclusao">'
+        f'<div><h3>Esperado × encontrado</h3><div class="selos">{selos}</div></div>'
+        f'<div class="caixa"><h3>Recomendação</h3><p>{_e(RECOMENDACAO_CURTA)}</p></div>'
+        f'<div class="caixa"><h3>Limitação principal</h3><p>{_e(LIMITACAO_CURTA)}</p></div></div>'
+    )
+
+
+def _interpretacao(cfg: dict, reais: pd.DataFrame, paragrafos_dados_reais) -> str:
+    """A folha com os textos longos (abre com a tecla i); vazia se `MOSTRAR_INTERPRETACAO` é falso."""
+    if not MOSTRAR_INTERPRETACAO:
+        return ""
+    reais_html = "".join(f'<p class="texto">{_e(p)}</p>' for p in paragrafos_dados_reais)
+    partes = [
+        ("1. Cenário", _cenario_detalhado(cfg, reais)),
+        ("2. Os dados", _texto("TEXTO_G1")),
+        ("3. Como os testes funcionam", _texto("TEXTO_G2")),
+        ("4. Erro tipo I", _texto("TEXTO_G3")),
+        ("5. Poder", _texto("TEXTO_G4")),
+        ("6. Dados reais", reais_html),
+    ]
+    if MOSTRAR_CONCLUSAO:
+        partes.append((SECAO_CONCLUSAO[1], _conclusao_detalhada()))
+    corpo = "".join(f"<h3>{_e(titulo)}</h3>{texto}" for titulo, texto in partes if texto)
+    return (
+        '<aside id="interpretacao" hidden><div class="cabecalho"><h2>Interpretação</h2>'
+        f'<button type="button" id="fechar-interpretacao">Fechar (Esc)</button></div>{corpo}</aside>'
+    )
+
+
 def _pagina(cfg: dict) -> str:
     base = Path(cfg["pasta"])
     reais = pd.read_csv(base / cfg["coleta"]["saida"])
     exemplos = gerador.exemplos_calibrados(calibracao.ler(base / cfg["calibracao"]["saida"]))
     resultados, sem_resultados = _ler_resultados(cfg)
+    try:
+        tabela = testes.tabela_dados_reais(reais)
+        paragrafos, erro = texto_dados_reais(tabela, reais), None
+    except Exception as falha:  # o dashboard sai mesmo se a tabela falhar
+        tabela, paragrafos, erro = None, [], falha
     figuras = _Figuras()
     conteudo = {
         "cenario": _secao_cenario(cfg, reais),
         "dados": _secao_dados(figuras, reais, exemplos),
         "testes": _secao_testes(figuras, exemplos),
-        "erro-tipo-1": _secao_simulacao(figuras, resultados, sem_resultados, "g3", LEGENDA_G3, "TEXTO_G3"),
-        "poder": _secao_simulacao(figuras, resultados, sem_resultados, "g4", LEGENDA_G4, "TEXTO_G4"),
-        "dados-reais": _secao_dados_reais(reais, cfg),
-        "conclusao": _secao_conclusao(),
+        "erro-tipo-1": _secao_simulacao(figuras, resultados, sem_resultados, "g3", LEGENDA_G3),
+        "poder": _secao_simulacao(figuras, resultados, sem_resultados, "g4", LEGENDA_G4),
+        "dados-reais": _secao_dados_reais(tabela, erro, reais),
     }
+    secoes_da_pagina = SECOES
+    if MOSTRAR_CONCLUSAO:
+        conteudo["conclusao"] = _secao_conclusao()
+        secoes_da_pagina = (*SECOES, SECAO_CONCLUSAO)
     for ancora, previsto in EM_CONSTRUCAO.items():
         conteudo[ancora] = _marcador(f"Em construção: {previsto}.")
-    secoes = "\n".join(
-        f'<section id="{ancora}">\n<h2>{_e(titulo)}</h2>\n{conteudo[ancora]}\n</section>' for ancora, titulo in SECOES
-    )
+    secoes = "\n".join(f'<section id="{ancora}">\n{conteudo[ancora]}\n</section>' for ancora, _ in secoes_da_pagina)
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -504,10 +773,12 @@ def _pagina(cfg: dict) -> str:
 <style>{ESTILO}</style>
 </head>
 <body>
-{_topo()}
-<main>
+{_topo(_indicadores(reais, resultados))}
+<main class="coluna">
 {secoes}
 </main>
+{_interpretacao(cfg, reais, paragrafos)}
+<script>{SCRIPT}</script>
 </body>
 </html>
 """

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from lab04 import config, dashboard, graficos, testes
+from lab04 import calibracao, config, dashboard, gerador, graficos, testes
 
 
 @pytest.fixture(scope="module")
@@ -16,16 +16,38 @@ def pagina(tmp_path_factory):
     return saida.read_text(encoding="utf-8")
 
 
+@pytest.fixture(scope="module")
+def pagina_com_conclusao(tmp_path_factory):
+    """A página com `MOSTRAR_CONCLUSAO = True`, isto é, com a seção 7."""
+    chave = pytest.MonkeyPatch()
+    chave.setattr(dashboard, "MOSTRAR_CONCLUSAO", True)
+    try:
+        saida = tmp_path_factory.mktemp("dashboard_completo") / "index.html"
+        dashboard.montar(saida)
+        return saida.read_text(encoding="utf-8")
+    finally:
+        chave.undo()
+
+
 def test_montar_grava_html_completo_em_utf8(pagina):
     assert pagina.startswith("<!DOCTYPE html>") and pagina.rstrip().endswith("</html>")
     assert '<meta charset="utf-8">' in pagina
 
 
-def test_sete_secoes_na_ordem_fixa(pagina):
+def test_seis_secoes_na_ordem_fixa_e_a_conclusao_fica_de_fora(pagina):
     posicoes = [pagina.index(f'<section id="{ancora}">') for ancora, _ in dashboard.SECOES]
-    assert posicoes == sorted(posicoes) and len(posicoes) == 7
+    assert posicoes == sorted(posicoes) and len(posicoes) == 6
     for _, titulo in dashboard.SECOES:
         assert f"<h2>{titulo}</h2>" in pagina
+    assert pagina.count("<section ") == 6 and 'id="conclusao"' not in pagina and "7. Conclusão" not in pagina
+    assert dashboard.MOSTRAR_CONCLUSAO is False
+
+
+def test_com_a_chave_ligada_a_secao_7_volta_no_fim_da_pagina(pagina_com_conclusao):
+    ancoras = re.findall(r'<section id="([\w-]+)">', pagina_com_conclusao)
+    assert ancoras == [a for a, _ in dashboard.SECOES] + ["conclusao"]
+    assert f"<h2>{dashboard.SECAO_CONCLUSAO[1]}</h2>" in pagina_com_conclusao
+    assert "<h3>7. Conclusão</h3>" in folha(pagina_com_conclusao)
 
 
 def test_links_no_topo_antes_das_secoes(pagina):
@@ -34,12 +56,12 @@ def test_links_no_topo_antes_das_secoes(pagina):
         assert pagina.index(f'href="{link}"') < inicio
 
 
-def test_secoes_1_a_3_tem_texto_e_graficos(pagina):
+def test_secoes_1_a_3_tem_o_conteudo_e_os_graficos(pagina):
     secoes = re.split(r'<section id="', pagina)[1:]
     cenario, dados, testes = secoes[:3]
     assert "Pergunta." in cenario and "H₀" in cenario and "H₁" in cenario
-    assert graficos.TEXTO_G1 in dados and dados.count('class="plotly-graph-div"') == 1
-    assert graficos.TEXTO_G2 in testes and testes.count('class="plotly-graph-div"') == 2
+    assert dados.count('class="plotly-graph-div"') == 1 and testes.count('class="plotly-graph-div"') == 2
+    assert graficos.TEXTO_G1 in folha(pagina) and graficos.TEXTO_G2 in folha(pagina)
     assert "Em construção" not in pagina   # desde a S02-12 nenhuma seção está em construção
     assert "Em construção" not in secoes[5] and "<table>" in secoes[5]   # seção 6: a tabela dos dados reais
 
@@ -70,7 +92,7 @@ def test_grafico_ausente_ou_com_erro_vira_marcador(monkeypatch, tmp_path):
     pagina = saida.read_text(encoding="utf-8")
     assert "g1 ainda não foi implementado" in pagina
     assert pagina.count("g2 falhou (RuntimeError: sem dados)") == 2
-    assert pagina.count('class="plotly-graph-div"') == 2   # só o G3 e o G4: as seções 2 e 3 ficam com marcadores
+    assert pagina.count('class="plotly-graph-div"') == 4   # só o G3 e o G4, cada um em α = 5% e 1%: as seções 2 e 3 ficam com marcadores
     assert all(f'<section id="{ancora}">' in pagina for ancora, _ in dashboard.SECOES)
 
 
@@ -88,21 +110,26 @@ def secao(pagina, ancora):
     return pagina.split(f'<section id="{ancora}">')[1].split("</section>")[0]
 
 
+def folha(pagina):
+    """A folha de interpretação (fora dos painéis; abre com a tecla i)."""
+    return pagina.split('<aside id="interpretacao" hidden>')[1].split("</aside>")[0]
+
+
 def test_nenhuma_secao_continua_em_construcao():
     assert dashboard.EM_CONSTRUCAO == {}
 
 
 @pytest.mark.parametrize("ancora, nome", [("erro-tipo-1", "G3"), ("poder", "G4")])
-def test_secoes_4_e_5_tem_o_grafico_a_legenda_e_o_texto(pagina, ancora, nome):
+def test_secoes_4_e_5_tem_o_grafico_e_a_legenda_e_o_texto_fica_na_folha(pagina, ancora, nome):
     trecho = secao(pagina, ancora)
-    assert trecho.count('class="plotly-graph-div"') == 1 and f"{nome}: " in trecho
+    assert trecho.count('class="plotly-graph-div"') == 2 and f"{nome}: " in trecho   # α = 5% e α = 1%
     assert "n = 30 por grupo (10 em C4)" in trecho
-    assert f'<p class="texto">{getattr(graficos, f"TEXTO_{nome}")}</p>' in trecho
-    assert "Em construção" not in trecho
+    assert f'<p class="texto">{getattr(graficos, f"TEXTO_{nome}")}</p>' in folha(pagina)
+    assert getattr(graficos, f"TEXTO_{nome}") not in trecho and "Em construção" not in trecho
 
 
-def test_pagina_tem_os_cinco_graficos_com_o_plotly_embutido_uma_vez(pagina):
-    assert pagina.count('class="plotly-graph-div"') == 5   # G1, os dois G2, G3 e G4
+def test_pagina_tem_os_sete_graficos_com_o_plotly_embutido_uma_vez(pagina):
+    assert pagina.count('class="plotly-graph-div"') == 7   # G1, os dois G2, e G3 e G4 em α = 5% e 1%
     assert pagina.count("plotly.js v") == 1
 
 
@@ -129,7 +156,7 @@ def test_g3_ou_g4_ausente_vira_marcador_so_na_sua_secao(monkeypatch, tmp_path, n
     ausente, presente = ("erro-tipo-1", "poder") if nome == "g3" else ("poder", "erro-tipo-1")
     assert f"{nome} ainda não foi implementado" in secao(pagina, ausente)
     assert "plotly-graph-div" not in secao(pagina, ausente)
-    assert secao(pagina, presente).count('class="plotly-graph-div"') == 1
+    assert secao(pagina, presente).count('class="plotly-graph-div"') == 2
 
 
 def test_resultados_ausentes_viram_marcador_nas_secoes_4_e_5_e_o_resto_da_pagina_sai(tmp_path):
@@ -142,7 +169,7 @@ def test_resultados_ausentes_viram_marcador_nas_secoes_4_e_5_e_o_resto_da_pagina
         trecho = secao(pagina, ancora)
         assert "não foi possível ler dados/simulacao/nao-existe.csv (FileNotFoundError" in trecho
         assert "plotly-graph-div" not in trecho
-    assert graficos.TEXTO_G3 in secao(pagina, "erro-tipo-1")
+    assert graficos.TEXTO_G3 in folha(pagina)
     assert pagina.count('class="plotly-graph-div"') == 3   # G1 e os dois G2
     assert all(f'<section id="{ancora}">' in pagina for ancora, _ in dashboard.SECOES)
 
@@ -168,7 +195,7 @@ def paragrafos(a, b):
 
 
 def secao_6(pagina):
-    return re.split(r'<section id="', pagina)[6]
+    return secao(pagina, "dados-reais")
 
 
 def test_a_secao_6_nao_esta_mais_em_construcao():
@@ -180,7 +207,7 @@ def test_secao_6_traz_a_tabela_com_os_numeros_dos_testes_nos_dados_reais(pagina)
     reais = pd.read_csv(f"{cfg['pasta']}/{cfg['coleta']['saida']}")
     t = testes.tabela_dados_reais(reais).set_index("teste")
     secao = secao_6(pagina)
-    for cabecalho in ("Teste", "Estatística", "p-valor", "Tamanho de efeito", "Razão de medianas", "Conclusão (α = 0,05)"):
+    for cabecalho in ("Medida", "t de Welch", "Mann-Whitney", "Estatística", "p-valor", "Tamanho de efeito", "Razão de medianas", "Conclusão (α = 0,05)"):
         assert cabecalho in secao
     w, m = t.loc["welch"], t.loc["mann_whitney"]
     esperado = [
@@ -194,13 +221,14 @@ def test_secao_6_traz_a_tabela_com_os_numeros_dos_testes_nos_dados_reais(pagina)
     assert secao.count("não rejeita H₀") >= 2 and "plotly-graph-div" not in secao
 
 
-def test_secao_6_tem_conclusao_efeito_cautela_e_limitacoes_em_uma_frase(pagina):
-    secao = secao_6(pagina)
-    assert "os dois chegam à mesma conclusão" in secao and "Tamanho de efeito:" in secao
-    assert "importância prática" in secao and "Não rejeitar H₀ não prova que não há efeito" in secao
-    assert dashboard.LIMITACOES in secao
+def test_folha_traz_conclusao_efeito_cautela_e_limitacoes_em_uma_frase_dos_dados_reais(pagina):
+    texto = folha(pagina).split("<h3>6. Dados reais</h3>")[1]
+    assert "os dois chegam à mesma conclusão" in texto and "Tamanho de efeito:" in texto
+    assert "importância prática" in texto and "Não rejeitar H₀ não prova que não há efeito" in texto
+    assert dashboard.LIMITACOES in texto
     assert len([f for f in re.split(r"(?<=[.!?])\s+", dashboard.LIMITACOES.strip()) if f]) == 1
     assert "viés de seleção" in dashboard.LIMITACOES and "tamanho do PR" in dashboard.LIMITACOES
+    assert 'class="texto"' not in secao_6(pagina)   # no painel só a tabela e a legenda
 
 
 def test_texto_dos_dados_reais_diz_que_os_dois_concordam_e_que_nao_ha_importancia_pratica():
@@ -308,14 +336,14 @@ def linha(situacao):
     return next(r for s, _, r, _ in dashboard.EXPECTATIVA_X_RESULTADO if s.startswith(situacao))
 
 
-def test_secao_7_tem_tabela_recomendacao_condicoes_limitacao_e_commits(pagina):
-    trecho = secao(pagina, "conclusao")
-    assert "Em construção" not in trecho
+def test_folha_traz_a_tabela_a_recomendacao_as_condicoes_a_limitacao_e_os_commits(pagina_com_conclusao):
+    trecho = folha(pagina_com_conclusao).split("<h3>7. Conclusão</h3>")[1]
     assert trecho.count("<tr>") == len(dashboard.EXPECTATIVA_X_RESULTADO) + 1
     assert "<strong>Recomendação.</strong>" in trecho and "<strong>Limitação principal.</strong>" in trecho
     assert trecho.count("<li>") == len(dashboard.CONDICOES_RECOMENDACAO)
     for sha, data, _ in dashboard.COMMITS.values():
         assert f'href="{dashboard.LINK_COMMIT}{sha}"' in trecho and f"<code>{sha[:7]}</code></a> ({data})" in trecho
+    assert "Em construção" not in secao(pagina_com_conclusao, "conclusao")
 
 
 def test_expectativas_citadas_estao_literalmente_na_secao_5_do_cenario():
@@ -431,3 +459,290 @@ def test_expectativa_e_anterior_a_primeira_simulacao_e_config_nao_mudou_depois_d
     instante = lambda sha: int(_git("log", "-1", "--format=%ct", sha))   # noqa: E731
     assert instante(expectativa) < instante(simulacao)
     assert _git("log", "-1", "--format=%H", "--", "config.yaml") == congelado
+
+
+# --- layout de painel: KPIs, seletores, legendas curtas e interpretação recolhida ---
+
+
+def kpis(pagina):
+    """(rótulo, valor, subtítulo) de cada cartão da faixa de indicadores."""
+    faixa = pagina.split('<div class="kpis">')[1].split('<div class="acoes">')[0]
+    return re.findall(r"<span>(.*?)</span><strong>(.*?)</strong><small>(.*?)</small>", faixa)
+
+
+def test_faixa_de_indicadores_vem_antes_das_secoes_e_tem_sete_cartoes(pagina):
+    assert pagina.index('class="kpis"') < pagina.index("<section")
+    assert [r for r, _, _ in kpis(pagina)] == [
+        "PRs coletados", "Mediana até o merge", "p-valor nos dados reais", "Tamanho de efeito",
+        "Erro tipo I · Mann-Whitney", "Erro tipo I · Welch", "Maior poder",
+    ]
+
+
+def test_indicadores_batem_com_os_dados_e_os_resultados(pagina):
+    cfg = config.carregar()
+    reais = pd.read_csv(f"{cfg['pasta']}/{cfg['coleta']['saida']}")
+    t = testes.tabela_dados_reais(reais).set_index("teste")
+    c = pd.read_csv(f"{cfg['pasta']}/dados/simulacao/classificacao.csv")
+    c5 = c[c["alfa"] == 0.05]
+    por_nome = {r: (v, s) for r, v, s in kpis(pagina)}
+    assert por_nome["PRs coletados"] == ("60", "30 com bot · 30 sem bot")
+    assert por_nome["Mediana até o merge"][0] == "17,8 h · 17,2 h"
+    p_w, p_m = graficos._p_rotulo(t.loc["welch", "p_valor"]), graficos._p_rotulo(t.loc["mann_whitney", "p_valor"])
+    assert por_nome["p-valor nos dados reais"][0] == f"{p_w} · {p_m}" and "nenhum rejeita H₀" in por_nome["p-valor nos dados reais"][1]
+    for teste, nome in (("mann_whitney", "Erro tipo I · Mann-Whitney"), ("welch", "Erro tipo I · Welch")):
+        taxas = c5[c5["teste"] == teste]["taxa"]
+        assert por_nome[nome][0] == f"{graficos._num(taxas.min() * 100, 2)}%–{graficos._num(taxas.max() * 100, 2)}%"
+    assert por_nome["Maior poder"] == ("Mann-Whitney 4/5", "cenários em que lidera · Welch: C0")
+
+
+def test_indicadores_sem_resultados_ficam_so_com_os_dados_reais():
+    cfg = config.carregar()
+    reais = pd.read_csv(f"{cfg['pasta']}/{cfg['coleta']['saida']}")
+    faixa = dashboard._indicadores(reais, None)
+    assert faixa.count('<div class="kpi ') == 4 and "Erro tipo I" not in faixa
+    assert dashboard._indicadores(reais.iloc[0:0], None) == ""   # sem dados, sem faixa
+
+
+def test_topo_tem_os_links_os_indicadores_e_o_botao_da_folha_e_cada_secao_de_simulacao_o_seu_seletor_de_alfa(pagina):
+    topo = pagina.split('<header class="topo">')[1].split("</header>")[0]
+    assert all(f'href="{link}"' in topo for link in (dashboard.LINK_KANBAN, dashboard.LINK_REPOSITORIO, dashboard.LINK_DASHBOARD))
+    assert topo.index('class="marca"') < topo.index('class="kpis"')   # os indicadores ficam numa linha, abaixo do título
+    assert 'id="abrir-interpretacao"' in topo and "Interpretação (i)" in topo and "Gerado em" in topo
+    assert 'name="alfa' not in topo and 'class="indice"' not in pagina
+    for ancora, nome in (("erro-tipo-1", "alfa-g3"), ("poder", "alfa-g4")):
+        trecho = secao(pagina, ancora)
+        assert f'name="{nome}"' in trecho and 'value="5" checked' in trecho and 'value="1"' in trecho
+
+
+def test_seletor_de_alfa_troca_g3_e_g4_com_5_por_cento_visivel(pagina):
+    for ancora in ("erro-tipo-1", "poder"):
+        trecho = secao(pagina, ancora)
+        assert re.findall(r'<div data-painel="alfa" data-valor="(\d)"( hidden)?>', trecho) == [("5", ""), ("1", " hidden")]
+        cinco, um = trecho.split('data-valor="1"')
+        assert "= 5%)" in cinco and "= 1%)" not in cinco   # o JSON do Plotly escapa o α, então só o trecho ASCII
+        assert "= 1%)" in um and "= 5%)" not in um
+
+
+def test_g2_troca_entre_o_exemplo_sem_efeito_e_o_com_efeito(pagina):
+    trecho = secao(pagina, "testes")
+    assert 'name="g2"' in trecho and trecho.count('data-painel="g2"') == 4   # um gráfico e uma legenda por exemplo
+    assert trecho.count('data-valor="sem">') == 2 and trecho.count('data-valor="com" hidden>') == 2
+    assert "Sem efeito (H₀ verdadeira)" in trecho and "Com efeito (H₀ falsa)" in trecho
+
+
+def test_script_troca_os_paineis_sincroniza_os_seletores_redimensiona_e_abre_a_folha(pagina):
+    script = pagina.split("<script>")[-1]
+    assert "function mostrar" in script and "p.hidden = p.dataset.valor !== valor" in script
+    assert "o.checked = o.value === r.value" in script   # os dois seletores de α andam juntos
+    assert "Plotly.Plots.resize" in script and "function redimensionar" in script and "addEventListener('load'" in script
+    assert "e.key === 'Escape'" in script and "e.key === 'i'" in script
+    assert "rotacao" not in script and "scale(" not in script and "IntersectionObserver" not in script
+
+
+def test_cada_grafico_tem_uma_legenda_curta_de_uma_linha(pagina):
+    for ancora, inicio in (("dados", "G1:"), ("testes", "G2, exemplo"), ("erro-tipo-1", "G3:"), ("poder", "G4:")):
+        legendas = re.findall(r'<p class="legenda">(.*?)</p>', secao(pagina, ancora))
+        assert any(l.split("n = 30 por grupo (10 em C4). ")[-1].startswith(inicio) for l in legendas), ancora
+        assert all(len(l) < 330 for l in legendas), ancora   # legendas, não parágrafos
+
+
+def test_interpretacao_fica_numa_folha_oculta_fora_dos_paineis(pagina):
+    assert '<aside id="interpretacao" hidden>' in pagina and "<details" not in pagina
+    assert pagina.index("</main>") < pagina.index('<aside id="interpretacao"')   # fora da grade de painéis
+    assert 'id="fechar-interpretacao"' in folha(pagina) and "Fechar (Esc)" in folha(pagina)
+    texto = folha(pagina)
+    for titulo, conteudo in (("2. Os dados", graficos.TEXTO_G1), ("3. Como os testes funcionam", graficos.TEXTO_G2),
+                             ("4. Erro tipo I", graficos.TEXTO_G3), ("5. Poder", graficos.TEXTO_G4)):
+        assert f"<h3>{titulo}</h3>" in texto and conteudo in texto
+        assert conteudo not in secao(pagina, {"2": "dados", "3": "testes", "4": "erro-tipo-1", "5": "poder"}[titulo[0]])
+
+
+def test_sem_interpretacao_a_pagina_so_tem_graficos_tabelas_e_legendas(monkeypatch, tmp_path):
+    monkeypatch.setattr(dashboard, "MOSTRAR_INTERPRETACAO", False)
+    saida = tmp_path / "index.html"
+    dashboard.montar(saida, config.carregar())
+    pagina = saida.read_text(encoding="utf-8")
+    assert 'id="interpretacao"' not in pagina and "abrir-interpretacao" not in pagina.split("<script>")[0]
+    assert pagina.count('class="plotly-graph-div"') == 7
+    for texto in (graficos.TEXTO_G1, graficos.TEXTO_G2, graficos.TEXTO_G3, graficos.TEXTO_G4, dashboard.TEXTO_RECOMENDACAO):
+        assert texto not in pagina
+    assert "<strong>Recomendação.</strong>" not in pagina and 'class="texto"' not in pagina
+    assert "<table>" in secao(pagina, "dados-reais")
+
+
+def test_secao_1_mostra_pergunta_hipoteses_e_dados_sem_os_paragrafos(monkeypatch, tmp_path):
+    monkeypatch.setattr(dashboard, "MOSTRAR_INTERPRETACAO", False)
+    saida = tmp_path / "index.html"
+    dashboard.montar(saida, config.carregar())
+    trecho = secao(saida.read_text(encoding="utf-8"), "cenario")
+    assert "<strong>Pergunta.</strong>" in trecho and "H₀" in trecho and "H₁" in trecho
+    assert "supabase/supabase" in trecho and "com bot: 30 PRs" in trecho and "sem bot: 30 PRs" in trecho
+    assert "01/08/2026 a 31/10/2026" in trecho and "semente 42" in trecho
+    assert 'class="texto"' not in trecho
+
+
+def test_secao_7_tem_um_selo_por_situacao_com_a_classe_certa(pagina_com_conclusao):
+    trecho = secao(pagina_com_conclusao, "conclusao")
+    assert trecho.count('class="selo ') == len(dashboard.EXPECTATIVA_X_RESULTADO) == 8
+    assert trecho.count('class="selo sim"') == 6 and trecho.count('class="selo parte"') == 1 and trecho.count('class="selo nao"') == 1
+    assert "Confirmado" in trecho and "Em parte" in trecho and "Não confirmado" in trecho
+    assert "Recomendação" in trecho and "Limitação principal" in trecho
+
+
+@pytest.mark.parametrize("confirmou, classe, rotulo", [
+    ("Sim", "sim", "Confirmado"), ("Sim; o Mann-Whitney ficou acima", "sim", "Confirmado"),
+    ("Em parte: o Welch ficou abaixo", "parte", "Em parte"), ("Não", "nao", "Não confirmado"),
+])
+def test_selo_classifica_o_confirmou_pela_primeira_palavra(confirmou, classe, rotulo):
+    selo = dashboard._selo("C9", confirmou)
+    assert f'class="selo {classe}"' in selo and f"<b>{rotulo}</b>" in selo and "<span>C9</span>" in selo
+
+
+def test_selo_com_texto_desconhecido_mostra_o_proprio_texto():
+    assert "<b>talvez</b>" in dashboard._selo("C9", "talvez")
+
+
+def test_recomendacao_curta_bate_com_o_classificacao_csv_e_o_poder_csv():
+    cfg = config.carregar()
+    pasta = f"{cfg['pasta']}/dados/simulacao"
+    c = pd.read_csv(f"{pasta}/classificacao.csv").set_index(["cenario", "alfa", "teste"])["taxa"]
+    p = pd.read_csv(f"{pasta}/poder.csv")
+    c1 = p[(p["cenario"] == "C1") & (p["alfa"] == 0.05)]
+    assert graficos._num(c[("C1", 0.05, "mann_whitney")] * 100, 2) + "%" in dashboard.RECOMENDACAO_CURTA
+    assert graficos._num(c[("C1", 0.05, "welch")] * 100, 2) + "%" in dashboard.RECOMENDACAO_CURTA
+    assert f"{c1['vantagem_pp'].max():.0f} p.p." in dashboard.RECOMENDACAO_CURTA
+
+
+def test_limitacao_curta_cita_o_c5_e_a_amostra():
+    assert "C5 não foi feito" in dashboard.LIMITACAO_CURTA and "30 PRs por grupo" in dashboard.LIMITACAO_CURTA
+
+
+def test_folha_vazia_com_a_chave_desligada(monkeypatch):
+    cfg = config.carregar()
+    reais = pd.read_csv(f"{cfg['pasta']}/{cfg['coleta']['saida']}")
+    assert dashboard._interpretacao(cfg, reais, ["parágrafo"]).startswith('<aside id="interpretacao" hidden>')
+    monkeypatch.setattr(dashboard, "MOSTRAR_INTERPRETACAO", False)
+    assert dashboard._interpretacao(cfg, reais, ["parágrafo"]) == ""
+
+
+# --- painel de parede: uma tela fixa, tema escuro e gráficos compactos ---
+
+
+def test_secoes_ficam_uma_abaixo_da_outra_numa_coluna_que_rola(pagina):
+    assert '<main class="coluna">' in pagina and 'id="palco"' not in pagina and "1920px" not in pagina
+    assert "overflow: hidden" not in dashboard.ESTILO and "grid-template-rows" not in dashboard.ESTILO.split("main.coluna")[1].split("}")[0]
+    posicoes = [pagina.index(f'<section id="{ancora}">') for ancora, _ in dashboard.SECOES]
+    assert posicoes == sorted(posicoes)
+    for ancora in ("dados", "testes", "erro-tipo-1", "poder"):   # os gráficos têm altura própria
+        assert re.search(rf"#{ancora} \.corpo {{ height: \d+px; }}", dashboard.ESTILO), ancora
+
+
+def test_tema_escuro_e_sem_barra_de_ferramentas_do_plotly(pagina):
+    assert "background: #0b1020" in pagina and '"displayModeBar": false' in pagina
+
+
+def test_secoes_tem_so_o_titulo_o_conteudo_e_a_legenda_sem_paragrafos_longos(pagina):
+    for ancora, titulo in dashboard.SECOES:
+        trecho = secao(pagina, ancora)
+        assert f"<h2>{titulo}</h2>" in trecho and 'class="texto"' not in trecho and "<details" not in trecho
+
+
+def figura_compacta(nome, *args):
+    figura = getattr(graficos, nome)(*args)
+    dashboard._compacto(figura, nome)
+    return figura
+
+
+def resultados_csv():
+    cfg = config.carregar()
+    return pd.read_csv(f"{cfg['pasta']}/dados/simulacao/resultados.csv")
+
+
+@pytest.mark.parametrize("nome", ["g3", "g4"])
+def test_figuras_compactas_sao_escuras_transparentes_e_sem_titulo(nome):
+    figura = figura_compacta(nome, resultados_csv())
+    assert figura.layout.title.text is None and figura.layout.height is None and figura.layout.width is None
+    assert figura.layout.paper_bgcolor == "rgba(0,0,0,0)" and figura.layout.plot_bgcolor == "rgba(0,0,0,0)"
+    assert figura.layout.font.size == 13 and figura.layout.xaxis.automargin is True
+
+
+def test_g4_compacto_poe_a_unidade_no_titulo_da_faceta_e_um_so_titulo_no_eixo_y():
+    figura = figura_compacta("g4", resultados_csv(), 0.05, dashboard.NOMES_CURTOS_CENARIOS)
+    titulos = [a.text for a in figura.layout.annotations if a.text and not a.textangle]
+    assert titulos[0] == "C0 normal · δ em dp" and all(t.endswith("· razão de medianas (×)") for t in titulos[1:5])
+    assert [a.text for a in figura.layout.annotations if a.textangle == -90] == ["Rejeições de H₀ (%)"]
+    assert all(not eixo.title.text for eixo in (figura.layout.xaxis, figura.layout.xaxis2, figura.layout.yaxis, figura.layout.yaxis4))
+    assert figura.layout.legend.x == 0.72 and figura.layout.legend.orientation == "v"   # na faceta vazia
+
+
+def test_g1_compacto_encurta_os_titulos_dos_paineis():
+    cfg = config.carregar()
+    reais = pd.read_csv(f"{cfg['pasta']}/{cfg['coleta']['saida']}")
+    exemplos = gerador.exemplos_calibrados(calibracao.ler(f"{cfg['pasta']}/{cfg['calibracao']['saida']}"))
+    exemplo = exemplos["com_efeito"]
+    figura = figura_compacta("g1", reais, (exemplo["a"], exemplo["b"]))
+    assert [a.text for a in figura.layout.annotations] == ["Dados reais", "Simulados: lognormal calibrada"]
+
+
+def test_g2_compacto_esconde_a_legenda_e_deixa_o_rotulo_do_p_valor_legivel_no_tema_escuro():
+    cfg = config.carregar()
+    exemplos = gerador.exemplos_calibrados(calibracao.ler(f"{cfg['pasta']}/{cfg['calibracao']['saida']}"))
+    figura = figura_compacta("g2", exemplos["sem_efeito"])
+    assert figura.layout.showlegend is False
+    rotulos = [a for a in figura.layout.annotations if a.text and a.text.startswith("p-valor")]
+    assert len(rotulos) == 2 and all(a.bgcolor == "rgba(20,26,46,0.9)" for a in rotulos)
+
+
+def test_g3_compacto_poe_a_legenda_em_cima():
+    figura = figura_compacta("g3", resultados_csv())
+    assert figura.layout.legend.orientation == "h" and figura.layout.legend.y == 1.0 and figura.layout.legend.yanchor == "bottom"
+
+
+def test_figuras_do_painel_usam_nomes_curtos_nos_cenarios(pagina):
+    for curto in dashboard.NOMES_CURTOS_CENARIOS.values():
+        assert curto in secao(pagina, "erro-tipo-1")
+
+
+def test_tabela_dos_dados_reais_tem_uma_coluna_por_teste_e_uma_linha_por_medida(pagina):
+    tabela = secao_6(pagina).split("<table>")[1].split("</table>")[0]
+    linhas = re.findall(r"<tr>(.*?)</tr>", tabela, flags=re.S)
+    assert len(linhas) == 7   # cabeçalho + 6 medidas
+    assert re.findall(r"<th>(.*?)</th>", linhas[0]) == ["Medida", "t de Welch", "Mann-Whitney"]
+    assert [re.findall(r"<th>(.*?)</th>", l)[0] for l in linhas[1:]] == [
+        "Compara", "Estatística", "p-valor", "Tamanho de efeito", "Razão de medianas (com bot ÷ sem bot)", "Conclusão (α = 0,05)"]
+    assert all(l.count("<td>") == 2 for l in linhas[1:])
+
+
+def test_selos_usam_nomes_curtos_e_guardam_a_situacao_completa_no_title():
+    selo = dashboard._selo("C1: referência (lognormal calibrada)", "Em parte: o Welch ficou abaixo")
+    assert "<span>C1 lognormal</span>" in selo and 'title="C1: referência (lognormal calibrada)"' in selo
+    assert "<span>Muda de lado</span>" in dashboard._selo("Onde a vantagem muda de lado", "Sim")
+    assert "<span>α = 1%</span>" in dashboard._selo("α = 0,01", "Sim")
+    assert "<span>Situação nova</span>" in dashboard._selo("Situação nova", "Sim")   # sem apelido, usa o próprio texto
+
+
+def test_nao_ha_rotacao_automatica_nem_ajuste_de_palco(pagina):
+    script = pagina.split("<script>")[-1]
+    assert "URLSearchParams" not in script and "setInterval" not in script   # a página é estática, o professor rola
+
+
+
+
+def test_controle_com_sufixo_tem_name_proprio_mas_o_mesmo_grupo():
+    a = dashboard._controle("alfa", [("5", "α = 5%"), ("1", "α = 1%")], "5", "Nível", sufixo="g3")
+    b = dashboard._controle("alfa", [("5", "α = 5%"), ("1", "α = 1%")], "5", "Nível", sufixo="g4")
+    assert a.count('name="alfa-g3"') == 2 and b.count('name="alfa-g4"') == 2
+    assert a.count('data-grupo="alfa"') == b.count('data-grupo="alfa"') == 2
+    sem = dashboard._controle("g2", [("sem", "Sem"), ("com", "Com")], "sem", "Exemplo")
+    assert sem.count('name="g2"') == 2   # sem sufixo, o name é o próprio grupo
+
+
+def test_indicadores_ficam_numa_linha_abaixo_do_titulo_e_a_pagina_nao_tem_barra_fixa(pagina):
+    assert "position: sticky" not in pagina and ".kpis { display: grid;" in dashboard.ESTILO
+    assert "repeat(auto-fit, minmax(170px, 1fr))" in dashboard.ESTILO
+
+
+def test_o_seletor_de_alfa_de_uma_secao_aparece_no_cabecalho_dela(pagina):
+    for ancora in ("erro-tipo-1", "poder"):
+        cabecalho = secao(pagina, ancora).split('<div class="corpo">')[0]
+        assert "<h2>" in cabecalho and 'class="controle"' in cabecalho and "Nível de significância" in cabecalho
