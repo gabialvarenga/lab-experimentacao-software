@@ -219,7 +219,9 @@ TEXTO_G4 = (
     "sobrepõem. "
     "A vantagem muda de lado entre os cenários, do Welch no caso normal para o Mann-Whitney em todos os outros, e "
     "não muda ao longo do efeito dentro de nenhum deles. "
-    "Com α = 1% o quadro é o mesmo."
+    "Com α = 1% os dois testes perdem poder e o líder de cada cenário é o mesmo, mas a vantagem máxima do "
+    "Mann-Whitney sobe para 63 a 80 pontos percentuais em C1 a C3 e cai para 34 em C4, em que, com n = 10, ele "
+    "rejeita H₀ em no máximo 37,0% dos conjuntos."
 )
 
 

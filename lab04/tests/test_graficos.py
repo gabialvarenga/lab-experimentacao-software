@@ -565,3 +565,24 @@ def test_numeros_do_texto_do_g4_batem_com_a_vantagem_de_poder_dos_resultados():
         lider = lid[lid["alfa"] == alfa].set_index("cenario")["lider"]
         assert lider["C0"] == "welch" and (lider.drop("C0") == "mann_whitney").all()
     assert not lid["inverte_com_o_efeito"].any()
+
+
+def test_frase_do_g4_sobre_alfa_de_1_por_cento_bate_com_a_vantagem_de_poder():
+    """A última frase do TEXTO_G4 (S02-11): o que muda com α = 0,01, com os números de `poder.csv`."""
+    from lab04 import resultados
+
+    poder = resultados.vantagem_de_poder(RESULTADOS)
+    texto = graficos.TEXTO_G4
+    por_alfa = poder.pivot_table(index=["cenario", "delta"], columns="alfa",
+                                 values=["poder_welch", "poder_mann_whitney"])
+    for coluna in ("poder_welch", "poder_mann_whitney"):   # "os dois testes perdem poder"
+        assert (por_alfa[(coluna, 0.01)] < por_alfa[(coluna, 0.05)]).all()
+    maximo = {alfa: poder[poder["alfa"] == alfa].groupby("cenario")["vantagem_pp"].max() for alfa in (0.05, 0.01)}
+    sobe = maximo[0.01][["C1", "C2", "C3"]]
+    assert (sobe > maximo[0.05][["C1", "C2", "C3"]]).all()
+    assert f"sobe para {round(sobe.min())} a {round(sobe.max())} pontos percentuais em C1 a C3" in texto
+    assert maximo[0.01]["C4"] < maximo[0.05]["C4"]
+    assert f"cai para {round(maximo[0.01]['C4'])} em C4" in texto
+    c4 = poder[(poder["cenario"] == "C4") & (poder["alfa"] == 0.01)]
+    assert f"n = {c4['n'].iloc[0]}," in texto
+    assert f"no máximo {c4['poder_mann_whitney'].max() * 100:.1f}%".replace(".", ",") in texto

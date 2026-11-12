@@ -7,11 +7,13 @@ vêm as 7 seções do enunciado, em ordem fixa:
 1. Cenário (pergunta, hipóteses e origem dos dados reais);
 2. Os dados (G1);
 3. Como os testes funcionam (G2, um por exemplo da S01-08);
-4., 5. e 7. Erro tipo I, Poder e Conclusão: "em construção" até a S02;
-6. Dados reais: a tabela dos dois testes nos PRs coletados, com a conclusão (S02-10).
+4. Erro tipo I (G3, α = 0,05) e 5. Poder (G4, α = 0,05), lidos de `resultados.csv` (S02-11);
+6. Dados reais: a tabela dos dois testes nos PRs coletados, com a conclusão (S02-10);
+7. Conclusão: "em construção" até a S02-12.
 
 Os gráficos vêm de `graficos` pelo nome; se um ainda não existir ou falhar, a seção mostra um
-marcador com o motivo e o resto da página é gerado (`_figura_ou_marcador`).
+marcador com o motivo e o resto da página é gerado (`_figura_ou_marcador`). O mesmo vale para o
+`resultados.csv` das seções 4 e 5: se ele faltar ou não abrir, as duas mostram o marcador.
 """
 
 import html
@@ -41,8 +43,6 @@ SECOES = (
     ("conclusao", "7. Conclusão"),
 )
 EM_CONSTRUCAO = {
-    "erro-tipo-1": "G3, erro tipo I por situação, com IC de Wilson e linha em 5% (S02-08, S02-11)",
-    "poder": "G4, curvas de poder por cenário (S02-09, S02-11)",
     "conclusao": "expectativa × resultado e a recomendação do grupo (S02-12)",
 }
 
@@ -175,6 +175,48 @@ def _secao_testes(figuras: _Figuras, exemplos: dict) -> str:
             f'δ = {graficos._num(exemplo["delta"], 2)}, n = {exemplo["n"]} por grupo, semente {exemplo["semente"]}.</p>'
         )
     return "".join(partes) + _texto("TEXTO_G2")
+
+
+LEGENDA_G3 = (
+    "Classificação (S02-07): liberal se o limite inferior do intervalo de Wilson de 95% fica acima de α, "
+    "conservador se o limite superior fica abaixo de α e ok se o intervalo contém α; a de cada barra aparece "
+    "ao passar o mouse, e a tabela completa, com α = 0,01, está em dados/simulacao/classificacao.csv."
+)
+LEGENDA_G4 = (
+    "Em δ = 0 a curva é o erro tipo I do G3; a vantagem de um teste sobre o outro em cada efeito, com α = 0,05 "
+    "e α = 0,01, está em dados/simulacao/poder.csv."
+)
+
+
+def _ler_resultados(cfg: dict):
+    """(`resultados.csv`, None), ou (None, marcador) se o CSV falta ou não abre."""
+    caminho = cfg["simulacao"]["saida"]
+    try:
+        return pd.read_csv(Path(cfg["pasta"]) / caminho), None
+    except Exception as erro:  # o dashboard sai mesmo sem os resultados da simulação
+        return None, _marcador(f"Gráfico indisponível: não foi possível ler {caminho} ({type(erro).__name__}: {erro}).")
+
+
+def _tamanhos(resultados: pd.DataFrame) -> str:
+    """`n = 30 por grupo (10 em C4)`: o n mais comum entre os cenários e as exceções; vazio sem as colunas."""
+    if not {"cenario", "n"} <= set(resultados.columns):
+        return ""
+    cenarios_por_n = resultados.drop_duplicates("cenario").groupby("n", sort=False)["cenario"].apply(list)
+    comum, *outros = sorted(cenarios_por_n.items(), key=lambda par: -len(par[1]))
+    excecoes = "; ".join(f"{n} em {', '.join(cenarios)}" for n, cenarios in outros)
+    return f"n = {comum[0]} por grupo" + (f" ({excecoes})" if excecoes else "")
+
+
+def _secao_simulacao(figuras: _Figuras, resultados, marcador, grafico: str, legenda: str, texto: str) -> str:
+    """Seções 4 e 5: o gráfico `grafico` com α = 0,05, a legenda e o texto de `graficos.<texto>`."""
+    if resultados is None:
+        return marcador + _texto(texto)
+    tamanhos = _tamanhos(resultados)
+    return (
+        _figura_ou_marcador(figuras, grafico, resultados)
+        + f'<p class="legenda">{_e((tamanhos + ". " if tamanhos else "") + legenda)}</p>'
+        + _texto(texto)
+    )
 
 
 NOMES_TESTE_TABELA = {"welch": "t de Welch", "mann_whitney": "Mann-Whitney"}
@@ -317,11 +359,14 @@ def _pagina(cfg: dict) -> str:
     base = Path(cfg["pasta"])
     reais = pd.read_csv(base / cfg["coleta"]["saida"])
     exemplos = gerador.exemplos_calibrados(calibracao.ler(base / cfg["calibracao"]["saida"]))
+    resultados, sem_resultados = _ler_resultados(cfg)
     figuras = _Figuras()
     conteudo = {
         "cenario": _secao_cenario(cfg, reais),
         "dados": _secao_dados(figuras, reais, exemplos),
         "testes": _secao_testes(figuras, exemplos),
+        "erro-tipo-1": _secao_simulacao(figuras, resultados, sem_resultados, "g3", LEGENDA_G3, "TEXTO_G3"),
+        "poder": _secao_simulacao(figuras, resultados, sem_resultados, "g4", LEGENDA_G4, "TEXTO_G4"),
         "dados-reais": _secao_dados_reais(reais, cfg),
     }
     for ancora, previsto in EM_CONSTRUCAO.items():
