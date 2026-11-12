@@ -1,4 +1,6 @@
 import re
+import subprocess
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -38,7 +40,7 @@ def test_secoes_1_a_3_tem_texto_e_graficos(pagina):
     assert "Pergunta." in cenario and "H₀" in cenario and "H₁" in cenario
     assert graficos.TEXTO_G1 in dados and dados.count('class="plotly-graph-div"') == 1
     assert graficos.TEXTO_G2 in testes and testes.count('class="plotly-graph-div"') == 2
-    assert "Em construção" in secoes[6] and "plotly-graph-div" not in secoes[6]   # seção 7
+    assert "Em construção" not in pagina   # desde a S02-12 nenhuma seção está em construção
     assert "Em construção" not in secoes[5] and "<table>" in secoes[5]   # seção 6: a tabela dos dados reais
 
 
@@ -86,8 +88,8 @@ def secao(pagina, ancora):
     return pagina.split(f'<section id="{ancora}">')[1].split("</section>")[0]
 
 
-def test_so_a_secao_7_continua_em_construcao():
-    assert set(dashboard.EM_CONSTRUCAO) == {"conclusao"}
+def test_nenhuma_secao_continua_em_construcao():
+    assert dashboard.EM_CONSTRUCAO == {}
 
 
 @pytest.mark.parametrize("ancora, nome", [("erro-tipo-1", "G3"), ("poder", "G4")])
@@ -284,3 +286,148 @@ def test_falha_na_tabela_dos_dados_reais_vira_marcador_e_o_resto_da_pagina_sai(m
 
 A_REAL = np.arange(1.0, 11)
 B_REAL = np.arange(2.0, 12)
+
+
+# --- seção 7: expectativa × resultado, recomendação e limitação (S02-12) ---
+
+RAIZ_LAB = Path(__file__).resolve().parents[1]
+SIMULACAO = RAIZ_LAB / "dados" / "simulacao"
+NOMES = {"welch": "Welch", "mann_whitney": "Mann-Whitney"}
+
+
+def _pct(x, casas=2):
+    return f"{x * 100:.{casas}f}%".replace(".", ",")
+
+
+def _pp(x):
+    return f"{x:.1f}".replace(".", ",") + " p.p."
+
+
+def linha(situacao):
+    """O texto 'o que encontrou' da linha `situacao` (o início do rótulo) da tabela da seção 7."""
+    return next(r for s, _, r, _ in dashboard.EXPECTATIVA_X_RESULTADO if s.startswith(situacao))
+
+
+def test_secao_7_tem_tabela_recomendacao_condicoes_limitacao_e_commits(pagina):
+    trecho = secao(pagina, "conclusao")
+    assert "Em construção" not in trecho
+    assert trecho.count("<tr>") == len(dashboard.EXPECTATIVA_X_RESULTADO) + 1
+    assert "<strong>Recomendação.</strong>" in trecho and "<strong>Limitação principal.</strong>" in trecho
+    assert trecho.count("<li>") == len(dashboard.CONDICOES_RECOMENDACAO)
+    for sha, data, _ in dashboard.COMMITS.values():
+        assert f'href="{dashboard.LINK_COMMIT}{sha}"' in trecho and f"<code>{sha[:7]}</code></a> ({data})" in trecho
+
+
+def test_expectativas_citadas_estao_literalmente_na_secao_5_do_cenario():
+    """A expectativa não é reescrita: cada citação da tabela está, palavra por palavra, no cenario.md."""
+    texto = (RAIZ_LAB / "docs" / "cenario.md").read_text(encoding="utf-8")
+    secao_5 = " ".join(texto.split("## 5.")[1].split("## 6.")[0].split())
+    for _, citacoes, _, _ in dashboard.EXPECTATIVA_X_RESULTADO:
+        for citacao in citacoes:
+            assert citacao in secao_5, citacao
+
+
+def test_erro_tipo_i_da_tabela_bate_com_o_classificacao_csv():
+    c = pd.read_csv(SIMULACAO / "classificacao.csv")
+    c5 = c[c["alfa"] == 0.05].set_index(["cenario", "teste"])
+    for cenario in ("C0", "C1", "C2", "C3", "C4"):
+        texto = linha(cenario)
+        for teste, nome in NOMES.items():
+            taxa, classe = c5.loc[(cenario, teste), ["taxa", "classificacao"]]
+            assert f"{nome} com {_pct(taxa)}" in texto
+            assert f"{nome} com {_pct(taxa)} ({classe}" in texto or (
+                classe == "conservador" and "os dois conservadores" in texto
+            )
+    for cenario in ("C0", "C1"):   # o desvio citado
+        teste = "mann_whitney" if cenario == "C0" else "welch"
+        assert f"{c5.loc[(cenario, teste), 'desvio_pp']:.2f}".replace(".", ",").replace("-", "−") + " p.p." in linha(cenario)
+
+
+def test_poder_da_tabela_e_da_recomendacao_bate_com_o_poder_csv():
+    p = pd.read_csv(SIMULACAO / "poder.csv")
+    p5 = p[p["alfa"] == 0.05]
+    maximo = p5.groupby("cenario")["vantagem_pp"].apply(lambda s: s.abs().max())
+    assert f"por no máximo {_pp(maximo['C0'])}" in linha("C0")
+    assert f"até {_pp(maximo['C0'])}" in dashboard.CONDICOES_RECOMENDACAO[0]
+    for cenario in ("C1", "C2", "C3"):
+        assert _pp(maximo[cenario]) in linha(cenario)
+        assert f"{_pp(maximo[cenario])} ({cenario})" in linha("Onde")
+    assert f"até {round(maximo['C1'])} pontos percentuais" in dashboard.TEXTO_RECOMENDACAO
+    lider = p5.groupby("cenario")["vantagem_pp"].apply(lambda s: "welch" if s.mean() < 0 else "mann_whitney")
+    assert lider["C0"] == "welch" and (lider.drop("C0") == "mann_whitney").all()
+    assert (p5[p5["cenario"] != "C0"]["melhor"] == "mann_whitney").all()   # "em todos os efeitos"
+    c3, c4 = p5[p5["cenario"] == "C3"], p5[p5["cenario"] == "C4"].sort_values("delta").iloc[-1]
+    assert f"não passa de {_pct(c3['poder_welch'].max(), 1)}" in linha("C3")
+    assert f"{_pct(c4['poder_mann_whitney'], 1)} dos conjuntos e o Welch em {_pct(c4['poder_welch'], 1)}" in linha("C4")
+
+
+def test_linha_de_alfa_1_por_cento_bate_com_os_csvs():
+    p = pd.read_csv(SIMULACAO / "poder.csv").pivot_table(
+        index=["cenario", "delta"], columns="alfa", values=["poder_welch", "poder_mann_whitney", "vantagem_pp"])
+    for coluna in ("poder_welch", "poder_mann_whitney"):   # "o poder cai em todos os pontos"
+        assert (p[(coluna, 0.01)] < p[(coluna, 0.05)]).all()
+    lider = p["vantagem_pp"].groupby("cenario").mean() < 0   # True: Welch lidera
+    assert (lider[0.01] == lider[0.05]).all()
+    c = pd.read_csv(SIMULACAO / "classificacao.csv")
+    por_alfa = c.pivot_table(index=["cenario", "teste"], columns="alfa", values="classificacao", aggfunc="first")
+    assert (por_alfa[0.05] == por_alfa[0.01]).all()
+    welch = c[(c["alfa"] == 0.01) & (c["teste"] == "welch") & (c["cenario"] != "C0")]["taxa"]
+    assert f"de {_pct(welch.min())} a {_pct(welch.max())}" in linha("α")
+
+
+def test_linha_e_texto_dos_dados_reais_batem_com_a_tabela_da_secao_6():
+    from lab04.descritiva import horas_do_grupo
+
+    cfg = config.carregar()
+    reais = pd.read_csv(Path(cfg["pasta"]) / cfg["coleta"]["saida"])
+    tabela = testes.tabela_dados_reais(reais).set_index("teste")
+    texto = linha("Dados reais")
+    assert not tabela["rejeita_h0"].any() and texto.startswith("Nenhum dos dois rejeita H₀")
+    for teste, nome in NOMES.items():
+        assert f"{nome}: p = {graficos._p_rotulo(tabela.loc[teste, 'p_valor'])}" in texto
+    med_com, med_sem = (float(np.median(horas_do_grupo(reais, g))) for g in ("com_bot", "sem_bot"))
+    assert f"{graficos._num(med_com, 1)} h com bot" in texto and f"{graficos._num(med_sem, 1)} h sem bot" in texto
+    razao = tabela.loc["welch", "razao_medianas"]
+    assert f"diferença de {graficos._num(abs(razao - 1) * 100, 0)}%" in texto
+    assert f"g de Hedges = {graficos._num(tabela.loc['welch', 'tamanho_efeito'], 2)}" in texto
+    assert f"δ de Cliff = {graficos._num(tabela.loc['mann_whitney', 'tamanho_efeito'], 2)}" in texto
+    n = reais["grupo"].value_counts()
+    assert n["com_bot"] == n["sem_bot"] and f"{n['com_bot']} PRs por grupo" in dashboard.TEXTO_DIFERENCA_DADOS_REAIS
+
+
+def test_recomendacao_usa_o_erro_tipo_i_do_c1():
+    c = pd.read_csv(SIMULACAO / "classificacao.csv").set_index(["cenario", "alfa", "teste"])
+    assert f"ficou em {_pct(c.loc[('C1', 0.05, 'mann_whitney'), 'taxa'])}" in dashboard.TEXTO_RECOMENDACAO
+    assert f"rejeitou só {_pct(c.loc[('C1', 0.05, 'welch'), 'taxa'])}" in dashboard.TEXTO_RECOMENDACAO
+
+
+def _git(*args):
+    """Saída do git na raiz do repositório, ou `pytest.skip` sem git ou com histórico raso (checkout do CI)."""
+    try:
+        saida = subprocess.run(["git", *args], cwd=RAIZ_LAB, capture_output=True, text=True, encoding="utf-8")
+    except FileNotFoundError:
+        pytest.skip("git indisponível")
+    if saida.returncode != 0:
+        pytest.skip(f"histórico do git indisponível: {saida.stderr.strip()}")
+    return saida.stdout.strip()
+
+
+def test_commits_citados_existem_com_a_data_e_o_arquivo_certos():
+    for chave, arquivo in (("expectativa", "lab04/docs/cenario.md"), ("config_congelado", "lab04/config.yaml")):
+        sha, data, _ = dashboard.COMMITS[chave]
+        assert arquivo in _git("show", "--name-only", "--format=", sha).splitlines()
+    for sha, data, _ in dashboard.COMMITS.values():
+        assert _git("log", "-1", "--format=%ad", "--date=format:%d/%m/%Y", sha) == data
+
+
+def test_expectativa_e_anterior_a_primeira_simulacao_e_config_nao_mudou_depois_de_congelado():
+    expectativa = dashboard.COMMITS["expectativa"][0]
+    simulacao = dashboard.COMMITS["primeira_simulacao"][0]
+    congelado = dashboard.COMMITS["config_congelado"][0]
+    for sha in (expectativa, simulacao, congelado):   # pula no checkout raso do CI, antes de qualquer assert
+        _git("cat-file", "-e", f"{sha}^{{commit}}")
+    ancestral = subprocess.run(["git", "merge-base", "--is-ancestor", expectativa, simulacao], cwd=RAIZ_LAB)
+    assert ancestral.returncode == 0   # a expectativa está no histórico da primeira simulação
+    instante = lambda sha: int(_git("log", "-1", "--format=%ct", sha))   # noqa: E731
+    assert instante(expectativa) < instante(simulacao)
+    assert _git("log", "-1", "--format=%H", "--", "config.yaml") == congelado

@@ -33,7 +33,7 @@ python -m lab04 dashboard              # --sem-abrir: só grava o HTML
 
 Leva poucos segundos. O `dashboard/index.html` é um arquivo único, com o Plotly embutido, e abre sem internet (só os links do topo precisam de rede). Ele não é versionado: é regerado pelo comando.
 
-**Estado atual (Sprint 02):** o dashboard tem as seções 1 (cenário), 2 (os dados, G1), 3 (como os testes funcionam, G2), 4 (erro tipo I, G3), 5 (poder, G4) e 6 (dados reais); a seção 7 (conclusão) aparece como "em construção" até a S02-12. As seções 4 e 5 leem `dados/simulacao/resultados.csv` e mostram os gráficos com α = 0,05; o efeito de α = 0,01 está no texto de cada uma. A etapa `simular` ainda não existe: sozinha, ela avisa e sai com código 1; no comando único, ela avisa e o dashboard é gerado mesmo assim.
+**Estado atual (Sprint 02):** o dashboard tem as seções 1 (cenário), 2 (os dados, G1), 3 (como os testes funcionam, G2), 4 (erro tipo I, G3), 5 (poder, G4), 6 (dados reais) e 7 (conclusão: expectativa × resultado, recomendação e limitação principal); nenhuma seção está mais em construção. As seções 4 e 5 leem `dados/simulacao/resultados.csv` e mostram os gráficos com α = 0,05; o efeito de α = 0,01 está no texto de cada uma. A etapa `simular` ainda não existe: sozinha, ela avisa e sai com código 1; no comando único, ela avisa e o dashboard é gerado mesmo assim.
 
 **Coleta dos dados reais.** A coleta pela API fica fora do comando único, porque precisa de um token do GitHub; o `dados/reais/prs.csv` já está versionado. Para refazê-la:
 
@@ -221,6 +221,10 @@ Em α = 0,01 a classificação é a mesma. O Welch se afasta muito do nominal as
 | Mann-Whitney | U = 414 | 0,600 | δ de Cliff = −0,08 (negligível) | não rejeita H₀ |
 
 As medianas são 17,8 h (com bot) e 17,2 h (sem bot), uma diferença de 4% (razão 1,04). Os dois testes concordam e o efeito não tem importância prática evidente. **Magnitude:** Cohen (1988) para o g (|g| < 0,2 negligível, < 0,5 pequeno, < 0,8 médio) e Romano et al. (2006) para o δ de Cliff (< 0,147, < 0,33, < 0,474). **Importância prática:** o grupo trata como relevante uma diferença de 20% entre as medianas (`testes.DIFERENCA_RELEVANTE`), ou um efeito médio ou grande; é uma escolha do grupo e pode ser trocada. Isto contraria a expectativa do `docs/cenario.md` (seção 5) de que os dois testes rejeitariam H₀ nos dados reais; o texto do cenário não foi alterado, e a diferença é material para a conclusão e para a pergunta 13.
+
+### Conclusão do dashboard (S02-12)
+
+A seção 7 compara a expectativa da seção 5 do `docs/cenario.md`, citada palavra por palavra, com o erro tipo I (`classificacao.csv`), o poder (`poder.csv`) e a tabela da seção 6, e traz a recomendação do grupo (o Mann-Whitney no cenário real, com as condições em que a escolha muda) e a limitação principal (grupos com variâncias ou formas diferentes não foram simulados). O texto fica em `dashboard.py` (`EXPECTATIVA_X_RESULTADO`, `TEXTO_RECOMENDACAO`, `TEXTO_LIMITACAO`), e os testes conferem as citações contra o `cenario.md` e os números contra os CSVs: se um resultado mudar, o texto precisa ser revisto. A seção cita os commits da expectativa (`f998a18`), da primeira simulação (`101eb54`) e do `config.yaml` congelado (`dc4f478`); um teste confere que eles existem, que a expectativa é anterior à simulação e que o `config.yaml` não mudou depois. Esse teste é pulado quando o histórico do Git não está disponível, como no checkout raso do CI.
 
 ### GitHub Pages
 

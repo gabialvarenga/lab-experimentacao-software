@@ -9,7 +9,8 @@ vêm as 7 seções do enunciado, em ordem fixa:
 3. Como os testes funcionam (G2, um por exemplo da S01-08);
 4. Erro tipo I (G3, α = 0,05) e 5. Poder (G4, α = 0,05), lidos de `resultados.csv` (S02-11);
 6. Dados reais: a tabela dos dois testes nos PRs coletados, com a conclusão (S02-10);
-7. Conclusão: "em construção" até a S02-12.
+7. Conclusão: expectativa × resultado, recomendação e limitação principal, com os commits da
+   expectativa e do `config.yaml` congelado (S02-12).
 
 Os gráficos vêm de `graficos` pelo nome; se um ainda não existir ou falhar, a seção mostra um
 marcador com o motivo e o resto da página é gerado (`_figura_ou_marcador`). O mesmo vale para o
@@ -42,9 +43,7 @@ SECOES = (
     ("dados-reais", "6. Dados reais"),
     ("conclusao", "7. Conclusão"),
 )
-EM_CONSTRUCAO = {
-    "conclusao": "expectativa × resultado e a recomendação do grupo (S02-12)",
-}
+EM_CONSTRUCAO: dict = {}   # seções ainda sem conteúdo: {âncora: o que falta}; todas prontas desde a S02-12
 
 ESTILO = """
 body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; color: #222; background: #fafafa; }
@@ -59,7 +58,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 0 2rem 3rem; }
 section { background: #fff; margin: 1.5rem 0; padding: 1rem 1.5rem; border-radius: 8px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
 section h2 { margin-top: .3rem; color: #2b2d42; }
-p.texto { line-height: 1.55; max-width: 70rem; }
+p.texto, ul.texto { line-height: 1.55; max-width: 70rem; }
 p.legenda { color: #555; font-size: .9rem; margin-bottom: 0; }
 table { border-collapse: collapse; margin: .8rem 0; font-size: .95rem; }
 th, td { border: 1px solid #ccc; padding: .4rem .7rem; text-align: left; vertical-align: top; }
@@ -355,6 +354,127 @@ def _secao_dados_reais(reais: pd.DataFrame, cfg: dict) -> str:
     )
 
 
+# --- seção 7: expectativa × resultado, recomendação e limitação principal (S02-12) ---
+
+LINK_COMMIT = "https://github.com/gabialvarenga/lab-experimentacao-software/commit/"
+COMMITS = {   # chave: (hash completo, data, o que o commit fixa)
+    "expectativa": ("f998a188efa50b48efcd33fbf56449be585092f2", "03/11/2026",
+                    "a expectativa escrita em docs/cenario.md (#227, PR #252)"),
+    "primeira_simulacao": ("101eb5485e8301e6c849b9531a6d39a06317a72f", "04/11/2026",
+                           "o primeiro commit que roda os dois testes em dados simulados (#232)"),
+    "config_congelado": ("dc4f47857519a3fd1e64f0122f7abcc55d58d6d0", "11/11/2026",
+                         "o config.yaml congelado, antes das simulações finais (#236, PR #261)"),
+}
+
+# Cada linha: (situação, citações literais da seção 5 do cenario.md, o que a simulação ou os dados mostraram,
+# se confirmou). As citações não são reescritas; um teste confere que estão no cenario.md, e outro confere
+# os números do resultado contra classificacao.csv, poder.csv e a tabela da seção 6.
+EXPECTATIVA_X_RESULTADO = (
+    ("C0: controle (normal)",
+     ("Os dois perto de 5%", "Empate técnico, com leve vantagem do Welch"),
+     "Welch com 4,63% (ok) e Mann-Whitney com 4,43% (conservador, −0,57 p.p.); o Welch fica à frente em poder "
+     "por no máximo 3,0 p.p.",
+     "Sim"),
+    ("C1: referência (lognormal calibrada)",
+     ("Os dois perto de 5%; o Welch possivelmente um pouco abaixo", "Mann-Whitney maior que Welch"),
+     "Welch com 2,47% (conservador, −2,53 p.p.) e Mann-Whitney com 4,67% (ok); o Mann-Whitney fica à frente "
+     "em todos os efeitos, por até 41,0 p.p.",
+     "Em parte: o Welch ficou bem abaixo de 5%, não só um pouco"),
+    ("C2: assimetria forte",
+     ("Mann-Whitney perto de 5%; Welch se afasta de 5%, provavelmente para baixo", "Mann-Whitney bem maior que Welch"),
+     "Welch com 1,98% (conservador) e Mann-Whitney com 4,86% (ok); vantagem do Mann-Whitney de até 53,1 p.p.",
+     "Sim"),
+    ("C3: outliers",
+     ("Mann-Whitney perto de 5%; Welch abaixo de 5%", "Mann-Whitney maior; o poder do Welch cai muito"),
+     "Welch com 1,61% (conservador) e Mann-Whitney com 4,96% (ok); o poder do Welch não passa de 41,5%, e a "
+     "vantagem do Mann-Whitney chega a 59,9 p.p.",
+     "Sim"),
+    ("C4: amostra pequena (n = 10)",
+     ("Mann-Whitney em torno de 5%, talvez um pouco abaixo; Welch pode se afastar de 5%",
+      "Poder baixo nos dois, com Mann-Whitney igual ou melhor"),
+     "Welch com 1,54% e Mann-Whitney com 4,35% (os dois conservadores); no maior efeito, o Mann-Whitney "
+     "rejeita em 67,7% dos conjuntos e o Welch em 22,1%",
+     "Sim; o Mann-Whitney ficou bem acima do Welch, não só igual"),
+    ("Onde a vantagem muda de lado",
+     ("o Welch só seja melhor ou igual em C0 (dados normais)",
+      "com a diferença crescendo com a assimetria e com os outliers"),
+     "O Welch lidera só em C0, e o Mann-Whitney em C1 a C4; a vantagem máxima cresce de 41,0 p.p. (C1) para "
+     "53,1 p.p. (C2) e 59,9 p.p. (C3)",
+     "Sim"),
+    ("α = 0,01",
+     ("o poder dos dois testes caia, sem inverter a ordem entre eles",),
+     "O poder cai em todos os pontos, o líder de cada cenário é o mesmo e a classificação do erro tipo I não "
+     "muda; em C1 a C4 o Welch rejeita de 0,04% a 0,17% com H₀ verdadeira",
+     "Sim"),
+    ("Dados reais",
+     ("os dois testes rejeitem H₀ com folga nos dados reais", "que o tamanho de efeito seja relevante na prática"),
+     "Nenhum dos dois rejeita H₀ (Welch: p = 0,274; Mann-Whitney: p = 0,600); as medianas são de 17,8 h com bot "
+     "e 17,2 h sem bot (diferença de 4%), com g de Hedges = −0,28 e δ de Cliff = −0,08",
+     "Não"),
+)
+
+TEXTO_DIFERENCA_DADOS_REAIS = (
+    "A expectativa sobre os dados reais não se confirmou. Ela partia da sondagem do protocolo de coleta "
+    "(03/11/2026), em que a mediana até o merge era de 21,3 h nos PRs com revisão do Copilot em até 1 h e de "
+    "4,5 h nos 100 PRs mais recentes sem revisão. A amostra final é outra: só PRs com mais de 1 h até o merge, "
+    "30 por grupo, sorteados por mês entre agosto e outubro. A explicação provável é que o filtro de 1 h tirou "
+    "os PRs mais rápidos, que puxavam para baixo a mediana do grupo sem bot; quantos PRs o filtro tirou de "
+    "cada grupo não foi medido. Com 30 PRs por grupo e um efeito pequeno, os testes têm pouco poder (seção 5), "
+    "então o resultado não mostra que a revisão do Copilot não faz diferença, só que esta amostra não a distingue."
+)
+
+TEXTO_RECOMENDACAO = (
+    "No cenário real (tempo até o merge com cauda longa e 30 PRs por grupo, o que o C1 reproduz), o grupo "
+    "recomenda o Mann-Whitney: o erro tipo I dele ficou em 4,67%, perto dos 5% nominais, enquanto o Welch "
+    "rejeitou só 2,47%, e o poder dele foi maior em todos os efeitos, por até 41 pontos percentuais. A escolha "
+    "muda nestas condições:"
+)
+CONDICOES_RECOMENDACAO = (
+    "Dados aproximadamente normais (C0): os dois testes servem; o Welch tem uma vantagem pequena de poder "
+    "(até 3,0 p.p.) e responde diretamente sobre a diferença de médias.",
+    "Pergunta sobre médias, por exemplo o total de horas que a equipe espera: o Welch, porque o Mann-Whitney "
+    "compara postos e responde a outra pergunta; com cauda longa, é preciso aceitar o poder menor do Welch.",
+    "Assimetria mais forte, outliers ou amostra pequena (C2 a C4): o Mann-Whitney, com vantagem ainda maior.",
+    "Grupos com variâncias ou formas diferentes: o estudo não cobre esse caso (ver a limitação abaixo).",
+)
+TEXTO_LIMITACAO = (
+    "Todos os cenários simulam grupos com a mesma forma e a mesma variância, que diferem "
+    "só pela posição; o cenário C5, com variâncias e tamanhos desiguais, não foi feito. Quando as formas diferem, "
+    "o Mann-Whitney deixa de comparar só a posição e pode rejeitar H₀ mesmo com medianas iguais, e é para "
+    "variâncias desiguais que o Welch foi feito. Nos dados reais os dois grupos têm forma parecida na escala log "
+    "(seção 2), mas isso não foi testado, e a recomendação depende disso."
+)
+
+
+def _link_commit(chave: str) -> str:
+    sha, data, _ = COMMITS[chave]
+    return f'<a href="{LINK_COMMIT}{sha}"><code>{sha[:7]}</code></a> ({data})'
+
+
+def _secao_conclusao() -> str:
+    linhas = "\n".join(
+        f"<tr><th>{_e(situacao)}</th><td>{'<br>'.join(f'“{_e(c)}”' for c in citacoes)}</td>"
+        f"<td>{_e(resultado)}</td><td>{_e(confirmou)}</td></tr>"
+        for situacao, citacoes, resultado, confirmou in EXPECTATIVA_X_RESULTADO
+    )
+    condicoes = "".join(f"<li>{_e(c)}</li>" for c in CONDICOES_RECOMENDACAO)
+    return f"""<p class="texto">A expectativa do grupo foi escrita em <a href="{LINK_CENARIO}">docs/cenario.md</a>
+(seção 5) no commit {_link_commit("expectativa")}, antes do primeiro commit que roda os testes em dados simulados,
+{_link_commit("primeira_simulacao")}, e não foi reescrita depois. Os parâmetros das simulações estão congelados no
+<code>config.yaml</code> desde o commit {_link_commit("config_congelado")}, e o hash desse arquivo está no registro de
+cada simulação.</p>
+<table>
+<tr><th>Situação</th><th>O que o grupo esperava (citação do cenario.md)</th><th>O que encontrou</th><th>Confirmou?</th></tr>
+{linhas}
+</table>
+<p class="legenda">Erro tipo I com α = 0,05 e classificação da S02-07 (seção 4); poder e vantagem em pontos
+percentuais (p.p.) da seção 5; dados reais da seção 6.</p>
+<p class="texto">{_e(TEXTO_DIFERENCA_DADOS_REAIS)}</p>
+<p class="texto"><strong>Recomendação.</strong> {_e(TEXTO_RECOMENDACAO)}</p>
+<ul class="texto">{condicoes}</ul>
+<p class="texto"><strong>Limitação principal.</strong> {_e(TEXTO_LIMITACAO)}</p>"""
+
+
 def _pagina(cfg: dict) -> str:
     base = Path(cfg["pasta"])
     reais = pd.read_csv(base / cfg["coleta"]["saida"])
@@ -368,6 +488,7 @@ def _pagina(cfg: dict) -> str:
         "erro-tipo-1": _secao_simulacao(figuras, resultados, sem_resultados, "g3", LEGENDA_G3, "TEXTO_G3"),
         "poder": _secao_simulacao(figuras, resultados, sem_resultados, "g4", LEGENDA_G4, "TEXTO_G4"),
         "dados-reais": _secao_dados_reais(reais, cfg),
+        "conclusao": _secao_conclusao(),
     }
     for ancora, previsto in EM_CONSTRUCAO.items():
         conteudo[ancora] = _marcador(f"Em construção: {previsto}.")
