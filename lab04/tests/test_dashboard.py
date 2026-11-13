@@ -56,6 +56,19 @@ def test_links_no_topo_antes_das_secoes(pagina):
         assert pagina.index(f'href="{link}"') < inicio
 
 
+ENTREGA = config.CONFIG_PADRAO.parent / "docs" / "dashboard-entrega.html"
+
+
+def test_dashboard_entregue_tem_os_links_publicados_no_topo():
+    """`docs/dashboard-entrega.html` é a versão entregue, versionada à parte: não sai do comando único."""
+    pagina = ENTREGA.read_text(encoding="utf-8")
+    topo = pagina.split('<header class="topo">')[1].split("</header>")[0]
+    for link in (dashboard.LINK_KANBAN, dashboard.LINK_REPOSITORIO, dashboard.LINK_DASHBOARD):
+        assert f'href="{link}"' in topo
+    assert "github.io" not in pagina and "publicação na S02-13" not in pagina
+    assert pagina.count("<script") >= 1 and 'src="https://cdn.plot.ly' not in pagina   # Plotly embutido: abre sem internet
+
+
 def test_secoes_1_a_3_tem_o_conteudo_e_os_graficos(pagina):
     secoes = re.split(r'<section id="', pagina)[1:]
     cenario, dados, testes = secoes[:3]

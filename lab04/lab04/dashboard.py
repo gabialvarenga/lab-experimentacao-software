@@ -34,7 +34,7 @@ TITULO = "Lab04: testes de hipótese por dentro (t de Welch × Mann-Whitney)"
 INTEGRANTES = ("Brenda Evers", "Carlos José Gomes Batista Figueiredo", "Gabriela Alvarenga Cardoso")
 LINK_KANBAN = "https://github.com/users/gabialvarenga/projects/9"
 LINK_REPOSITORIO = "https://github.com/gabialvarenga/lab-experimentacao-software/tree/main/lab04"
-LINK_DASHBOARD = "https://gabialvarenga.github.io/lab-experimentacao-software/"
+LINK_DASHBOARD = "https://lab-experimentacao-software-zmrpzguzexmdnagxfc65he.streamlit.app/"   # app.py no Streamlit Cloud, publicado da main (S02-13)
 LINK_CENARIO = LINK_REPOSITORIO + "/docs/cenario.md"
 LINK_PROTOCOLO = LINK_REPOSITORIO + "/docs/protocolo-coleta.md"
 
@@ -254,7 +254,7 @@ def _topo(indicadores: str) -> str:
 <nav class="links">
 <a href="{LINK_KANBAN}">Kanban (GitHub Projects)</a>
 <a href="{LINK_REPOSITORIO}">Repositório</a>
-<a href="{LINK_DASHBOARD}">Dashboard publicado</a> <span class="marcador">(publicação na S02-13)</span>
+<a href="{LINK_DASHBOARD}">Dashboard publicado</a>
 </nav>
 <div class="acoes">{botao}<span>Gerado em {gerado}</span></div></div>
 {indicadores or "<div></div>"}

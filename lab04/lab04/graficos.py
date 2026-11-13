@@ -330,10 +330,11 @@ def _area(x, dist, nome, grupo, mostrar_legenda, hover, *, cor=None, hachura=Non
     )
 
 
-def g2(exemplo: dict) -> go.Figure:
+def g2(exemplo: dict, alfa: float = ALFA) -> go.Figure:
     """Estatística sob H₀, região de rejeição e p-valor de cada teste num exemplo (S01-10).
 
-    `exemplo` é o retorno de `gerador.exemplo_simulado` (S01-08).
+    `exemplo` é o retorno de `gerador.exemplo_simulado` (S01-08). `alfa` é o nível da região de
+    rejeição: 5% por padrão; o dashboard interativo deixa trocar.
     """
     paineis = _paineis_g2(exemplo)
     sob_h0 = estatisticas_sob_h0(exemplo)
@@ -350,7 +351,7 @@ def g2(exemplo: dict) -> go.Figure:
         if finito:
             limite = min(max(LIMITE_PADRAO, float(math.ceil(abs(obs) + 0.5))), LIMITE_MAXIMO)
         x = np.linspace(-limite, limite, 801)
-        critico = float(dist.ppf(1 - ALFA / 2))
+        critico = float(dist.ppf(1 - alfa / 2))
         topo = float(dist.pdf(0))
         celula = {"row": 1, "col": coluna}
 
@@ -373,7 +374,7 @@ def g2(exemplo: dict) -> go.Figure:
         )
         for lado in (-1, 1):
             figura.add_trace(
-                _area(x[lado * x >= critico], dist, f"Região de rejeição (α = {_num(ALFA, 2)})", "rejeicao",
+                _area(x[lado * x >= critico], dist, f"Região de rejeição (α = {_num(alfa, 2)})", "rejeicao",
                       coluna == 1 and lado == 1, f"|{simbolo}| ≥ {_num(critico, 2)}", cor=COR_REJEICAO_AREA),
                 **celula,
             )
