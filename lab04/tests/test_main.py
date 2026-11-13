@@ -1,9 +1,11 @@
 import importlib
+import shutil
+from pathlib import Path
 
 import pytest
 
 from lab04 import __main__ as principal
-from lab04 import coleta
+from lab04 import coleta, config
 
 MODULOS = ["coleta", "descritiva", "calibracao", "gerador", "testes", "simulacao", "graficos", "dashboard", "interativo"]
 
@@ -20,9 +22,54 @@ def test_help_sai_com_zero(capsys):
     assert "usage" in capsys.readouterr().out
 
 
-def test_simular_pendente_avisa_e_sai_com_um(capsys):
-    assert principal.main(["simular"]) == 1
-    assert "ainda não implementada" in capsys.readouterr().err
+@pytest.fixture
+def etapas(monkeypatch):
+    """Substitui as linhas de comando da simulação e da consolidação; devolve a ordem das chamadas."""
+    from lab04 import resultados, simulacao
+
+    chamadas = []
+    monkeypatch.setattr(simulacao, "main", lambda argv: chamadas.append(("simulacao", argv)) or 0)
+    monkeypatch.setattr(resultados, "main", lambda argv: chamadas.append(("resultados", argv)) or 0)
+    return chamadas
+
+
+def test_simular_roda_as_tres_simulacoes_finais_e_depois_consolida(etapas):
+    assert principal.main(["simular"]) == 0
+    padrao = str(config.CONFIG_PADRAO)
+    assert etapas == [
+        ("simulacao", ["--config", padrao, "--cenarios", "C0", "C1", "--saida", "dados/simulacao/c0_c1.csv"]),
+        ("simulacao", ["--config", padrao, "--cenarios", "C2", "C3", "--saida", "dados/simulacao/c2_c3.csv"]),
+        ("simulacao", ["--config", padrao, "--cenarios", "C4", "--saida", "dados/simulacao/c4.csv"]),
+        ("resultados", ["--config", padrao]),
+    ]
+
+
+def test_simulacoes_finais_cobrem_todos_os_cenarios_do_config_uma_vez():
+    ids = [c["id"] for c in config.simulacao(config.carregar())["cenarios"]]
+    assert [i for cenarios, _ in principal.SIMULACOES_FINAIS for i in cenarios] == ids
+
+
+@pytest.mark.parametrize("cenarios, saida", principal.SIMULACOES_FINAIS)
+def test_cada_simulacao_final_e_o_comando_gravado_no_seu_registro(cenarios, saida):
+    csv = config.CONFIG_PADRAO.parent / saida
+    registro = (csv.parent / f"registro-{csv.stem}.md").read_text(encoding="utf-8")
+    assert f"`python -m lab04.simulacao --cenarios {' '.join(cenarios)} --saida {saida}`" in registro
+
+
+def _bytes_lf(caminho) -> bytes:
+    return Path(caminho).read_bytes().replace(b"\r\n", b"\n")
+
+
+def test_simular_reproduz_os_csvs_versionados_byte_a_byte(tmp_path):
+    """De ponta a ponta, numa cópia do config: as 3 simulações (10.000 repetições) e a consolidação."""
+    copia = tmp_path / "config.yaml"
+    shutil.copyfile(config.CONFIG_PADRAO, copia)
+    assert principal.main(["--config", str(copia), "simular"]) == 0
+    versionados = config.CONFIG_PADRAO.parent / "dados" / "simulacao"
+    gerados = tmp_path / "dados" / "simulacao"
+    nomes = [Path(saida).name for _, saida in principal.SIMULACOES_FINAIS]
+    for nome in [*nomes, "resultados.csv", "classificacao.csv", "poder.csv", "resumo-resultados.md"]:
+        assert _bytes_lf(gerados / nome) == _bytes_lf(versionados / nome), nome
 
 
 @pytest.fixture
@@ -50,10 +97,26 @@ def test_dashboard_sem_abrir_nao_abre_o_navegador(argv, painel):
     assert len(painel["montar"]) == 1 and painel["abrir"] == []
 
 
-def test_comando_unico_avisa_simular_e_gera_o_dashboard(painel, capsys):
+def test_comando_unico_simula_consolida_e_depois_gera_o_dashboard(etapas, painel, monkeypatch):
+    from lab04 import dashboard
+
+    # registra o dashboard na mesma lista, para conferir a ordem: simulações, consolidação, página
+    monkeypatch.setattr(dashboard, "montar", lambda saida, cfg: etapas.append(("dashboard", saida.name)))
     assert principal.main(["--sem-abrir"]) == 0
-    assert "'simular' ainda não implementada" in capsys.readouterr().err
-    assert len(painel["montar"]) == 1 and painel["abrir"] == []
+    assert [nome for nome, _ in etapas] == ["simulacao"] * 3 + ["resultados", "dashboard"]
+    assert painel["abrir"] == []
+
+
+def test_comando_unico_nao_gera_o_dashboard_se_a_simulacao_falha(etapas, painel, monkeypatch):
+    from lab04 import simulacao
+
+    def falha(argv):
+        raise ValueError("cenários ['C9'] não estão no config")
+
+    monkeypatch.setattr(simulacao, "main", falha)
+    with pytest.raises(ValueError, match="C9"):
+        principal.main(["--sem-abrir"])
+    assert painel["montar"] == []
 
 
 def test_coletar_chama_a_coleta_com_o_token(monkeypatch):
