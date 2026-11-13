@@ -74,7 +74,7 @@ Opcional se sobrar tempo: variâncias e tamanhos de grupo desiguais. Cuidado: co
 | Tema | Decisão proposta |
 |---|---|
 | Linguagem e bibliotecas | Python 3.12, NumPy, SciPy, pandas, Plotly (mesmo `requirements.txt` do Lab03, sem Streamlit) |
-| Dashboard | Página HTML estática gerada com Plotly, publicada no GitHub Pages. Sem servidor, sem *cold start* na apresentação, link estável para o topo do dashboard. Alternativa: Streamlit Community Cloud (mais interativo, mas pode hibernar). **Revisto em 12/11/2026:** o professor pediu um dashboard dinâmico; o grupo acrescentou um app Streamlit (`app.py`, aberto com `python -m lab04 app`), rodado localmente na apresentação, e manteve o HTML estático como plano B |
+| Dashboard | Página HTML estática gerada com Plotly, publicada no GitHub Pages. Sem servidor, sem *cold start* na apresentação, link estável para o topo do dashboard. Alternativa: Streamlit Community Cloud (mais interativo, mas pode hibernar). **Revisto em 12/11/2026:** o professor pediu um dashboard dinâmico; o grupo acrescentou um app Streamlit (`app.py`, aberto com `python -m lab04 app`), rodado localmente na apresentação, e manteve o HTML estático como plano B. **Revisto em 12/11/2026 (S02-13):** o GitHub Pages não foi usado; o dashboard publicado é o app no Streamlit Community Cloud, a partir da `main`, e é o link do topo. O HTML estático entregue fica versionado em `docs/dashboard-entrega.html` |
 | Separação | A simulação grava CSVs em `dados/`; o dashboard só lê os CSVs. Rodar 10.000 repetições nunca bloqueia a abertura da página |
 | Comando único | `python -m lab04` lê o CSV da coleta, roda as simulações e gera o dashboard (a coleta pela API fica em comando à parte). Detalhado no README em S02-13 |
 | Gráficos | Mesma cor por teste em todos os gráficos (Welch e Mann-Whitney), título, eixos com nome e unidade, legenda. G3 com IC de Wilson e linha em 5%; G4 uma faceta por cenário |
@@ -203,7 +203,7 @@ Cada coluna é uma pessoa, sem papéis fixos. Em 07/11, a Pessoa 1 apoia a S02-0
 | Grade de efeitos mal calibrada | Curvas de poder planas em 5% ou já em 100% | Piloto na S02-01; calibrar antes de congelar |
 | Mudar parâmetros depois de ver os resultados | Dúvida sobre a validade (pergunta 13) | Congelar o `config.yaml` e citar o commit na conclusão |
 | Textos do dashboard só no fim | Seções 4 e 5 sem conclusão | Texto de cada gráfico faz parte da Issue do gráfico, não só da S02-11 |
-| GitHub Pages ainda não configurado | Link do topo do dashboard sem destino | Habilitar Pages na S02-01 e usar o link desde a S01-11, mesmo que a página só apareça na S02-13 |
+| GitHub Pages ainda não configurado | Link do topo do dashboard sem destino | Habilitar Pages na S02-01 e usar o link desde a S01-11, mesmo que a página só apareça na S02-13. **Revisto em 12/11/2026:** o Pages não foi habilitado; o link do topo aponta para o app no Streamlit Community Cloud (S02-13) |
 | Apresentação "usando o próprio dashboard" | Internet ou Pages fora do ar na hora | Ter o HTML gerado salvo localmente e abrir com o comando único como plano B |
 
 ## 5. Estrutura de pastas proposta

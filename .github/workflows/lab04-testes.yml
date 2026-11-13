@@ -19,3 +19,10 @@ jobs:
           cache-dependency-path: lab04/requirements.txt
       - run: pip install -r requirements.txt
       - run: pytest --cov=lab04 --cov-report=term-missing --cov-fail-under=80
+      # S02-13: o comando único em ambiente limpo; o tempo fica no log. Os CSVs regenerados têm de
+      # ser iguais aos versionados (os registros podem mudar só na linha "Ambiente").
+      - name: Comando único
+        run: |
+          time python -m lab04 --sem-abrir
+          git diff --exit-code -- 'dados/simulacao/*.csv' dados/simulacao/resumo-resultados.md
+          test -s dashboard/index.html

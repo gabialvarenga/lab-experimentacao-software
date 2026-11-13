@@ -12,6 +12,12 @@ Laboratório de simulação que compara dois testes para a mesma pergunta: o t d
 
 Board do grupo: [Kanban](https://github.com/users/gabialvarenga/projects/9)
 
+## Dashboard publicado
+
+- **Dashboard interativo (Streamlit):** <https://lab-experimentacao-software-zmrpzguzexmdnagxfc65he.streamlit.app/>. É o `app.py`, publicado no Streamlit Community Cloud a partir da branch `main`. Se o app ficou um tempo sem acesso, ele hiberna: a primeira visita mostra um botão para acordá-lo e leva alguns segundos.
+- **Versão entregue (HTML estático):** [docs/dashboard-entrega.html](docs/dashboard-entrega.html). É um arquivo único, com o Plotly embutido, que abre sem internet: baixe-o e abra no navegador. É o plano B da apresentação.
+- **Repositório:** <https://github.com/gabialvarenga/lab-experimentacao-software/tree/main/lab04>.
+
 ## Como executar
 
 Requer Python 3.12. A partir da raiz do repositório:
@@ -22,7 +28,9 @@ cd lab04
 python -m lab04
 ```
 
-`python -m lab04` é o comando único: lê o CSV da coleta, roda as simulações, gera o dashboard em `dashboard/index.html` e o abre no navegador. Todas as simulações usam a semente fixa de `config.yaml` (`numpy.random.default_rng(42)`), então os resultados se reproduzem.
+`python -m lab04` é o comando único. Ele roda as três simulações finais (C0 e C1, C2 e C3, C4, com 10.000 repetições por célula), consolida os resultados (`resultados.csv`, `classificacao.csv`, `poder.csv` e `resumo-resultados.md`) e gera o dashboard em `dashboard/index.html`, que lê o CSV da coleta (`dados/reais/prs.csv`) e esses resultados; depois abre a página no navegador (`--sem-abrir` só grava o HTML). As simulações também podem rodar sozinhas, com `python -m lab04 simular`. Todas usam a semente fixa de `config.yaml` (`numpy.random.SeedSequence(42)`, com um gerador por célula), então os CSVs versionados se reproduzem byte a byte; um teste confere isso. Entre máquinas, a única diferença esperada é a linha "Ambiente" dos `registro-*.md`, que grava as versões do Python e das bibliotecas.
+
+**Tempo.** A execução completa levou 7,9 s num notebook com Windows 11 e Python 3.14 (12/11/2026): cerca de 3 s nas simulações e o resto na montagem do dashboard, sem contar a instalação das dependências. O CI roda o mesmo comando em ambiente limpo, com Python 3.12, a cada push e pull request (passo "Comando único" do workflow `lab04-testes`), e o tempo fica no log da execução.
 
 **Dashboard.** Para gerar só o dashboard e abri-lo no navegador:
 
@@ -37,7 +45,9 @@ A página é um painel em tema escuro, feito para rolar durante a apresentação
 
 Os textos de interpretação (o que cada gráfico mostra e o que o grupo conclui) ficam fora da tela, numa folha que abre com a tecla `i` (ou o botão "Interpretação") e fecha com `Esc`. Para uma página só com gráficos, tabelas e legendas, mude `MOSTRAR_INTERPRETACAO` para `False` em `lab04/dashboard.py`.
 
-**Dashboard interativo (para a apresentação).** O professor pediu um dashboard dinâmico, em que os parâmetros mudam na hora. Ele é um app [Streamlit](https://streamlit.io) (`app.py`) numa página única, montada como pede a seção 4 do enunciado: os links do GitHub Projects, do repositório e do dashboard no topo, seguidos de um índice, e as sete seções nesta ordem, cada gráfico com o texto do grupo logo abaixo, sempre visível. Os controles ficam dentro de cada seção e refazem só aquela seção. O laboratório ao vivo é um apêndice depois da seção 7.
+**Versão entregue.** O [docs/dashboard-entrega.html](docs/dashboard-entrega.html) é o dashboard estático entregue, gerado em 12/11/2026 com correções do time que ainda não estão em `dashboard.py`: as abas "Painel" e "Relatório (enunciado)", a seção 7 visível e uma legenda em cada gráfico. Por isso ele é versionado à parte e difere da página que o comando gera. A única edição feita à mão foi o link "Dashboard publicado" do topo, que passou a apontar para o Streamlit; um teste confere os links do topo e que o Plotly está embutido.
+
+**Dashboard interativo (para a apresentação).** O professor pediu um dashboard dinâmico, em que os parâmetros mudam na hora. Ele é um app [Streamlit](https://streamlit.io) (`app.py`) numa página única, montada como pede a seção 4 do enunciado: os links do GitHub Projects, do repositório e do dashboard no topo, seguidos de um índice, e as sete seções nesta ordem, cada gráfico com o texto do grupo logo abaixo, sempre visível. Os controles ficam dentro de cada seção e refazem só aquela seção. O laboratório ao vivo é um apêndice depois da seção 7. Ele está publicado no Streamlit Community Cloud (link em [Dashboard publicado](#dashboard-publicado)); para rodá-lo localmente:
 
 ```bash
 cd lab04
@@ -59,7 +69,7 @@ Deixe o terminal aberto durante a apresentação: o app roda enquanto o comando 
 
 As seções 4 e 5 continuam lendo os CSVs versionados. O laboratório usa o mesmo motor (`simulacao.simular`) e o mesmo esquema de sementes das simulações finais: com os parâmetros de um cenário, a semente 42 e 10.000 repetições, ele reproduz exatamente as linhas do `resultados.csv` e avisa na tela (um teste confere isso em C4). A lógica fica em `lab04/interativo.py`, testada sem o Streamlit, e `tests/test_app.py` abre a página pelo `AppTest` do Streamlit, sem navegador, e confere os links no topo, a ordem das sete seções, os textos junto dos gráficos e os controles principais. O HTML estático continua sendo o plano B, porque abre sem servidor e sem internet.
 
-**Estado atual (Sprint 02):** o dashboard tem as seções 1 (cenário), 2 (os dados, G1), 3 (como os testes funcionam, G2), 4 (erro tipo I, G3), 5 (poder, G4), 6 (dados reais) e 7 (conclusão: expectativa × resultado, recomendação e limitação principal); nenhuma seção está mais em construção. As seções 4 e 5 leem `dados/simulacao/resultados.csv` e mostram os gráficos com α = 0,05; o efeito de α = 0,01 está no texto de cada uma. A etapa `simular` ainda não existe: sozinha, ela avisa e sai com código 1; no comando único, ela avisa e o dashboard é gerado mesmo assim.
+**Estado atual (Sprint 02):** o dashboard tem as seções 1 (cenário), 2 (os dados, G1), 3 (como os testes funcionam, G2), 4 (erro tipo I, G3), 5 (poder, G4), 6 (dados reais) e 7 (conclusão: expectativa × resultado, recomendação e limitação principal); nenhuma seção está mais em construção. As seções 4 e 5 leem `dados/simulacao/resultados.csv` e mostram os gráficos com α = 0,05; o efeito de α = 0,01 está no texto de cada uma. O comando único regenera as simulações, a consolidação e o dashboard (S02-13).
 
 **Coleta dos dados reais.** A coleta pela API fica fora do comando único, porque precisa de um token do GitHub; o `dados/reais/prs.csv` já está versionado. Para refazê-la:
 
@@ -252,9 +262,9 @@ As medianas são 17,8 h (com bot) e 17,2 h (sem bot), uma diferença de 4% (raz�
 
 A seção 7 compara a expectativa da seção 5 do `docs/cenario.md`, citada palavra por palavra, com o erro tipo I (`classificacao.csv`), o poder (`poder.csv`) e a tabela da seção 6, e traz a recomendação do grupo (o Mann-Whitney no cenário real, com as condições em que a escolha muda) e a limitação principal (grupos com variâncias ou formas diferentes não foram simulados). O texto fica em `dashboard.py` (`EXPECTATIVA_X_RESULTADO`, `TEXTO_RECOMENDACAO`, `TEXTO_LIMITACAO`), e os testes conferem as citações contra o `cenario.md` e os números contra os CSVs: se um resultado mudar, o texto precisa ser revisto. A seção cita os commits da expectativa (`f998a18`), da primeira simulação (`101eb54`) e do `config.yaml` congelado (`dc4f478`); um teste confere que eles existem, que a expectativa é anterior à simulação e que o `config.yaml` não mudou depois. Esse teste é pulado quando o histórico do Git não está disponível, como no checkout raso do CI.
 
-### GitHub Pages
+### Publicação (S02-13)
 
-O dashboard será publicado em <https://gabialvarenga.github.io/lab-experimentacao-software/> (o mesmo endereço do link no topo do dashboard, `LINK_DASHBOARD` em `dashboard.py`). A publicação é a S02-13; antes dela o endereço pode responder 404. O site é habilitado em Settings > Pages do repositório.
+O dashboard publicado é o app Streamlit (`app.py`), no Streamlit Community Cloud, a partir da branch `main`: <https://lab-experimentacao-software-zmrpzguzexmdnagxfc65he.streamlit.app/>. É o mesmo endereço do link "Dashboard publicado" no topo do app e do HTML estático (`LINK_DASHBOARD` em `dashboard.py`). O GitHub Pages, previsto no planejamento, não foi usado: o enunciado aceita o dashboard aberto por um comando ou publicado, e o professor pediu um dashboard dinâmico. A decisão está registrada no [planejamento](docs/planejamento.md) (seção 2.3). O HTML estático segue como plano B, sem servidor e sem internet: o gerado pelo comando e a [versão entregue](docs/dashboard-entrega.html).
 
 ## Documentação
 
@@ -266,6 +276,7 @@ O dashboard será publicado em <https://gabialvarenga.github.io/lab-experimentac
 | [docs/dicionario-dados.md](docs/dicionario-dados.md) | Nome, tipo, unidade e origem de cada coluna dos dados reais |
 | [docs/calibracao-lognormal.md](docs/calibracao-lognormal.md) | Descritiva, QQ-plot, justificativa da lognormal e parâmetros calibrados |
 | [docs/exemplo-simulado.md](docs/exemplo-simulado.md) | Dois conjuntos simulados (sem e com efeito), os dois testes aplicados e a interpretação |
+| [docs/dashboard-entrega.html](docs/dashboard-entrega.html) | Dashboard estático entregue (12/11/2026), com o Plotly embutido; abre sem internet |
 | [dados/reais/registro-coleta.md](dados/reais/registro-coleta.md) | Consultas, contagens por etapa e trocas da coleta (gerado) |
 
 ## Estrutura
@@ -298,9 +309,10 @@ lab04/
     .streamlit/config.toml # tema do app
     dashboard/             # HTML gerado por `python -m lab04 dashboard` (fora do Git)
     docs/                  # planejamento, cenário, protocolo de coleta, respostas orais
+        dashboard-entrega.html  # dashboard estático entregue (versionado à parte, não sai do comando)
 ```
 
-O CI do Lab04 fica em `.github/workflows/lab04-testes.yml`, na raiz do repositório, e roda os testes desta pasta a cada push e pull request.
+O CI do Lab04 fica em `.github/workflows/lab04-testes.yml`, na raiz do repositório. A cada push e pull request, ele roda os testes desta pasta e o comando único (`python -m lab04 --sem-abrir`), com o tempo da execução no log.
 
 Regras da estrutura:
 
