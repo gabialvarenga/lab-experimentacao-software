@@ -37,6 +37,28 @@ A página é um painel em tema escuro, feito para rolar durante a apresentação
 
 Os textos de interpretação (o que cada gráfico mostra e o que o grupo conclui) ficam fora da tela, numa folha que abre com a tecla `i` (ou o botão "Interpretação") e fecha com `Esc`. Para uma página só com gráficos, tabelas e legendas, mude `MOSTRAR_INTERPRETACAO` para `False` em `lab04/dashboard.py`.
 
+**Dashboard interativo (para a apresentação).** O professor pediu um dashboard dinâmico, em que os parâmetros mudam na hora. Ele é um app [Streamlit](https://streamlit.io) (`app.py`) numa página única, montada como pede a seção 4 do enunciado: os links do GitHub Projects, do repositório e do dashboard no topo, seguidos de um índice, e as sete seções nesta ordem, cada gráfico com o texto do grupo logo abaixo, sempre visível. Os controles ficam dentro de cada seção e refazem só aquela seção. O laboratório ao vivo é um apêndice depois da seção 7.
+
+```bash
+cd lab04
+python -m lab04 app                    # abre http://localhost:8501; --porta 9000 troca a porta, --sem-abrir não abre o navegador
+```
+
+Deixe o terminal aberto durante a apresentação: o app roda enquanto o comando estiver ativo (Ctrl+C encerra). O servidor sobe em modo *headless*, porque sem isso a primeira execução do Streamlit para num prompt de e-mail e a página não responde, e o comando abre o navegador alguns segundos depois.
+
+| Seção | O que dá para mudar |
+|---|---|
+| 1. Cenário | (texto, igual ao estático) |
+| 2. Os dados (G1) | Efeito δ, n por grupo e semente dos simulados; botão para sortear outro conjunto e para voltar ao exemplo do relatório; medianas reais × simuladas |
+| 3. Como os testes funcionam (G2) | Distribuição (lognormal calibrada ou C0 a C4), δ, n, semente e α (1%, 5% ou 10%); tabela com estatística, p-valor, tamanho de efeito e decisão, e se ela é certa, erro tipo I ou erro tipo II |
+| 4. Erro tipo I (G3) | Cenários exibidos e α (5% ou 1%), com a tabela da classificação |
+| 5. Poder (G4) | Cenários exibidos e α, com a tabela de poder e vantagem por efeito |
+| 6. Dados reais | α dos dois testes (tabela e texto se refazem) e gráfico de cada PR por grupo, com o número do PR no hover |
+| 7. Conclusão | (texto, igual ao estático) |
+| Apêndice: laboratório ao vivo | Parte de um cenário (C0 a C4), muda distribuição, σ, n, outliers, grade de efeitos, repetições e semente e roda uma simulação nova, comparada lado a lado com a do `resultados.csv`; baixa o CSV da simulação |
+
+As seções 4 e 5 continuam lendo os CSVs versionados. O laboratório usa o mesmo motor (`simulacao.simular`) e o mesmo esquema de sementes das simulações finais: com os parâmetros de um cenário, a semente 42 e 10.000 repetições, ele reproduz exatamente as linhas do `resultados.csv` e avisa na tela (um teste confere isso em C4). A lógica fica em `lab04/interativo.py`, testada sem o Streamlit, e `tests/test_app.py` abre a página pelo `AppTest` do Streamlit, sem navegador, e confere os links no topo, a ordem das sete seções, os textos junto dos gráficos e os controles principais. O HTML estático continua sendo o plano B, porque abre sem servidor e sem internet.
+
 **Estado atual (Sprint 02):** o dashboard tem as seções 1 (cenário), 2 (os dados, G1), 3 (como os testes funcionam, G2), 4 (erro tipo I, G3), 5 (poder, G4), 6 (dados reais) e 7 (conclusão: expectativa × resultado, recomendação e limitação principal); nenhuma seção está mais em construção. As seções 4 e 5 leem `dados/simulacao/resultados.csv` e mostram os gráficos com α = 0,05; o efeito de α = 0,01 está no texto de cada uma. A etapa `simular` ainda não existe: sozinha, ela avisa e sai com código 1; no comando único, ela avisa e o dashboard é gerado mesmo assim.
 
 **Coleta dos dados reais.** A coleta pela API fica fora do comando único, porque precisa de um token do GitHub; o `dados/reais/prs.csv` já está versionado. Para refazê-la:
@@ -267,10 +289,13 @@ lab04/
         resultados.py      # consolida os CSVs e classifica liberal/conservador/ok     (S02-07)
         graficos.py        # g1, g2, g3, g4 em Plotly                                  (S01-09, 10; S02-08, 09)
         dashboard.py       # monta o HTML com as 7 seções                              (S01-11, S02-11)
+        interativo.py      # lógica do dashboard interativo (Streamlit)                (S02-13)
     tests/                 # pytest, um arquivo test_<módulo>.py por módulo
     dados/
         reais/             # CSV da coleta, calibração e dicionário de dados
         simulacao/         # resultados de Q1, Q2 e Q3 (CSV)
+    app.py                 # dashboard interativo em Streamlit: `python -m lab04 app` (S02-13)
+    .streamlit/config.toml # tema do app
     dashboard/             # HTML gerado por `python -m lab04 dashboard` (fora do Git)
     docs/                  # planejamento, cenário, protocolo de coleta, respostas orais
 ```
