@@ -1,0 +1,87 @@
+# Ambiente do Lab05: sobe um servidor por vez (Redis ou Valkey) e o cliente de carga.
+# Protocolo completo: docs/protocolo-execucao.md. O executor (S01-07) usa este arquivo.
+#
+# Os servidores são escolhidos por perfil, e o tratamento por variáveis de ambiente:
+#
+#   IO_THREADS=4 docker compose --profile redis  up -d --wait redis
+#   IO_THREADS=1 docker compose --profile valkey up -d --wait valkey
+#   docker compose --profile cliente run --rm cliente --server=redis ...
+#   docker compose --profile redis down
+#
+# Variáveis (valores padrão entre chaves):
+#   IO_THREADS        threads de I/O do servidor: 1 ou 4 (1)
+#   CPUSET_SERVIDOR   CPUs lógicas do servidor (0-3)
+#   CPUSET_CLIENTE    CPUs lógicas do cliente de carga (4-7)
+#   MAXMEMORY         limite de memória do servidor (512mb)
+#
+# Nada é publicado na máquina nem na rede local: só os contêineres desta rede se enxergam.
+# Por isso o modo protegido fica desligado (não há senha e o cliente não é "loopback").
+#
+# As imagens estão fixadas por tag e por digest do índice multi-arquitetura (levantado em
+# 17/11/2026, ver docs/software.md). O digest vale mais que a tag.
+
+name: lab05
+
+x-servidor-comum: &servidor-comum
+  restart: "no"
+  stop_grace_period: 5s
+  cpuset: "${CPUSET_SERVIDOR:-0-3}"
+
+services:
+  redis:
+    <<: *servidor-comum
+    profiles: ["redis"]
+    image: redis:8.10.3@sha256:1f88291b4c57bdf249f02eb085a8669889b2d2954e91d4de5118a5da6b78dd53
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - "${MAXMEMORY:-512mb}"
+      - --maxmemory-policy
+      - noeviction
+      - --io-threads
+      - "${IO_THREADS:-1}"
+      - --protected-mode
+      - "no"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  valkey:
+    <<: *servidor-comum
+    profiles: ["valkey"]
+    image: valkey/valkey:9.1.3@sha256:3add1a336a920ea54770a001ab6feb3da5fceea96a40373a3a2cd469b815f0b7
+    command:
+      - valkey-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - "${MAXMEMORY:-512mb}"
+      - --maxmemory-policy
+      - noeviction
+      - --io-threads
+      - "${IO_THREADS:-1}"
+      - --protected-mode
+      - "no"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # Mesmo cliente para os dois servidores. Os argumentos vêm de `docker compose run`.
+  cliente:
+    profiles: ["cliente"]
+    image: redislabs/memtier_benchmark:2.6.1@sha256:41849040f6ea0b335c31ae532b1488ce47ea6e8c48a086d661f3d6953d3b599d
+    entrypoint: ["memtier_benchmark"]
+    cpuset: "${CPUSET_CLIENTE:-4-7}"
+    restart: "no"
+    volumes:
+      - ./dados/brutos/saidas:/saidas
