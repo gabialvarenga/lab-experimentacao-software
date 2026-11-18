@@ -138,7 +138,7 @@ Para o Valkey, trocar `redis` por `valkey` e `redis-cli` por `valkey-cli`. A pr�
 
 *Proposta:* aquecimento de 10 s, medição de 30 s e pausa de 5 s são ajustados pelo piloto (S01-09). A uma execução de cerca de um minuto, a coleta completa (2 servidores × 2 níveis de `io_threads` × 3 cargas × 30 repetições = 360 execuções) leva em torno de 6 horas, e o piloto (5 repetições, 60 execuções) em torno de 1 hora.
 
-**O que se grava.** O executor transforma cada execução em uma linha do CSV (colunas `execucao_id`, `ordem`, `servidor`, `versao`, `io_threads`, `carga`, `repeticao`, `ops_s`, `lat_p50_ms`, `lat_p99_ms`, `memoria_bytes`, `inicio`, `fim`) e guarda a saída bruta do cliente (JSON) em `dados/brutos/saidas/`. Execução que falha (contêiner não sobe, cliente cai) é registrada como falha, sem valor inventado.
+**O que se grava.** O executor transforma cada execução em uma linha do CSV (colunas `execucao_id`, `ordem`, `servidor`, `versao`, `io_threads`, `carga`, `repeticao`, `ops_s`, `lat_p50_ms`, `lat_p99_ms`, `memoria_bytes`, `inicio`, `fim`) e guarda a saída bruta do cliente (JSON) em `dados/brutos/saidas/`. Execução que falha (contêiner não sobe, cliente cai) é registrada como falha, sem valor inventado: não entra no CSV, ganha uma linha em `falhas.csv` (etapa e mensagem) e é tentada de novo na próxima chamada do executor. As execuções já gravadas no CSV nunca são repetidas, então uma coleta interrompida é retomada com o mesmo comando.
 
 ## 7. Ordem das execuções
 
@@ -191,7 +191,7 @@ Feita com `docker compose` a partir de `lab05/`, sem rodar o cliente contra nenh
 
 - **A versão do Valkey vem de `valkey_version`.** O `INFO server` do Valkey 9.1.3 também traz `redis_version:7.2.4`, por compatibilidade. Ler esse campo no Valkey gravaria a versão errada na coluna `versao` do CSV.
 - **Execução interrompida.** Durante a verificação, uma execução ficou parada e o contêiner permaneceu no ar por cerca de 22 horas: o computador provavelmente suspendeu. É o motivo do item 2 da seção 2.2 (suspensão desligada) e a razão de o executor poder retomar de onde parou e de remover contêineres antigos antes de começar.
-- **Proporções com zero.** `--ratio=1:0` e `--ratio=0:1` foram conferidos só no código-fonte (seção 5). A primeira execução real do executor confirma.
+- **Proporções com zero.** `--ratio=1:0` e `--ratio=0:1` foram conferidos só no código-fonte (seção 5). *Confirmado em 18/11/2026* na execução de exemplo do executor (S01-07, `dados/brutos/exemplo/`): na carga `set` o JSON do cliente traz 0 GET, na `get` 0 SET, e a `misto` fica perto de 1 SET para 4 GET; nenhum GET deu *miss*, o que confirma a pré-carga.
 
 ## 10. Decisões e o que mudou em relação ao planejamento
 

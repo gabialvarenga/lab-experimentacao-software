@@ -13,6 +13,7 @@
 #   CPUSET_SERVIDOR   CPUs lógicas do servidor (0-3)
 #   CPUSET_CLIENTE    CPUs lógicas do cliente de carga (4-7)
 #   MAXMEMORY         limite de memória do servidor (512mb)
+#   SAIDAS            pasta da máquina montada em /saidas no cliente (./dados/brutos/saidas)
 #
 # Nada é publicado na máquina nem na rede local: só os contêineres desta rede se enxergam.
 # Por isso o modo protegido fica desligado (não há senha e o cliente não é "loopback").
@@ -84,4 +85,4 @@ services:
     cpuset: "${CPUSET_CLIENTE:-4-7}"
     restart: "no"
     volumes:
-      - ./dados/brutos/saidas:/saidas
+      - "${SAIDAS:-./dados/brutos/saidas}:/saidas"   # o executor aponta para a pasta da coleta

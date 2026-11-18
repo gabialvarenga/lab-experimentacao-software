@@ -1,4 +1,38 @@
-# Configuração do Lab05. O plano de execuções do benchmark (servidores, threads de I/O,
-# cargas e repetições) entra na S01-07. Não há segredos aqui: o Lab05 não usa token.
+# Configuração do Lab05. Não há segredos aqui: o Lab05 não usa token.
+# Protocolo de cada execução: docs/protocolo-execucao.md. Os caminhos valem a partir desta pasta.
 
 semente: 42   # semente global: ordem aleatorizada das execuções e reamostragens (bootstrap)
+
+# Plano de execuções (S01-07). Uma execução = (servidor, io_threads, carga, repetição).
+# Cada repetição é um bloco com uma execução de cada combinação, em ordem sorteada com a semente.
+plano:
+  servidores:                 # nome no CSV -> serviço do compose.yaml, CLI e campo da versão no INFO
+    redis:
+      servico: redis
+      cli: redis-cli
+      campo_versao: redis_version
+    valkey:
+      servico: valkey
+      cli: valkey-cli
+      campo_versao: valkey_version   # o Valkey também traz redis_version:7.2.4, por compatibilidade
+  io_threads: [1, 4]
+  cargas:                     # carga -> --ratio do memtier_benchmark (SET:GET)
+    set: "1:0"
+    get: "0:1"
+    misto: "1:4"
+  repeticoes: 30              # proposta; revisto pelo piloto (S01-09)
+
+# Cliente de carga: memtier_benchmark 2.6.1 (protocolo, seções 4 a 6). Tempos em segundos.
+cliente:
+  threads: 4
+  clientes_por_thread: 12     # 48 clientes no total
+  tamanho_valor: 100          # bytes
+  pipeline: 1
+  chaves: 100000              # pré-carga de 1 a 100.000 antes de toda carga
+  aquecimento_s: 10           # proposta; saída descartada
+  medicao_s: 30               # proposta
+  pausa_s: 5                  # entre uma execução e a próxima
+  limite_subida_s: 120        # tempo máximo para o servidor ficar pronto
+
+# Saídas do executor: execucoes.csv, falhas.csv, saidas/<execucao_id>.json e registro-<data>.md
+saida: dados/brutos
