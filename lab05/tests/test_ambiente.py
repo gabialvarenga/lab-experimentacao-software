@@ -87,3 +87,18 @@ def test_registro_de_segunda_sessao_no_mesmo_dia_acrescenta_secao(tmp_path):
     assert texto.count("# Registro da execução") == 1 and texto.count("## Sessão iniciada") == 2
     assert "| indisponível | |" in texto and "SHA-256 do config.yaml: `indisponível`" in texto
     assert "(interrompida; retomar com o mesmo comando)" in texto
+
+
+def test_modo_de_energia_e_alimentacao_no_windows():
+    def rodar(comando, cwd=None):
+        texto = comando[-1]
+        if "ActiveOverlayAcPowerScheme" in texto:
+            return "DED574B5-45A0-4F42-8737-46345C09C238"
+        return "2"
+
+    assert ambiente._modo_energia(rodar) == "Melhor desempenho (DED574B5-45A0-4F42-8737-46345C09C238)"
+    assert ambiente._alimentacao(rodar) == "tomada (BatteryStatus 2)"
+    assert ambiente._alimentacao(lambda c, cwd=None: "1") == "bateria (descarregando) (BatteryStatus 1)"
+    indisponivel = lambda c, cwd=None: ambiente.INDISPONIVEL  # noqa: E731
+    assert ambiente._modo_energia(indisponivel) == ambiente.INDISPONIVEL
+    assert ambiente._alimentacao(indisponivel) == "sem bateria ou indisponível"

@@ -11,10 +11,12 @@ plano:
       servico: redis
       cli: redis-cli
       campo_versao: redis_version
+      versao_esperada: "8.10.3"     # a validação (S01-08) recusa outra versão
     valkey:
       servico: valkey
       cli: valkey-cli
       campo_versao: valkey_version   # o Valkey também traz redis_version:7.2.4, por compatibilidade
+      versao_esperada: "9.1.3"
   io_threads: [1, 4]
   cargas:                     # carga -> --ratio do memtier_benchmark (SET:GET)
     set: "1:0"
@@ -34,5 +36,13 @@ cliente:
   pausa_s: 5                  # entre uma execução e a próxima
   limite_subida_s: 120        # tempo máximo para o servidor ficar pronto
 
-# Saídas do executor: execucoes.csv, falhas.csv, saidas/<execucao_id>.json e registro-<data>.md
+# Saídas do executor: <nome>.csv, falhas.csv, saidas/<execucao_id>.json e registro-<nome>.md
+# (sem nome: execucoes.csv e registro-<data>.md)
 saida: dados/brutos
+
+# Coleta piloto (S01-08): `python -m lab05 executar --piloto` troca estes valores.
+# O piloto não entra na análise final.
+piloto:
+  repeticoes: 5
+  saida: dados/piloto
+  nome: piloto

@@ -19,7 +19,18 @@ Siglas: CPU (*Central Processing Unit*); WSL2 (*Windows Subsystem for Linux 2*);
 
 Uma única máquina roda todas as execuções, para que a diferença entre os servidores não se misture com a diferença entre computadores.
 
-| Item | Valor de referência (17/11/2026) |
+> **Mudança de máquina (18/11/2026, S01-08).** O piloto foi rodado em outro notebook do grupo, que **passa a ser a máquina designada**: a coleta completa (S02-02) roda nele também. A tabela original, de 17/11, fica abaixo como histórico.
+
+| Item | Máquina designada desde 18/11/2026 |
+|---|---|
+| Processador | Intel Core i7-13620H, 16 CPUs lógicas (6 núcleos de desempenho com 2 *threads* e 4 de eficiência) |
+| Memória | 23,7 GiB; sem `.wslconfig` (limites padrão do WSL) |
+| Sistema | Windows 11 (10.0.26200) com WSL 2.6.3; kernel do WSL 6.6.87.2-1 |
+| Tipo | Notebook (tem bateria) |
+| Docker | Docker Desktop 4.67.0, Docker Engine 29.3.1, Docker Compose 5.1.1 |
+| Máquina virtual do Docker | Kernel 6.6.87.2-microsoft-standard-WSL2, 16 CPUs lógicas, 11,5 GiB de memória. Pares de CPUs irmãs `0-1`, `2-3`, `4-5` e `6-7` (lidos em `/sys/devices/system/cpu/*/topology` num contêiner): servidor (`0-3`) e cliente (`4-7`) não dividem núcleo físico, e os valores padrão do `compose.yaml` ficam como estão |
+
+| Item | Valor de referência (17/11/2026, máquina anterior) |
 |---|---|
 | Processador | Intel Core i5-9300H, 4 núcleos físicos e 8 *threads* lógicas |
 | Memória | 15,8 GB; o WSL2 está limitado a 11 GB (`.wslconfig`: `memory=11GB`) |
@@ -35,9 +46,9 @@ O executor grava o ambiente de cada coleta em `registro-<data>.md` (versões, di
 Cumprir todos os itens e anotar o que não for possível:
 
 1. Notebook **ligado na tomada**, durante toda a coleta.
-2. Plano de energia fixo no de maior desempenho disponível, e suspensão de tela e do sistema desligada. Anotar o plano usado. O padrão atual é "Equilibrado", que muda a frequência da CPU conforme a carga.
-3. **Nenhum outro programa aberto**: navegador, editor, mensageiros e sincronização de arquivos fechados. Atualizações do Windows pausadas.
-4. Máquina fria: esperar alguns minutos depois de uma coleta anterior ou de qualquer tarefa pesada.
+2. Plano de energia fixo no de maior desempenho disponível, e suspensão de tela e do sistema desligada. Anotar o plano usado. O padrão atual é "Equilibrado", que muda a frequência da CPU conforme a carga. No Windows 11, o que vale é o **modo de energia** (Configurações → Energia: "Melhor desempenho"), que se sobrepõe ao plano do `powercfg`; o executor grava os dois no registro, e também se o notebook está na tomada.
+3. **Nenhum outro programa aberto**: navegador, editor, mensageiros e sincronização de arquivos fechados. Atualizações do Windows pausadas. **Nenhum outro contêiner no Docker**: `docker ps` vazio antes de começar (no piloto, contêineres de outro projeto estavam ligados e a primeira tentativa foi descartada).
+4. Máquina fria e ociosa: esperar **10 minutos** depois de fechar programas, parar contêineres, de uma coleta anterior ou de qualquer tarefa pesada. No piloto, o segundo bloco ficou cerca de 16% mais lento que os demais, provavelmente porque a máquina ainda se acomodava (ver a seção 11).
 5. Registrar a hora de início e de fim, para relacionar com eventuais interrupções.
 6. Não mexer na máquina durante a coleta.
 
@@ -202,5 +213,20 @@ Feita com `docker compose` a partir de `lab05/`, sem rodar o cliente contra nenh
 | Entre execuções | `FLUSHALL` | Contêiner novo | `FLUSHALL` não devolve a memória do alocador; a Q4 mede memória |
 | Ordem | Aleatorizada, alternando servidores | Blocos de 12 combinações em ordem sorteada | Distribui a deriva da máquina por igual |
 | Conjunto de chaves | Não definido | 100.000 chaves, pré-carga antes de toda carga | Mesmo estado inicial nas três cargas |
+| Máquina (S01-08) | Uma máquina designada | Notebook com i7-13620H, desde o piloto | O piloto foi rodado nele; a coleta completa precisa da mesma máquina |
 
 O planejamento (seção 3.3, no PR 285) deve ser atualizado nos itens acima depois do merge.
+
+## 11. Resultado do piloto (S01-08, 18/11/2026)
+
+Detalhes em [`../dados/piloto/LEIA-ME.md`](../dados/piloto/LEIA-ME.md) e no relatório `../dados/piloto/qualidade-piloto.md`.
+
+| Item | Resultado |
+|---|---|
+| Execuções | 60 de 60 (5 repetições × 12 combinações), nenhuma falha |
+| Validação | Sem erros; 31 avisos de coeficiente de variação acima de 10% |
+| Tempo total | 59,4 min (0,99 min por execução): a coleta completa, com 360 execuções, leva cerca de 6 horas |
+| Variabilidade | CV mediano de 11,9% (`ops_s`), 12,6% (`lat_p50_ms`) e 14,5% (`lat_p99_ms`); `memoria_bytes` quase constante (CV ≤ 0,04%) |
+| Causa dos CV altos | Deriva da máquina entre blocos (bloco 2 cerca de 16% mais lento, blocos 4 e 5 cerca de 10% mais rápidos), igual em todas as combinações. Sem o efeito do bloco, o CV mediano cai para cerca de 6% a 7% |
+
+**Ajustes feitos a partir do piloto:** a seção 2.2 ganhou o `docker ps` vazio, o modo de energia do Windows 11 e os 10 minutos de máquina ociosa; o registro de ambiente passou a gravar o modo de energia e a alimentação; a máquina designada mudou (seção 2.1). Os tempos de aquecimento (10 s), de medição (30 s) e de pausa (5 s) ficam como estão: nenhuma execução falhou e o tempo total coube no previsto. O número de repetições é decidido na S01-09, a partir do CV do piloto.

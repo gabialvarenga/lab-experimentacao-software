@@ -81,6 +81,31 @@ def _wslconfig() -> str:
     return "; ".join(linhas) or "sem limites no .wslconfig"
 
 
+# Modo de energia do Windows 11 (Configurações > Energia), sobreposto ao plano do powercfg
+MODOS_ENERGIA = {
+    "ded574b5-45a0-4f42-8737-46345c09c238": "Melhor desempenho",
+    "00000000-0000-0000-0000-000000000000": "Equilibrado",
+    "961cc777-2547-4f9d-8174-7d86181b8a7a": "Melhor eficiência de energia",
+    "3af9b8d9-7c97-431d-ad78-34a8bfea439f": "Melhor eficiência de energia",
+}
+# Win32_Battery.BatteryStatus: 1 = descarregando; 2 e 6 a 9 = ligado na tomada
+STATUS_BATERIA = {"1": "bateria (descarregando)", "2": "tomada", "6": "tomada (carregando)",
+                  "7": "tomada (carregando)", "8": "tomada (carregando)", "9": "tomada (carregando)"}  # fmt: skip
+
+
+def _modo_energia(rodar) -> str:
+    chave = "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power\\User\\PowerSchemes"
+    guid = rodar(["powershell", "-NoProfile", "-Command", f"(Get-ItemProperty '{chave}').ActiveOverlayAcPowerScheme"])
+    return f"{MODOS_ENERGIA.get(guid.lower(), 'desconhecido')} ({guid})" if guid != INDISPONIVEL else INDISPONIVEL
+
+
+def _alimentacao(rodar) -> str:
+    status = rodar(["powershell", "-NoProfile", "-Command", "(Get-CimInstance Win32_Battery).BatteryStatus"])
+    if status == INDISPONIVEL:
+        return "sem bateria ou indisponível"
+    return f"{STATUS_BATERIA.get(status, 'desconhecida')} (BatteryStatus {status})"
+
+
 def coletar(pasta, rodar=_rodar, sistema: str = sys.platform) -> dict:
     """Levanta o ambiente da máquina e do Docker. `pasta` é onde está o `compose.yaml`."""
     perfis = ["--profile", "redis", "--profile", "valkey", "--profile", "cliente"]
@@ -98,6 +123,8 @@ def coletar(pasta, rodar=_rodar, sistema: str = sys.platform) -> dict:
         "CPUs lógicas da máquina": str(os.cpu_count()),
         "Memória da máquina": f"{memoria / 2**30:.1f} GiB ({memoria} bytes)" if memoria else INDISPONIVEL,
         "Plano de energia": rodar(["powercfg", "/getactivescheme"]) if sistema == "win32" else "não se aplica",
+        "Modo de energia (na tomada)": _modo_energia(rodar) if sistema == "win32" else "não se aplica",
+        "Alimentação": _alimentacao(rodar) if sistema == "win32" else "não se aplica",
         "Python": platform.python_version(),
         "Docker (cliente / servidor)": rodar(["docker", "version", "--format", "{{.Client.Version}} | {{.Server.Version}}"]),
         "Docker Desktop": rodar(["docker", "version", "--format", "{{.Server.Platform.Name}}"]),

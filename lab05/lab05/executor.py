@@ -290,9 +290,19 @@ def agora_local() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-def aplicar_ajustes(cfg: dict, repeticoes=None, aquecimento_s=None, medicao_s=None, pausa_s=None, saida=None) -> dict:
-    """Cópia do config com repetições, tempos ou pasta de saída trocados (exemplo e piloto)."""
+def aplicar_ajustes(
+    cfg: dict, repeticoes=None, aquecimento_s=None, medicao_s=None, pausa_s=None, saida=None, nome=None, piloto=False
+) -> dict:
+    """Cópia do config com repetições, tempos, pasta ou nome de saída trocados (exemplo e piloto).
+
+    `piloto=True` aplica primeiro o bloco `piloto` do config; as demais opções valem por cima.
+    """
     novo = {**cfg, "cliente": dict(cfg["cliente"]), "plano": dict(cfg["plano"])}
+    if piloto:
+        bloco = cfg["piloto"]
+        repeticoes = bloco["repeticoes"] if repeticoes is None else repeticoes
+        saida = bloco["saida"] if saida is None else saida
+        nome = bloco["nome"] if nome is None else nome
     for chave, valor in (("aquecimento_s", aquecimento_s), ("medicao_s", medicao_s), ("pausa_s", pausa_s)):
         if valor is not None:
             novo["cliente"][chave] = valor
@@ -300,17 +310,33 @@ def aplicar_ajustes(cfg: dict, repeticoes=None, aquecimento_s=None, medicao_s=No
         novo["plano"]["repeticoes"] = repeticoes
     if saida is not None:
         novo["saida"] = saida
+    if nome is not None:
+        novo["nome"] = nome
     return novo
+
+
+def caminhos(cfg: dict) -> dict:
+    """Arquivos de uma coleta: `<nome>.csv` e `registro-<nome>.md`, ou `execucoes.csv` sem nome."""
+    saida = (Path(cfg["pasta"]) / cfg["saida"]).resolve()
+    nome = cfg.get("nome")
+    return {
+        "pasta": saida,
+        "saidas": saida / "saidas",
+        "csv": saida / f"{nome or 'execucoes'}.csv",
+        "falhas": saida / "falhas.csv",
+        "registro": saida / f"registro-{nome}.md" if nome else None,  # sem nome: registro-<data>.md
+        "qualidade": saida / f"qualidade-{nome or 'execucoes'}.md",
+    }
 
 
 def executar(cfg: dict, docker: Docker | None = None, agora=agora_local, dormir=time.sleep, coletar_ambiente=None, log=print) -> dict:
     """Roda o plano inteiro, pulando o que já foi gravado. Devolve o resumo da sessão."""
     pasta = Path(cfg["pasta"])
-    saida = (pasta / cfg["saida"]).resolve()
-    pasta_saidas = saida / "saidas"
+    arquivos = caminhos(cfg)
+    pasta_saidas = arquivos["saidas"]
     pasta_saidas.mkdir(parents=True, exist_ok=True)
-    csv_execucoes = saida / "execucoes.csv"
-    csv_falhas = saida / "falhas.csv"
+    csv_execucoes = arquivos["csv"]
+    csv_falhas = arquivos["falhas"]
 
     plano = gerar_plano(cfg)
     gravadas = ler_gravadas(csv_execucoes)
@@ -329,7 +355,7 @@ def executar(cfg: dict, docker: Docker | None = None, agora=agora_local, dormir=
         "falhas": [],
         "interrompida": False,
     }
-    registro = saida / f"registro-{resumo['inicio'][:10]}.md"
+    registro = arquivos["registro"] or arquivos["pasta"] / f"registro-{resumo['inicio'][:10]}.md"
     ambiente.escrever_registro(registro, coletar_ambiente(), cfg, resumo)
     log(f"plano: {len(plano)} execuções; já gravadas: {len(gravadas)}; pendentes: {len(pendentes)}")
 

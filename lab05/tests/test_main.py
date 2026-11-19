@@ -47,3 +47,20 @@ def test_executar_repassa_as_opcoes_e_sai_conforme_o_resumo(monkeypatch, falhas,
     assert principal.main(argv) == codigo
     assert recebido["plano"]["repeticoes"] == 1 and recebido["saida"] == "dados/brutos/exemplo"
     assert (recebido["cliente"]["aquecimento_s"], recebido["cliente"]["medicao_s"], recebido["cliente"]["pausa_s"]) == (2, 5, 1)
+
+
+def test_executar_piloto_usa_o_bloco_do_config(monkeypatch):
+    recebido = {}
+    monkeypatch.setattr(principal.executor, "executar", lambda cfg: recebido.update(cfg) or {"falhas": [], "interrompida": False})
+    assert principal.main(["executar", "--piloto"]) == 0
+    assert (recebido["plano"]["repeticoes"], recebido["saida"], recebido["nome"]) == (5, "dados/piloto", "piloto")
+
+
+@pytest.mark.parametrize("erros, codigo", [([], 0), (["erro"], 1)])
+def test_validar_grava_o_relatorio_e_sai_conforme_os_erros(monkeypatch, capsys, erros, codigo):
+    gravado = {}
+    monkeypatch.setattr(principal.validacao, "validar", lambda cfg: principal.validacao.Resultado(erros=list(erros)))
+    monkeypatch.setattr(principal.validacao, "escrever_relatorio", lambda cfg, r: gravado.update(cfg=cfg))
+    assert principal.main(["validar", "--piloto"]) == codigo
+    assert gravado["cfg"]["nome"] == "piloto"
+    assert f"{len(erros)} erro(s)" in capsys.readouterr().out
