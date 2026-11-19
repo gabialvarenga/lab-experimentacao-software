@@ -9,12 +9,20 @@ Subcomandos:
 import argparse
 import sys
 
-from lab05 import config, executor
+from lab05 import config, executor, validacao
 
 PENDENTES = {
-    "validar": "S01-08",
     "analisar": "S01-09",
 }
+AJUSTES = ("repeticoes", "aquecimento_s", "medicao_s", "pausa_s", "saida", "nome", "piloto")
+
+
+def _opcoes_da_coleta(sub) -> None:
+    """Opções comuns a `executar` e `validar`: as duas precisam descrever a mesma coleta."""
+    sub.add_argument("--piloto", action="store_true", help="usa o bloco `piloto` do config (S01-08)")
+    sub.add_argument("--repeticoes", type=int, help="repetições por combinação")
+    sub.add_argument("--saida", help="pasta das saídas, relativa à pasta do config")
+    sub.add_argument("--nome", help="nome da coleta: <nome>.csv e registro-<nome>.md")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -27,11 +35,16 @@ def _parser() -> argparse.ArgumentParser:
         description="Roda o plano de execuções do config.yaml e retoma de onde parou. "
         "As opções trocam valores do config só nesta chamada (exemplo e piloto).",
     )
-    exe.add_argument("--repeticoes", type=int, help="repetições por combinação")
+    _opcoes_da_coleta(exe)
     exe.add_argument("--aquecimento", type=int, dest="aquecimento_s", help="segundos de aquecimento")
     exe.add_argument("--medicao", type=int, dest="medicao_s", help="segundos de medição")
     exe.add_argument("--pausa", type=int, dest="pausa_s", help="segundos de pausa entre execuções")
-    exe.add_argument("--saida", help="pasta das saídas, relativa à pasta do config")
+    val = sub.add_parser(
+        "validar",
+        help="confere os dados de uma coleta e grava o relatório de qualidade",
+        description="Valida o CSV de uma coleta (as mesmas opções usadas no executar) e grava qualidade-<nome>.md.",
+    )
+    _opcoes_da_coleta(val)
     for nome in PENDENTES:
         sub.add_parser(nome)
     return parser
@@ -45,10 +58,16 @@ def main(argv=None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     cfg = config.carregar(args.config)
+    if args.etapa in ("executar", "validar"):
+        cfg = executor.aplicar_ajustes(cfg, **{k: getattr(args, k, None) for k in AJUSTES})
     if args.etapa == "executar":
-        ajustes = {k: getattr(args, k) for k in ("repeticoes", "aquecimento_s", "medicao_s", "pausa_s", "saida")}
-        resumo = executor.executar(executor.aplicar_ajustes(cfg, **ajustes))
+        resumo = executor.executar(cfg)
         return 1 if resumo["falhas"] or resumo["interrompida"] else 0
+    if args.etapa == "validar":
+        resultado = validacao.validar(cfg)
+        validacao.escrever_relatorio(cfg, resultado)
+        print(f"{len(resultado.erros)} erro(s), {len(resultado.avisos)} aviso(s); relatório: {executor.caminhos(cfg)['qualidade']}")
+        return 0 if resultado.ok else 1
     if args.etapa in PENDENTES:
         _pendente(args.etapa)
         return 1

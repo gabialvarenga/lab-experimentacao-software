@@ -25,7 +25,7 @@ python -m lab05 --help
 pytest
 ```
 
-O comando único do laboratório (do plano de execuções ao dashboard) será descrito aqui quando a análise (S01-09) existir. Por enquanto `validar` e `analisar` só avisam que a etapa ainda não foi implementada.
+O comando único do laboratório (do plano de execuções ao dashboard) será descrito aqui quando a análise (S01-09) existir. Por enquanto `analisar` só avisa que a etapa ainda não foi implementada.
 
 A semente global fica em `config.yaml` (`semente: 42`) e alimenta a ordem aleatorizada das execuções e as reamostragens.
 
@@ -54,6 +54,26 @@ As opções trocam valores do config só naquela chamada, sem editar o arquivo. 
 python -m lab05 executar --repeticoes 1 --aquecimento 2 --medicao 5 --pausa 1 --saida dados/brutos/exemplo
 ```
 
+### Coleta piloto e validação
+
+O piloto (S01-08) usa o bloco `piloto` do `config.yaml` (5 repetições, 60 execuções, cerca de 1 hora) e grava `dados/piloto/piloto.csv` e `dados/piloto/registro-piloto.md`. **Não entra na análise final.**
+
+```bash
+python -m lab05 executar --piloto
+python -m lab05 validar --piloto
+```
+
+O `validar` aceita as mesmas opções do `executar` (para descrever a mesma coleta) e grava `qualidade-<nome>.md` ao lado do CSV. Sai com código 1 se houver erro.
+
+| Tipo | Regra |
+|---|---|
+| Erro | Colunas diferentes das congeladas, valor faltante ou não numérico, métrica ≤ 0, `lat_p99_ms` < `lat_p50_ms`, `fim` antes de `inicio` |
+| Erro | Execução repetida, fora do plano ou diferente dele; execução do plano que falta no CSV (com a falha de `falhas.csv` ou como falha não registrada) |
+| Erro | Versão do servidor diferente de `versao_esperada`; saída do cliente ausente ou com erros de conexão |
+| Aviso | Coeficiente de variação acima de 10% numa combinação; falha que depois foi repetida com sucesso |
+
+O relatório traz também o tempo total da coleta e, por combinação e métrica, n, mediana, IQR e CV.
+
 ## Estrutura
 
 ```
@@ -69,7 +89,7 @@ lab05/
         ambiente.py        # registro do ambiente (versões, digests, CPU, SO, Docker)   (S01-07)
         executor.py        # plano de execuções, contêineres e cliente de carga         (S01-07)
         leitura.py         # parser da saída do cliente e do INFO do servidor (sem Docker) (S01-07)
-        validacao.py       # conferência dos dados coletados                            (S01-08)
+        validacao.py       # conferência dos dados coletados e relatório de qualidade  (S01-08)
         descritiva.py      # mediana, IQR e coeficiente de variação (origem: Lab04)     (S01-09)
         testes.py          # Welch, Mann-Whitney e tamanho de efeito (origem: Lab04)
         poder.py           # poder por simulação (origem: motor do Lab04)
@@ -80,6 +100,7 @@ lab05/
     dados/
         brutos/            # CSV do executor, uma linha por execução                   (S01-07)
             exemplo/       # execução de exemplo, pequena (12 execuções), versionada
+        piloto/            # coleta piloto (S01-08): piloto.csv, registro e relatório de qualidade
     docs/                  # protocolo, plano de análise e demais documentos
 ```
 
