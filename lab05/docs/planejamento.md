@@ -61,7 +61,7 @@ Combinação opcional, se sobrar tempo na S03: analisar dados de operação publ
 | Fator secundário | *Threads* de I/O: 1 × 4 (os dois servidores suportam `io-threads`) | S01-03 |
 | Cargas (blocos) | SET, GET e mista 80% GET / 20% SET; valor de 100 bytes; 50 clientes; *pipeline* 1 | S01-06 |
 | Variáveis de resposta | ops/s (razão), latência p50 e p99 em ms (razão), memória em bytes (razão) | S01-05 |
-| Repetições | 30 execuções por combinação (servidor × *threads* × carga), número revisto pelo piloto | S01-09 |
+| Repetições | **40** execuções por combinação (servidor × *threads* × carga), fixadas pelo piloto ([analise-piloto.md](analise-piloto.md)): 480 execuções, cerca de 8 horas. A proposta inicial era 30 | S01-09 |
 | Ordem | Aleatorizada com semente fixa, alternando servidores, para não confundir efeito do servidor com aquecimento da máquina | S01-06 |
 | Controles | Mesma máquina, ligada na tomada, sem outros programas; servidor e cliente em núcleos separados (`--cpuset-cpus`); persistência desligada; aquecimento descartado; *flush* entre execuções | S01-06 |
 
@@ -149,13 +149,13 @@ Cada papel tem uma Issue de código (A: S01-01; B: S01-06 a S01-08; C: S01-09). 
 | Resposta do professor demorar | Trabalho em software que pode ser recusado | Pedir em 16/11; seguir com as Issues que valem para qualquer software (S01-01, S01-05) até a resposta |
 | Outro grupo já escolheu Redis × Valkey | Troca de software no meio da sprint | Confirmar com o professor no primeiro dia (S01-02); plano B: desempenho de e-commerces com Lighthouse |
 | Docker Desktop no Windows roda sobre WSL2 | Resultado depende do ambiente (validade externa) | Registrar o ambiente; rodar sempre na mesma máquina; discutir como ameaça |
-| Variação entre execuções (temperatura, energia, outros processos) | Ruído maior que a diferença | Tomada, modo de energia fixo, ordem aleatorizada, aquecimento descartado, 30+ repetições |
+| Variação entre execuções (temperatura, energia, outros processos) | Ruído maior que a diferença | Tomada, modo de energia fixo, ordem aleatorizada, aquecimento descartado, 40 repetições. O piloto mostrou CV de 8% a 19% e deriva entre blocos: detectar 5% com 80% de poder pediria de 250 a 300 repetições, inviáveis; com 40, a diferença detectável é de cerca de 14% na vazão e 16% no p99 ([analise-piloto.md](analise-piloto.md), seção 6) |
 | *Benchmark* de cada fornecedor favorece o próprio servidor | Viés de instrumentação | Mesmo cliente para os dois |
 | Métrica "jogada" (Goodhart) | Otimizar ops/s ignora latência de cauda | Medir p99 e memória junto com a vazão |
 
 ## 7. Sprint 02 — 20/11 a 26/11: coleta completa e análise (detalhar no início da sprint)
 
-A coleta completa (S02-02) deve rodar até 22/11 (domingo), para a análise ter de 23/11 a 26/11.
+A coleta completa (S02-02) deve rodar até 22/11 (domingo), para a análise ter de 23/11 a 26/11. São 480 execuções (40 repetições), cerca de 8 horas numa sessão, dentro das 8 a 10 horas em que a máquina designada pode ficar ligada; a folga é para a preparação do protocolo e para repetir falhas.
 
 | Issue | Tipo | Papel | Entrega |
 |---|---|---|---|

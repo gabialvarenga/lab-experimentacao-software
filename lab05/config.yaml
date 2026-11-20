@@ -22,7 +22,7 @@ plano:
     set: "1:0"
     get: "0:1"
     misto: "1:4"
-  repeticoes: 30              # proposta; revisto pelo piloto (S01-09)
+  repeticoes: 40              # fixado pelo piloto (S01-09, docs/analise-piloto.md): 480 execuções, ~8 h
 
 # Cliente de carga: memtier_benchmark 2.6.1 (protocolo, seções 4 a 6). Tempos em segundos.
 cliente:
@@ -46,3 +46,16 @@ piloto:
   repeticoes: 5
   saida: dados/piloto
   nome: piloto
+
+# Análise (S01-09): `python -m lab05 analisar [--piloto]` grava em <saida>/analise/.
+# Regras em docs/plano-analise.md; motor de poder adaptado do Lab04 (lab05/poder.py).
+analise:
+  diferenca_relevante: 0.05   # razão de medianas fora de [0,95; 1,05] (plano, seção 6)
+  alfa: 0.05                  # bicaudal, com Holm dentro de cada pergunta (6 comparações)
+  bootstrap: 10000            # reamostragens do IC da razão de medianas
+  poder: 0.80
+  simulacoes: 2000            # repetições simuladas por ponto da curva de poder
+  cenario_holm: conservador   # só a comparação avaliada tem o efeito (pior caso de Holm)
+  grade_n: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 100, 120, 150, 200, 250, 300]
+  candidatos_n: [30, 40, 45, 50, 60]   # n perto do viável na S02 (8 a 10 h de máquina): diferença detectável em cada um
+  diferencas: [0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.20]

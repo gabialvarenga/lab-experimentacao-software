@@ -3,17 +3,14 @@
 Subcomandos:
     executar   roda o plano de execuções do benchmark e grava o CSV bruto   (S01-07)
     validar    confere os dados coletados                                   (S01-08)
-    analisar   descritiva, testes e tamanhos de efeito                      (S01-09)
+    analisar   descritiva, testes, tamanhos de efeito e poder               (S01-09)
 """
 
 import argparse
 import sys
 
-from lab05 import config, executor, validacao
+from lab05 import analise, config, executor, validacao
 
-PENDENTES = {
-    "analisar": "S01-09",
-}
 AJUSTES = ("repeticoes", "aquecimento_s", "medicao_s", "pausa_s", "saida", "nome", "piloto")
 
 
@@ -45,20 +42,27 @@ def _parser() -> argparse.ArgumentParser:
         description="Valida o CSV de uma coleta (as mesmas opções usadas no executar) e grava qualidade-<nome>.md.",
     )
     _opcoes_da_coleta(val)
-    for nome in PENDENTES:
-        sub.add_parser(nome)
+    ana = sub.add_parser(
+        "analisar",
+        help="descritiva, testes e número de repetições (não precisa do Docker)",
+        description="Analisa o CSV de uma coleta (as mesmas opções usadas no executar) e grava "
+        "os CSVs e o registro em <pasta da coleta>/analise/. Parâmetros no bloco `analise` do config.",
+    )
+    _opcoes_da_coleta(ana)
+    ana.add_argument("--simulacoes", type=int, help="simulações por ponto da curva de poder (padrão: config)")
     return parser
 
 
-def _pendente(etapa: str) -> None:
-    print(f"etapa '{etapa}' ainda não implementada (Issue {PENDENTES[etapa]})", file=sys.stderr)
+def _comando(argv) -> str:
+    """O comando como foi digitado, para o registro da análise."""
+    return " ".join(["python -m lab05", *argv])
 
 
 def main(argv=None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     cfg = config.carregar(args.config)
-    if args.etapa in ("executar", "validar"):
+    if args.etapa in ("executar", "validar", "analisar"):
         cfg = executor.aplicar_ajustes(cfg, **{k: getattr(args, k, None) for k in AJUSTES})
     if args.etapa == "executar":
         resumo = executor.executar(cfg)
@@ -68,9 +72,13 @@ def main(argv=None) -> int:
         validacao.escrever_relatorio(cfg, resultado)
         print(f"{len(resultado.erros)} erro(s), {len(resultado.avisos)} aviso(s); relatório: {executor.caminhos(cfg)['qualidade']}")
         return 0 if resultado.ok else 1
-    if args.etapa in PENDENTES:
-        _pendente(args.etapa)
-        return 1
+    if args.etapa == "analisar":
+        if args.simulacoes is not None:
+            cfg["analise"] = {**(cfg.get("analise") or {}), "simulacoes": args.simulacoes}
+        resultado = analise.analisar(cfg)
+        pasta = analise.gravar(cfg, resultado, _comando(sys.argv[1:] if argv is None else argv))
+        print(f"análise gravada em {pasta}")
+        return 0
     parser.print_help()
     return 0
 

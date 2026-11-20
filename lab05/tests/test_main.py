@@ -4,7 +4,7 @@ import pytest
 
 from lab05 import __main__ as principal
 
-MODULOS = ["ambiente", "executor", "leitura", "validacao", "descritiva", "testes", "poder", "graficos", "app"]
+MODULOS = ["ambiente", "executor", "leitura", "validacao", "descritiva", "testes", "poder", "analise", "graficos", "app"]
 
 
 def test_pacote_e_importavel():
@@ -26,12 +26,6 @@ def test_help_sai_com_zero(capsys):
 def test_sem_subcomando_mostra_a_ajuda(capsys):
     assert principal.main([]) == 0
     assert "usage" in capsys.readouterr().out
-
-
-@pytest.mark.parametrize("etapa", list(principal.PENDENTES))
-def test_etapa_pendente_avisa_e_sai_com_um(etapa, capsys):
-    assert principal.main([etapa]) == 1
-    assert "ainda não implementada" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("falhas, interrompida, codigo", [([], False, 0), ([("x", "subida", "erro")], False, 1), ([], True, 1)])
@@ -64,3 +58,23 @@ def test_validar_grava_o_relatorio_e_sai_conforme_os_erros(monkeypatch, capsys, 
     assert principal.main(["validar", "--piloto"]) == codigo
     assert gravado["cfg"]["nome"] == "piloto"
     assert f"{len(erros)} erro(s)" in capsys.readouterr().out
+
+
+def test_analisar_usa_a_coleta_pedida_e_registra_o_comando(monkeypatch, capsys, tmp_path):
+    recebido = {}
+    monkeypatch.setattr(principal.analise, "analisar", lambda cfg: recebido.update(cfg=cfg) or {"x": 1})
+    monkeypatch.setattr(principal.analise, "gravar", lambda cfg, r, comando: recebido.update(r=r, comando=comando) or tmp_path)
+    argv = ["analisar", "--piloto", "--simulacoes", "50"]
+    assert principal.main(argv) == 0
+    assert recebido["cfg"]["nome"] == "piloto" and recebido["cfg"]["analise"]["simulacoes"] == 50
+    assert recebido["cfg"]["analise"]["diferenca_relevante"] == 0.05  # o resto do bloco continua
+    assert recebido["comando"] == "python -m lab05 analisar --piloto --simulacoes 50" and recebido["r"] == {"x": 1}
+    assert "análise gravada" in capsys.readouterr().out
+
+
+def test_analisar_sem_simulacoes_mantem_o_config(monkeypatch, tmp_path):
+    recebido = {}
+    monkeypatch.setattr(principal.analise, "analisar", lambda cfg: recebido.update(cfg=cfg) or {})
+    monkeypatch.setattr(principal.analise, "gravar", lambda cfg, r, comando: tmp_path)
+    assert principal.main(["analisar"]) == 0
+    assert recebido["cfg"]["analise"]["simulacoes"] == 2000
