@@ -22,11 +22,11 @@ from datetime import datetime
 
 import pandas as pd
 
-from lab05 import executor
+from lab05 import descritiva, executor
 
-METRICAS = ["ops_s", "lat_p50_ms", "lat_p99_ms", "memoria_bytes"]
-LIMITE_CV = 0.10
-CHAVES = ["servidor", "io_threads", "carga"]
+METRICAS = descritiva.METRICAS
+LIMITE_CV = descritiva.LIMITE_CV
+CHAVES = descritiva.CHAVES
 
 
 @dataclass
@@ -118,18 +118,11 @@ def _conferir_saidas(pasta_saidas, df: pd.DataFrame, r: Resultado) -> None:
 
 
 def resumo_por_combinacao(numeros: pd.DataFrame) -> pd.DataFrame:
-    """n, mediana, IQR e CV (desvio-padrão amostral ÷ média) por combinação e métrica."""
-    linhas = []
-    for chave, grupo in numeros.groupby(CHAVES, sort=True):
-        for metrica in METRICAS:
-            valores = grupo[metrica].dropna()
-            media = valores.mean()
-            linhas.append({
-                **dict(zip(CHAVES, chave)), "metrica": metrica, "n": len(valores),
-                "mediana": valores.median(), "iqr": valores.quantile(0.75) - valores.quantile(0.25),
-                "cv": valores.std(ddof=1) / media if len(valores) > 1 and media else float("nan"),
-            })  # fmt: skip
-    return pd.DataFrame(linhas)
+    """n, mediana, IQR e CV (desvio-padrão amostral ÷ média) por combinação e métrica.
+
+    Usa `descritiva.descrever`, a mesma tabela da análise (S01-09).
+    """
+    return descritiva.descrever(numeros, METRICAS)[[*CHAVES, "metrica", "n", "mediana", "iqr", "cv"]]
 
 
 def tempo(df: pd.DataFrame) -> dict:

@@ -25,7 +25,7 @@ python -m lab05 --help
 pytest
 ```
 
-O comando único do laboratório (do plano de execuções ao dashboard) será descrito aqui quando a análise (S01-09) existir. Por enquanto `analisar` só avisa que a etapa ainda não foi implementada.
+O caminho completo é `executar` → `validar` → `analisar`, cada um com as mesmas opções de coleta (`--piloto`, `--saida`, `--nome`). O dashboard (S02-08) só lerá os CSVs gravados.
 
 A semente global fica em `config.yaml` (`semente: 42`) e alimenta a ordem aleatorizada das execuções e as reamostragens.
 
@@ -37,7 +37,7 @@ Requer o Docker (Docker Desktop com WSL2 no Windows) e a preparação da máquin
 python -m lab05 executar
 ```
 
-Roda o plano inteiro do `config.yaml` (2 servidores × 2 níveis de `io_threads` × 3 cargas × 30 repetições = 360 execuções, cerca de 6 horas), em blocos por repetição e em ordem sorteada com a semente. Grava em `dados/brutos/`:
+Roda o plano inteiro do `config.yaml` (2 servidores × 2 níveis de `io_threads` × 3 cargas × 40 repetições = 480 execuções, cerca de 8 horas; o número de repetições foi fixado pelo piloto, ver [docs/analise-piloto.md](docs/analise-piloto.md)), em blocos por repetição e em ordem sorteada com a semente. Grava em `dados/brutos/`:
 
 | Arquivo | Conteúdo |
 |---|---|
@@ -74,6 +74,27 @@ O `validar` aceita as mesmas opções do `executar` (para descrever a mesma cole
 
 O relatório traz também o tempo total da coleta e, por combinação e métrica, n, mediana, IQR e CV.
 
+### Análise
+
+A análise (S01-09) segue o [plano de análise](docs/plano-analise.md) e roda sem Docker, sobre o CSV de uma coleta. Os parâmetros ficam no bloco `analise` do `config.yaml`.
+
+```bash
+python -m lab05 analisar --piloto
+```
+
+Grava em `<pasta da coleta>/analise/`:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `descritiva.csv` | Por combinação e métrica: n, média, desvio, quartis, IQR, CV e *outliers* contados (não removidos) |
+| `teste-principal.csv` | Regra 5.1: Shapiro-Wilk e assimetria dos resíduos e o teste principal de cada métrica |
+| `comparacoes.csv` | Valkey × Redis em cada uma das 6 combinações: Welch, Mann-Whitney, Holm no teste principal, g de Hedges, delta de Cliff, razão de medianas com IC por *bootstrap*, Levene e a situação da seção 6 |
+| `repeticoes.csv` | Repetições necessárias para 5% com 80% de poder, por métrica, na variabilidade bruta e nas sensibilidades |
+| `curva-poder.csv` e `diferenca-detectavel.csv` | Poder de cada comparação na grade de n e a menor diferença detectável nos n candidatos |
+| `registro-analise.md` | Comando, parâmetros, hash do CSV de entrada, ambiente e as tabelas principais (determinístico) |
+
+O poder é estimado por simulação com o motor do Lab04 adaptado: amostras lognormais com o σ de log de cada combinação observado na coleta e Holm aplicado à família de 6 comparações em cada repetição simulada. A opção `--simulacoes` troca o número de simulações por ponto, para uma rodada rápida.
+
 ## Estrutura
 
 ```
@@ -85,14 +106,15 @@ lab05/
     pytest.ini             # pythonpath e pasta de testes
     lab05/                 # pacote Python; `python -m lab05` é o ponto de entrada
         __main__.py        # subcomandos executar, validar e analisar
+        analise.py         # análise de uma coleta: tabelas, CSVs e registro             (S01-09)
         config.py          # leitura do config.yaml e criação do gerador (semente)
         ambiente.py        # registro do ambiente (versões, digests, CPU, SO, Docker)   (S01-07)
         executor.py        # plano de execuções, contêineres e cliente de carga         (S01-07)
         leitura.py         # parser da saída do cliente e do INFO do servidor (sem Docker) (S01-07)
         validacao.py       # conferência dos dados coletados e relatório de qualidade  (S01-08)
         descritiva.py      # mediana, IQR e coeficiente de variação (origem: Lab04)     (S01-09)
-        testes.py          # Welch, Mann-Whitney e tamanho de efeito (origem: Lab04)
-        poder.py           # poder por simulação (origem: motor do Lab04)
+        testes.py          # Welch, Mann-Whitney, efeito, Holm, bootstrap (origem: Lab04) (S01-09)
+        poder.py           # poder e repetições por simulação (origem: motor do Lab04)    (S01-09)
         graficos.py        # gráficos em Plotly
         app.py             # dashboard interativo em Streamlit
     tests/                 # pytest, um arquivo test_<módulo>.py por módulo

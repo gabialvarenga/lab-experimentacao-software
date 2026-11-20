@@ -73,7 +73,7 @@ def test_registro_tem_ambiente_imagens_plano_e_resumo(tmp_path):
     assert texto.startswith("# Registro da execução do benchmark — 2026-11-18")
     assert "| Docker (cliente / servidor) | 29.3.1 / 29.3.1 |" in texto
     assert "| `redis:8.10.3@sha256:aaa` | `sha256:id` |" in texto
-    assert "Semente: 42" in texto and "repetições: 30" in texto
+    assert "Semente: 42" in texto and f"repetições: {cfg['plano']['repeticoes']}" in texto
     assert "`redis-t1-set-r01`, etapa subida: não subiu" in texto
 
 
