@@ -1,6 +1,6 @@
 # Lab05 — Planejamento das Sprints
 
-Planejamento do Lab05 (experimento em software real, em operação e de alto impacto). As seções citadas entre parênteses referem-se ao enunciado do Lab05. O backlog detalhado (Issues com corpo completo) é escrito sprint a sprint: a Sprint 01 está em `docs/issues-s01/` e a Sprint 02 em `docs/issues-s02/`; a Sprint 03 está aqui em nível de tabela e é detalhada no início dela, com o que a sprint anterior ensinar.
+Planejamento do Lab05 (experimento em software real, em operação e de alto impacto). As seções citadas entre parênteses referem-se ao enunciado do Lab05. O backlog detalhado (Issues com corpo completo) está em `docs/issues-s01/`, `docs/issues-s02/` e `docs/issues-s03/`. A Sprint 03 foi planejada antes dos resultados da S02 e é revisada no primeiro dia dela.
 
 Siglas: GQM (*Goal, Question, Metric*); CI (*Continuous Integration*); PR (*Pull Request*); WIP (*Work in Progress*); CSV (*Comma-Separated Values*); IC (intervalo de confiança); ops/s (operações por segundo); p50/p99 (percentis 50 e 99 da latência).
 
@@ -218,19 +218,67 @@ Cada papel tem uma Issue de código: A (S02-01, S02-07), B (S02-02 a S02-04), C 
 | Analisar os dados de um jeito diferente do planejado depois de vê-los | Dúvida sobre a validade da conclusão | Toda mudança de método vai para o adendo da S02-01, mesclado antes do primeiro commit com dados da coleta completa |
 | Gráficos e dashboard só no fim | Seções sem conclusão | A S02-05 começa já no primeiro dia com os dados do piloto e só troca a entrada depois
 
-## 8. Sprint 03 — 27/11 a 03/12: impacto, conclusões e rascunhos (detalhar no início da sprint)
+## 8. Sprint 03 — 27/11 a 03/12: impacto, conclusões e rascunhos
 
-| Issue | Tipo | Papel | Entrega |
+Planejada em 22/11/2026, antes dos resultados da S02. As Issues estão em `docs/issues-s03/`. Os números do impacto e o texto das conclusões dependem dos resultados da S02 (#300, #301 e #302), e essas dependências estão registradas nos cartões. Se a S02 mudar o que se sabe (por exemplo, todas as comparações com 1 *thread* "inconclusivas"), as Issues da S03 são ajustadas no primeiro dia, sem mudar a estrutura.
+
+### 8.1 O que a S03 entrega (seção 7 do enunciado)
+
+| Exigência | Como |
+|---|---|
+| Impacto para empresas ou usuários | Traduzir a razão de medianas da vazão (e o IC) em nós de cache, horas de CPU ou custo por mês, com preços e números públicos com fonte; dizer o que não se pode afirmar |
+| 7 categorias revisadas e justificadas | Revisar a v1 ([categorias.md](categorias.md)) com o que o estudo realmente fez, em especial o nível de evidência |
+| Conclusões e limitações | Responder às duas perguntas da seção 1 do enunciado: "o que o estudo mostrou?" e "o que isso significa para quem usa?" |
+| Rascunho do documento | O dashboard Streamlit da S02-09, completado com impacto e conclusões |
+| Rascunho da apresentação | Roteiro de 10 minutos no formato escolhido pelo grupo |
+
+### 8.2 Issues
+
+| Issue | Tipo | Papel | Dia | Depende de | Entrega (seção do enunciado) |
+|---|---|---|---|---|---|
+| S03-01 Levantar os números públicos de uso e de custo, com fonte e data | doc | C | 27/11–28/11 | — | 2a, 5: base do impacto |
+| S03-02 Estimar o impacto e o que não se pode afirmar | código | C | 29/11–30/11 | S03-01, S02-06, S02-07 | 5: impacto e limites |
+| S03-03 Revisar as 7 categorias com justificativa | doc | A | 27/11–28/11 | S02-06 | 3, 7 (S03): categorias finais |
+| S03-04 Escrever as conclusões e as limitações | doc | A | 30/11–01/12 | S03-02, S03-03, S02-08 | 1, 7 (S03): respostas às duas perguntas |
+| S03-05 Documentar o que foi reaproveitado dos labs anteriores e o que é novo | doc | B | 27/11 | — | 4: reaproveitamento |
+| S03-06 Comando único reproduz a análise e o dashboard; publicar o dashboard | código | A | 30/11 | S02-09 | 8: documento abre com um comando ou publicado |
+| S03-07 Completar o dashboard com impacto, conclusões e reaproveitamento | código | B | 01/12–02/12 | S03-02, S03-04, S03-05, S03-06, S02-09 | 8: rascunho do documento |
+| S03-08 Escrever o rascunho da apresentação de 10 minutos | doc | A | 02/12 | S03-04 | 8: rascunho da apresentação |
+| S03-09 Registrar o *snapshot* do quadro da Sprint 03 | processo | — | 03/12 | todas | Kanban |
+
+Cada papel tem uma Issue de código: A (S03-06), B (S03-07), C (S03-02). Combinação opcional da seção 3.2 (confrontar o que os fornecedores anunciam com o que medimos) entra na S03-01 só se sobrar tempo; o enunciado valoriza combinar caminhos, mas não exige.
+
+### 8.3 Carga por dia (3 integrantes, WIP 1)
+
+| Dia | A — Planejamento e Método | B — Instrumentação e Operação | C — Análise e Impacto |
 |---|---|---|---|
-| S03-01 Levantar números públicos de uso com fonte e data | doc | C | Base do impacto |
-| S03-02 Estimar o impacto e o que não se pode afirmar | código | C | Ex.: CPU ou custo economizado por milhão de operações; limites de generalização |
-| S03-03 Revisar as 7 categorias com justificativa | doc | A | Categorias finais |
-| S03-04 Escrever conclusões e limitações | doc | A | Respostas às duas perguntas do enunciado (seção 1) |
-| S03-05 Documentar o que foi reaproveitado e o que foi feito de novo | doc | B | Seção 4 do enunciado |
-| S03-06 Comando único reproduz coleta, análise e dashboard | código | B | Reprodutibilidade |
-| S03-07 Rascunho do documento | doc | todos | Formato decidido pelo grupo |
-| S03-08 Rascunho da apresentação | doc | todos | Formato decidido pelo grupo |
-| S03-09 Registrar o *snapshot* do quadro da Sprint 03 | processo | — | Kanban |
+| 27/11 (sex) | S03-03 | S03-05 | S03-01 |
+| 28/11 (sáb) | S03-03 (termina) | Revisão dos PRs | S03-01 (termina) |
+| 29/11 (dom) | — | — | S03-02 |
+| 30/11 (seg) | S03-06; S03-04 (começa) | Prepara a S03-07 com os dados da S02 | S03-02 (termina) |
+| 01/12 (ter) | S03-04 (termina) | S03-07 | Revisão dos números do impacto no dashboard |
+| 02/12 (qua) | S03-08 | S03-07 (termina) | Revisão da S03-08 |
+| 03/12 (qui) | Revisão final; S03-09 no fim do dia | Folga | Folga |
+
+A S03-01 não depende da S02 e pode ser puxada antes de 27/11 por quem ficar livre na S02.
+
+### 8.4 Marcos
+
+1. **Fim de 28/11:** números públicos com fonte (S03-01), categorias revisadas (S03-03) e reaproveitamento documentado (S03-05).
+2. **Fim de 30/11:** impacto estimado (S03-02) e comando único com o dashboard publicado (S03-06).
+3. **Fim de 01/12:** conclusões e limitações (S03-04).
+4. **Fim de 02/12:** dashboard completo como rascunho do documento (S03-07) e rascunho da apresentação (S03-08).
+5. **03/12:** revisão e *snapshot* (S03-09).
+
+### 8.5 Pontos de atenção
+
+| Risco | Efeito | Resposta |
+|---|---|---|
+| Atraso da S02 empurra a análise para dentro da S03 | Impacto e conclusões sem dados | Começar pelo que não depende da S02 (S03-01, S03-05); se a S02 atrasar mais de um dia, cortar a combinação opcional |
+| Impacto exagerado (um notebook com WSL2 não é produção) | Afirmação que o professor pode derrubar | A S03-02 tem uma seção obrigatória "o que não se pode afirmar", ligada às ameaças de validade externa (S02-08) |
+| Resultado "inconclusivo" com 1 *thread* | Pouco a dizer sobre impacto | Impacto calculado com o IC inteiro (melhor e pior caso), e não só com o valor central; "inconclusivo" vira "a diferença, se existir, é menor que X%" |
+| Números de uso sem fonte primária | Impacto fraco | Toda fonte com link e data de acesso; fonte secundária marcada como tal, como no [software.md](software.md) |
+| Fim de semana (28/11 e 29/11) | Menos gente disponível | Só a S03-01 e a S03-02 rodam no fim de semana, e as duas são da mesma pessoa |
 
 ## 9. Documento Final e Apresentação — 04/12 a 17/12
 
@@ -258,6 +306,7 @@ Formatos a decidir na S03. Proposta: dashboard Streamlit (reaproveitado do Lab04
 |---|---|
 | Software real, em operação, alto impacto, com números e fontes (2a) | S01-02, S03-01 |
 | Pergunta e caminho (1, 2b) | S01-03 |
+| Respostas às duas perguntas da seção 1 | S03-04 |
 | Ética (2, cuidados) | S01-06 |
 | 7 categorias (3) | S01-04, S03-03 |
 | GQM, hipóteses, escalas, armadilhas de medição (3) | S01-03, S01-05 |
@@ -267,4 +316,4 @@ Formatos a decidir na S03. Proposta: dashboard Streamlit (reaproveitado do Lab04
 | Ameaças à validade, quatro tipos (3) | S02-08 |
 | Reaproveitamento dos labs (4) | Seção 4 deste documento; S03-05 |
 | Impacto e o que não se pode afirmar (5) | S03-01, S03-02 |
-| Documento e apresentação (8) | S03-07, S03-08, F-01, F-02 |
+| Documento e apresentação (8) | S02-09, S03-06 a S03-08, F-01, F-02 |
