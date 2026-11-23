@@ -1,0 +1,11 @@
+[
+  { "n": "S03-01", "titulo": "[S03-01] Levantar os números públicos de uso e de custo, com fonte e data", "label": "documentation", "depende_de": [] },
+  { "n": "S03-02", "titulo": "[S03-02] Estimar o impacto e o que não se pode afirmar", "label": "codigo", "depende_de": ["S03-01", "#300", "#301"] },
+  { "n": "S03-03", "titulo": "[S03-03] Revisar as 7 categorias com justificativa", "label": "documentation", "depende_de": ["#300"] },
+  { "n": "S03-04", "titulo": "[S03-04] Escrever as conclusões e as limitações", "label": "documentation", "depende_de": ["S03-02", "S03-03", "#302"] },
+  { "n": "S03-05", "titulo": "[S03-05] Documentar o que foi reaproveitado dos labs anteriores e o que é novo", "label": "documentation", "depende_de": [] },
+  { "n": "S03-06", "titulo": "[S03-06] Comando único reproduz a análise e o dashboard; publicar o dashboard", "label": "codigo", "depende_de": ["#303"] },
+  { "n": "S03-07", "titulo": "[S03-07] Completar o dashboard com impacto, conclusões e reaproveitamento", "label": "codigo", "depende_de": ["S03-02", "S03-04", "S03-05", "S03-06", "#303"] },
+  { "n": "S03-08", "titulo": "[S03-08] Escrever o rascunho da apresentação de 10 minutos", "label": "documentation", "depende_de": ["S03-04"] },
+  { "n": "S03-09", "titulo": "[S03-09] Registrar o snapshot do quadro da Sprint 03", "label": "processo", "depende_de": ["S03-01", "S03-02", "S03-03", "S03-04", "S03-05", "S03-06", "S03-07", "S03-08"] }
+]
