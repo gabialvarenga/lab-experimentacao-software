@@ -1,6 +1,6 @@
 # Lab05 — Planejamento das Sprints
 
-Planejamento do Lab05 (experimento em software real, em operação e de alto impacto). As seções citadas entre parênteses referem-se ao enunciado do Lab05. O backlog detalhado (Issues com corpo completo) é escrito sprint a sprint: a Sprint 01 está em `docs/issues-s01/`; as Sprints 02 e 03 estão aqui em nível de tabela e são detalhadas no início de cada uma, com o que a sprint anterior ensinar.
+Planejamento do Lab05 (experimento em software real, em operação e de alto impacto). As seções citadas entre parênteses referem-se ao enunciado do Lab05. O backlog detalhado (Issues com corpo completo) é escrito sprint a sprint: a Sprint 01 está em `docs/issues-s01/` e a Sprint 02 em `docs/issues-s02/`; a Sprint 03 está aqui em nível de tabela e é detalhada no início dela, com o que a sprint anterior ensinar.
 
 Siglas: GQM (*Goal, Question, Metric*); CI (*Continuous Integration*); PR (*Pull Request*); WIP (*Work in Progress*); CSV (*Comma-Separated Values*); IC (intervalo de confiança); ops/s (operações por segundo); p50/p99 (percentis 50 e 99 da latência).
 
@@ -28,10 +28,12 @@ O Redis é o armazenamento chave-valor em memória mais usado em produção (cac
 | Critério | Redis | Valkey | Fonte (acesso em 16/11/2026) |
 |---|---|---|---|
 | Real | Site oficial, documentação, imagem oficial `redis` | Site oficial, documentação, imagem `valkey/valkey` | redis.io, valkey.io, Docker Hub |
-| Em operação | Versão estável mais recente: 8.10.3 | Versão estável mais recente: 9.2 | Tags do Docker Hub |
-| Alto impacto | 11,69 bilhões de *pulls* da imagem oficial | 407,8 milhões de *pulls* | Docker Hub (`library/redis`, `valkey/valkey`) |
+| Em operação | Versão estável mais recente: 8.10.3 | Versão estável mais recente: 9.1.3 (a 9.2 ainda é *release candidate*) | Tags do Docker Hub |
+| Alto impacto | 11,70 bilhões de *pulls* da imagem oficial | 410,6 milhões de *pulls* | Docker Hub (`library/redis`, `valkey/valkey`), acesso em 17/11/2026 |
 
-A completar em S01-02: posição no DB-Engines, uso no Stack Overflow Developer Survey, oferta gerenciada (AWS ElastiCache e MemoryDB, Google Memorystore) e empresas que anunciaram migração ao Valkey, com link e data de acesso.
+Evidências completas, com DB-Engines, Stack Overflow Developer Survey e a separação de 2024, em [software.md](software.md) (S01-02). Correções em relação a esta tabela de 16/11: a versão do Valkey usada é a 9.1.3, e desde 01/05/2025 o Redis 8 também oferece a licença AGPLv3, que é *open source*.
+
+**Situação em 22/11/2026:** a confirmação do professor (#276) ainda não chegou e a Issue segue aberta. Passa para o milestone Lab05S02 e é o primeiro item da S02 (seção 7.4).
 
 ## 3. Pergunta, caminho e desenho (proposta; o grupo confirma em S01-03 a S01-06)
 
@@ -153,21 +155,68 @@ Cada papel tem uma Issue de código (A: S01-01; B: S01-06 a S01-08; C: S01-09). 
 | *Benchmark* de cada fornecedor favorece o próprio servidor | Viés de instrumentação | Mesmo cliente para os dois |
 | Métrica "jogada" (Goodhart) | Otimizar ops/s ignora latência de cauda | Medir p99 e memória junto com a vazão |
 
-## 7. Sprint 02 — 20/11 a 26/11: coleta completa e análise (detalhar no início da sprint)
+## 7. Sprint 02 — 20/11 a 26/11: coleta completa e análise
 
-A coleta completa (S02-02) deve rodar até 22/11 (domingo), para a análise ter de 23/11 a 26/11. São 480 execuções (40 repetições), cerca de 8 horas numa sessão, dentro das 8 a 10 horas em que a máquina designada pode ficar ligada; a folga é para a preparação do protocolo e para repetir falhas.
+Planejada em 22/11/2026 (domingo), com a S01 encerrada: todas as Issues da S01 fechadas, menos a #276 (confirmação do professor). Os Issues das sprints estão em `docs/issues-s02/`.
 
-| Issue | Tipo | Papel | Entrega |
+### 7.1 Ponto de partida
+
+| Item | Situação em 22/11 | Consequência para a S02 |
+|---|---|---|
+| Executor, validação e análise | Prontos e testados no piloto: `executar`, `validar` e `analisar` (descritiva, Mann-Whitney, Welch, efeitos, Holm, poder) | A análise das Q1, Q2 e Q4 é rodar `analisar` na coleta completa e interpretar, não escrever código novo |
+| Repetições | 40 por combinação, 480 execuções, cerca de 8 h ([analise-piloto.md](analise-piloto.md)) | A coleta cabe numa noite |
+| Deriva entre blocos | No piloto, um bloco inteiro ficou ~16% mais lento; é a maior fonte de ruído | Uma análise pareada por bloco, registrada **antes** da coleta, pode recuperar parte do poder perdido (S02-01) |
+| Q3 (interação) | Método e pacote (`statsmodels`) ainda não decididos; o plano manda decidir com o piloto e antes dos dados da coleta completa | Também entra no adendo da S02-01, antes da coleta |
+| `graficos.py` e `app.py` | Só esqueletos | Gráficos e dashboard são o trabalho de código novo da sprint, e podem começar já com os dados do piloto |
+| Coleta completa | **Ainda não rodou** (o planejamento previa até 22/11) | A sprint tem 4 dias úteis; a coleta precisa rodar na noite de 22/11 ou, no máximo, na de 23/11 |
+
+### 7.2 Issues
+
+| Issue | Tipo | Papel | Dia | Depende de | Entrega (seção do enunciado) |
+|---|---|---|---|---|---|
+| S02-01 Registrar o adendo de análise antes da coleta: método da Q3 e análise pareada por bloco | código | A | 22/11 | — | 3: análise planejada antes dos dados |
+| S02-02 Congelar a configuração e preparar a máquina para a coleta | código | B | 22/11 | — | 7 (S02): configuração congelada e reproduzível |
+| S02-03 Executar a coleta completa | código | B | 22/11 (noite) a 23/11 | S02-01, S02-02 | 7 (S02): coleta completa |
+| S02-04 Validar e versionar os dados; escrever o dicionário de dados | código | B | 23/11 | S02-03 | 7 (S02): dados validados e versionados |
+| S02-05 Implementar os gráficos da descritiva e dos efeitos | código | C | 22/11–24/11 | — | 3: visualizações adequadas à escala |
+| S02-06 Rodar os testes e o tamanho de efeito das Q1, Q2 e Q4 e interpretar | código | C | 24/11 | S02-01, S02-04 | 3, 7 (S02): testes, efeito, diferença detectável |
+| S02-07 Analisar a interação servidor × *threads* (Q3) | código | A | 24/11–25/11 | S02-01, S02-04 | 3: análise do fator secundário |
+| S02-08 Escrever as ameaças à validade (quatro tipos, com mitigação) | doc | A | 23/11–25/11 | — | 3, 7 (S02): ameaças à validade |
+| S02-09 Montar o dashboard com os resultados | código | C | 25/11 | S02-05, S02-06, S02-07 | 8: documento em formato livre (base) |
+| S02-10 Registrar o *snapshot* do quadro da Sprint 02 | processo | — | 26/11 | todas | Kanban |
+
+A S02-08 não depende da coleta para começar: as ameaças do desenho (ambiente WSL2, uma máquina, versões, deriva, poder) já são conhecidas; os números entram quando a S02-06 terminar.
+
+### 7.3 Carga por dia (3 integrantes, WIP 1)
+
+| Dia | A — Planejamento e Método | B — Instrumentação e Operação | C — Análise e Impacto |
 |---|---|---|---|
-| S02-01 Congelar a configuração do experimento (`config.yaml`) | código | B | Versões, cargas, repetições e semente congeladas antes da coleta |
-| S02-02 Executar a coleta completa | código | B | CSV bruto com registro de ambiente |
-| S02-03 Validar e versionar os dados; escrever o dicionário de dados | código | B | Dados validados e versionados |
-| S02-04 Estatística descritiva e gráficos | código | C | Distribuições por combinação |
-| S02-05 Testes de hipótese e tamanho de efeito (Q1, Q2, Q4) | código | C | Tabela de resultados com correção de Holm |
-| S02-06 Analisar o fator *threads* de I/O (Q3) | código | A | Interação servidor × *threads* |
-| S02-07 Escrever as ameaças à validade (quatro tipos, com mitigação) | doc | A | Conclusão, interna, construto, externa |
-| S02-08 Montar o dashboard com os resultados | código | C | Seções de resultados |
-| S02-09 Registrar o *snapshot* do quadro da Sprint 02 | processo | — | Kanban |
+| 22/11 (dom) | S02-01 (adendo; precisa estar mesclado antes do primeiro commit com dados) | S02-02 (congelar, tag); à noite, inicia a S02-03 | S02-05 com os dados do piloto |
+| 23/11 (seg) | S02-08 (começa) | S02-03 (termina de manhã), depois S02-04 | S02-05 (continua) |
+| 24/11 (ter) | S02-07 | S02-04 (revisão); apoio à S02-06 | S02-06 |
+| 25/11 (qua) | S02-07 (termina), S02-08 (termina, com os números da S02-06) | Revisão dos PRs | S02-09 |
+| 26/11 (qui) | Revisão final; S02-10 no fim do dia | Folga para refazer execuções com falha | Ajustes do dashboard |
+
+Cada papel tem uma Issue de código: A (S02-01, S02-07), B (S02-02 a S02-04), C (S02-05, S02-06, S02-09).
+
+### 7.4 Marcos
+
+1. **Fim de 22/11:** #276 resolvida ou com novo pedido ao professor; adendo (S02-01) e configuração congelada (S02-02) mesclados; coleta iniciada.
+2. **Fim de 23/11:** coleta completa validada e versionada (S02-03, S02-04).
+3. **Fim de 24/11:** resultados das Q1, Q2 e Q4 com a diferença detectável recalculada (S02-06).
+4. **Fim de 25/11:** Q3, ameaças e dashboard prontos (S02-07 a S02-09).
+5. **26/11:** revisão e *snapshot* (S02-10).
+
+### 7.5 Pontos de atenção
+
+| Risco | Efeito | Resposta |
+|---|---|---|
+| A #276 continua sem resposta uma semana depois | Todo o estudo pode ter de trocar de software, agora sem tempo | Cobrar o professor em 22/11 ou na aula de 23/11, por escrito; registrar a cobrança na #276. Plano B (Lighthouse em e-commerces) só se houver recusa |
+| Coleta não rodar em 22/11 | Análise espremida em 2 dias | A coleta ainda cabe na noite de 23/11; nesse caso a S02-06 e a S02-07 passam para 25/11 e a S02-09 para 26/11 |
+| Coleta falhar no meio da noite | Horas perdidas | O executor retoma de onde parou (S01-07); conferir o progresso de manhã |
+| Deriva da máquina maior que no piloto | Mais resultados "inconclusivos" | Análise pareada por bloco (S02-01) e diferença detectável recalculada (S02-06); reportar "inconclusivo" como tal, sem tratar como empate |
+| Analisar os dados de um jeito diferente do planejado depois de vê-los | Dúvida sobre a validade da conclusão | Toda mudança de método vai para o adendo da S02-01, mesclado antes do primeiro commit com dados da coleta completa |
+| Gráficos e dashboard só no fim | Seções sem conclusão | A S02-05 começa já no primeiro dia com os dados do piloto e só troca a entrada depois
 
 ## 8. Sprint 03 — 27/11 a 03/12: impacto, conclusões e rascunhos (detalhar no início da sprint)
 
@@ -213,9 +262,9 @@ Formatos a decidir na S03. Proposta: dashboard Streamlit (reaproveitado do Lab04
 | 7 categorias (3) | S01-04, S03-03 |
 | GQM, hipóteses, escalas, armadilhas de medição (3) | S01-03, S01-05 |
 | Coleta piloto (7, S01) | S01-08, S01-09 |
-| Coleta completa, dados validados e versionados (7, S02) | S02-01 a S02-03 |
-| Descritiva, testes, tamanho de efeito (3, 7) | S02-04 a S02-06 |
-| Ameaças à validade, quatro tipos (3) | S02-07 |
+| Coleta completa, dados validados e versionados (7, S02) | S02-02 a S02-04 |
+| Descritiva, testes, tamanho de efeito (3, 7) | S02-01, S02-05 a S02-07 |
+| Ameaças à validade, quatro tipos (3) | S02-08 |
 | Reaproveitamento dos labs (4) | Seção 4 deste documento; S03-05 |
 | Impacto e o que não se pode afirmar (5) | S03-01, S03-02 |
 | Documento e apresentação (8) | S03-07, S03-08, F-01, F-02 |
