@@ -14,7 +14,7 @@ Novo no Lab05, pelas regras do plano de análise (`docs/plano-analise.md`):
 - `situacao`: as quatro situações da seção 6 (relevante, pequena demais, equivalência, inconclusivo);
 - `comparar(df, metrica)`: as 6 comparações de uma pergunta (3 cargas × 2 níveis de `io_threads`).
 
-A ANOVA da Q3 (interação servidor × `io_threads`) é da S02-06 e não está aqui.
+A Q3 (interação servidor × `io_threads`) está em `q3.py`, e a análise pareada por bloco, em `pareada.py`.
 """
 
 import warnings

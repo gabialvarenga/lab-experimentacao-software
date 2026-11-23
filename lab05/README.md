@@ -76,7 +76,7 @@ O relatório traz também o tempo total da coleta e, por combinação e métrica
 
 ### Análise
 
-A análise (S01-09) segue o [plano de análise](docs/plano-analise.md) e roda sem Docker, sobre o CSV de uma coleta. Os parâmetros ficam no bloco `analise` do `config.yaml`.
+A análise (S01-09; Q3 e análise pareada na S02-01) segue o [plano de análise](docs/plano-analise.md) e roda sem Docker, sobre o CSV de uma coleta. Os parâmetros ficam no bloco `analise` do `config.yaml`, com as decisões fixadas no piloto: o teste principal de cada métrica (`teste_principal`) e o método da Q3 (`metodo_q3`).
 
 ```bash
 python -m lab05 analisar --piloto
@@ -87,10 +87,12 @@ Grava em `<pasta da coleta>/analise/`:
 | Arquivo | Conteúdo |
 |---|---|
 | `descritiva.csv` | Por combinação e métrica: n, média, desvio, quartis, IQR, CV e *outliers* contados (não removidos) |
-| `teste-principal.csv` | Regra 5.1: Shapiro-Wilk e assimetria dos resíduos e o teste principal de cada métrica |
+| `teste-principal.csv` | Regra 5.1: Shapiro-Wilk e assimetria dos resíduos, o que a regra daria e o teste usado (`teste_usado`; `origem`: `config` ou `regra`) |
 | `comparacoes.csv` | Valkey × Redis em cada uma das 6 combinações: Welch, Mann-Whitney, Holm no teste principal, g de Hedges, delta de Cliff, razão de medianas com IC por *bootstrap*, Levene e a situação da seção 6 |
 | `repeticoes.csv` | Repetições necessárias para 5% com 80% de poder, por métrica, na variabilidade bruta e nas sensibilidades |
-| `curva-poder.csv` e `diferenca-detectavel.csv` | Poder de cada comparação na grade de n e a menor diferença detectável nos n candidatos |
+| `curva-poder.csv` e `diferenca-detectavel.csv` | Poder de cada comparação na grade de n e a menor diferença detectável nos n candidatos (`analise`: `independente` ou `pareada`) |
+| `q3.csv` | Q3, por métrica (`ops_s`, `lat_p99_ms`) e carga: interação servidor × `io_threads` pela ART-ANOVA, razão das razões com IC por *bootstrap*, η² parcial, Holm entre as cargas e a ANOVA no log com o bloco como sensibilidade |
+| `pareada.csv` | Análise pareada por bloco (sensibilidade): Valkey ÷ Redis dentro de cada repetição, Wilcoxon pareado, Hodges-Lehmann com IC exato, Holm e a situação comparada à do teste principal; pares com execução refeita saem |
 | `registro-analise.md` | Comando, parâmetros, hash do CSV de entrada, ambiente e as tabelas principais (determinístico) |
 
 O poder é estimado por simulação com o motor do Lab04 adaptado: amostras lognormais com o σ de log de cada combinação observado na coleta e Holm aplicado à família de 6 comparações em cada repetição simulada. A opção `--simulacoes` troca o número de simulações por ponto, para uma rodada rápida.
@@ -115,6 +117,8 @@ lab05/
         descritiva.py      # mediana, IQR e coeficiente de variação (origem: Lab04)     (S01-09)
         testes.py          # Welch, Mann-Whitney, efeito, Holm, bootstrap (origem: Lab04) (S01-09)
         poder.py           # poder e repetições por simulação (origem: motor do Lab04)    (S01-09)
+        q3.py              # Q3: interação servidor × io_threads, ART-ANOVA e ANOVA     (S02-01)
+        pareada.py         # análise pareada por bloco: Wilcoxon e Hodges-Lehmann       (S02-01)
         graficos.py        # gráficos em Plotly
         app.py             # dashboard interativo em Streamlit
     tests/                 # pytest, um arquivo test_<módulo>.py por módulo
