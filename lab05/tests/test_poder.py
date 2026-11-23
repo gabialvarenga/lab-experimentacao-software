@@ -183,6 +183,45 @@ def test_diferenca_detectavel_escolhe_a_menor_que_basta_na_pior_comparacao():
     assert np.isnan(d.loc[60, "diferenca_detectavel"])
 
 
+def test_gerar_pares_tem_a_media_e_o_desvio_pedidos():
+    D = poder.gerar_pares(0.1, 0.05, 4000, 2, np.random.default_rng(0))
+    assert D.shape == (2, 4000)
+    assert D.mean() == pytest.approx(np.log(1.05), abs=0.005) and D.std() == pytest.approx(0.1, abs=0.005)
+    with pytest.raises(ValueError):
+        poder.gerar_pares(-0.1, 0.05, 5, 5, np.random.default_rng(0))
+
+
+def test_wilcoxon_pareado_controla_o_erro_tipo_i_e_ganha_poder_com_n():
+    h0 = poder.poder_familia([0.1] * 6, 20, 0.0, poder.TESTE_PAREADO, 4000, np.random.default_rng(0), cenario="todas")
+    assert (h0 / 4000 < 0.05 / 6 + 0.006).all()
+    rng = lambda: np.random.default_rng(1)  # noqa: E731
+    pequeno = poder.poder_familia([0.1] * 6, 10, 0.05, poder.TESTE_PAREADO, 2000, rng())
+    grande = poder.poder_familia([0.1] * 6, 60, 0.05, poder.TESTE_PAREADO, 2000, rng())
+    assert (grande > pequeno).all()
+
+
+def test_poder_do_wilcoxon_pareado_perto_do_t_pareado():
+    # poder exato do t pareado (t não central) com o n efetivo do Wilcoxon: eficiência de 3/π com dados normais
+    sigma, diferenca, n = 0.1, 0.05, 40
+    rejeicoes = poder.poder_familia([sigma] * 6, n, diferenca, poder.TESTE_PAREADO, 4000, np.random.default_rng(2), cenario="todas")
+    alfa, n_efetivo = 0.05 / 6, n * 3 / np.pi
+    critico = stats.t.ppf(1 - alfa / 2, n_efetivo - 1)
+    esperado = 1 - stats.nct.cdf(critico, n_efetivo - 1, np.log1p(diferenca) / sigma * np.sqrt(n_efetivo))
+    # no cenário "todas", Holm só pode ajudar: o poder fica entre o de α/6 e o de α
+    assert (rejeicoes / 4000 > esperado - 0.03).all()
+    sozinho = poder.poder_familia([sigma] * 6, n, diferenca, poder.TESTE_PAREADO, 4000, np.random.default_rng(2))
+    assert sozinho / 4000 == pytest.approx([esperado] * 6, abs=0.03)
+
+
+def test_curva_pareada_usa_raiz_de_2_vezes_o_sigma_sem_bloco():
+    df = coleta_sintetica(n=5, sigma=0.1, semente=6)
+    sem_bloco = poder.remover_efeito_bloco(df, ["ops_s"])
+    curva = poder.curva_poder_pareada(sem_bloco, "ops_s", (10,), (0.05,), 100)
+    esperado = poder.estimar_sigmas(sem_bloco, "ops_s")["sigma_log"].to_numpy() * np.sqrt(2)
+    assert list(curva.columns) == poder.COLUNAS_CURVA and (curva["teste"] == poder.TESTE_PAREADO).all()
+    assert curva["sigma_log"].to_numpy() == pytest.approx(esperado)
+
+
 def test_repeticoes_necessarias_roda_no_piloto(piloto):
     t = poder.repeticoes_necessarias(piloto, metricas=["memoria_bytes"], grade=(5, 10), n_rep=200)
     assert t.iloc[0]["n_necessario"] == 5  # memória quase constante: 5 repetições bastam

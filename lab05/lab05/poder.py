@@ -28,6 +28,12 @@ precisa bastar para a combinação mais ruidosa.
 Uma combinação com σ = 0 (os dois servidores sem variação, como pode acontecer com a memória) é
 determinística: não entra em Holm e conta como detectada sempre que `diferenca` > 0 (plano,
 seção 5.2, "Variância zero").
+
+Análise pareada por bloco (S02-01, adendo de 23/11/2026; `pareada.py`): `curva_poder_pareada`
+simula o Wilcoxon pareado (`TESTE_PAREADO`) sobre `n` pares por comparação. O log da razão de
+cada par é normal, com média log(1 + `diferenca`) e desvio σ_par = √2 · σ, sendo σ o de
+`estimar_sigmas` sobre a coleta **sem a deriva entre blocos** (`remover_efeito_bloco`): dentro
+do bloco a deriva se cancela, e sobra o ruído de cada execução. Holm e os cenários são os mesmos.
 """
 
 import numpy as np
@@ -41,6 +47,7 @@ N_SIMULACOES = 2000  # repetições simuladas por ponto; margem de Wilson de ±1
 PODER_ALVO = 0.80
 CONFIANCA = 0.95
 CENARIOS = ("conservador", "todas")
+TESTE_PAREADO = "wilcoxon_pareado"  # análise pareada por bloco (pareada.py)
 SEMENTE_PADRAO = testes.SEMENTE_PADRAO
 COLUNAS_CURVA = [
     "metrica", "teste", "cenario", "n", "diferenca", "io_threads", "carga", "sigma_log",
@@ -100,6 +107,15 @@ def gerar_lote(sigma: float, diferenca: float, n: int, n_rep: int, rng) -> tuple
     return a, b
 
 
+def gerar_pares(sigma: float, diferenca: float, n: int, n_rep: int, rng) -> np.ndarray:
+    """`n_rep` amostras de `n` logs de razão pareada: normais com média log(1 + `diferenca`) e desvio `sigma`.
+
+    Matriz `(n_rep, n)`. Mesmas validações de `gerar_lote`.
+    """
+    a, b = gerar_lote(sigma / np.sqrt(2), diferenca, n, n_rep, rng)  # valida os parâmetros
+    return np.log(a) - np.log(b)
+
+
 def estimar_sigmas(df: pd.DataFrame, metrica: str) -> pd.DataFrame:
     """σ de log(métrica) por (`io_threads`, carga), juntando os dois servidores.
 
@@ -153,13 +169,20 @@ def remover_efeito_bloco(df: pd.DataFrame, metricas=descritiva.METRICAS) -> pd.D
 
 
 def _p_valores(sigmas, diferenca: float, n: int, teste: str, n_rep: int, rng) -> np.ndarray:
-    """p-valores `(n_rep, m)` do teste em cada comparação; NaN nas comparações com σ = 0."""
-    chave = testes.TESTES[teste]
+    """p-valores `(n_rep, m)` do teste em cada comparação; NaN nas comparações com σ = 0.
+
+    No `TESTE_PAREADO`, `sigmas` é o desvio do log da razão de cada par (σ_par).
+    """
     p = np.full((n_rep, len(sigmas)), np.nan)
     for j, sigma in enumerate(sigmas):
+        if teste == TESTE_PAREADO:
+            D = gerar_pares(sigma, diferenca, n, n_rep, rng)
+            if sigma > 0:
+                p[:, j] = stats.wilcoxon(D, axis=1, alternative="two-sided").pvalue
+            continue
         A, B = gerar_lote(sigma, diferenca, n, n_rep, rng)
         if sigma > 0:
-            p[:, j] = testes.aplicar_testes_vetorizado(A, B)[chave]
+            p[:, j] = testes.aplicar_testes_vetorizado(A, B)[testes.TESTES[teste]]
     return p
 
 
@@ -175,8 +198,8 @@ def poder_familia(
     """
     if cenario not in CENARIOS:
         raise ValueError(f"cenário '{cenario}' desconhecido; use {' ou '.join(CENARIOS)}")
-    if teste not in testes.TESTES:
-        raise ValueError(f"teste '{teste}' desconhecido; use {' ou '.join(testes.TESTES)}")
+    if teste not in (*testes.TESTES, TESTE_PAREADO):
+        raise ValueError(f"teste '{teste}' desconhecido; use {', '.join((*testes.TESTES, TESTE_PAREADO))}")
     sigmas = np.asarray(sigmas, dtype=float)
     deterministicas = sigmas == 0
     com_efeito = _p_valores(sigmas, diferenca, n, teste, n_rep, rng)
@@ -217,11 +240,36 @@ def curva_poder(
     """
     sigmas = estimar_sigmas(df, metrica)
     teste = testes.escolher_teste(df, metrica, alfa)["teste"] if teste is None else teste
+    return _curva(sigmas, metrica, teste, ns, diferencas, n_rep, alfa, cenario, semente)
+
+
+def curva_poder_pareada(
+    df_sem_bloco: pd.DataFrame,
+    metrica: str,
+    ns=GRADE_N,
+    diferencas=(testes.DIFERENCA_RELEVANTE,),
+    n_rep: int = N_SIMULACOES,
+    alfa: float = testes.ALFA,
+    cenario: str = "conservador",
+    semente: int = SEMENTE_PADRAO,
+) -> pd.DataFrame:
+    """Como `curva_poder`, para o Wilcoxon pareado (`TESTE_PAREADO`) com `n` pares por comparação.
+
+    `df_sem_bloco` é a coleta já passada por `remover_efeito_bloco`. A coluna `sigma_log` traz
+    σ_par = √2 · σ de `estimar_sigmas`. Os geradores têm uma chave a mais que os de
+    `curva_poder`, então as duas curvas não compartilham sorteios.
+    """
+    sigmas = estimar_sigmas(df_sem_bloco, metrica)
+    sigmas["sigma_log"] = sigmas["sigma_log"] * np.sqrt(2)
+    return _curva(sigmas, metrica, TESTE_PAREADO, ns, diferencas, n_rep, alfa, cenario, semente, (1,))
+
+
+def _curva(sigmas, metrica, teste, ns, diferencas, n_rep, alfa, cenario, semente, chave_extra=()) -> pd.DataFrame:
     indice = descritiva.METRICAS.index(metrica) if metrica in descritiva.METRICAS else len(descritiva.METRICAS)
     linhas = []
     for n in ns:
         for diferenca in diferencas:
-            rng = gerador_da_celula(semente, indice, n, _chave_diferenca(diferenca))
+            rng = gerador_da_celula(semente, indice, n, _chave_diferenca(diferenca), *chave_extra)
             rejeicoes = poder_familia(sigmas["sigma_log"], n, diferenca, teste, n_rep, rng, alfa, cenario)
             for comparacao, quantas in zip(sigmas.itertuples(), rejeicoes):
                 inf, sup = intervalo_wilson(int(quantas), n_rep)

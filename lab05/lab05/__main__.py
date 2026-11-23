@@ -4,6 +4,7 @@ Subcomandos:
     executar   roda o plano de execuções do benchmark e grava o CSV bruto   (S01-07)
     validar    confere os dados coletados                                   (S01-08)
     analisar   descritiva, testes, tamanhos de efeito e poder               (S01-09)
+               Q3 e análise pareada por bloco                               (S02-01)
 """
 
 import argparse
@@ -44,7 +45,7 @@ def _parser() -> argparse.ArgumentParser:
     _opcoes_da_coleta(val)
     ana = sub.add_parser(
         "analisar",
-        help="descritiva, testes e número de repetições (não precisa do Docker)",
+        help="descritiva, testes, Q3, análise pareada e número de repetições (não precisa do Docker)",
         description="Analisa o CSV de uma coleta (as mesmas opções usadas no executar) e grava "
         "os CSVs e o registro em <pasta da coleta>/analise/. Parâmetros no bloco `analise` do config.",
     )

@@ -1,6 +1,6 @@
 # Lab05 — Análise do piloto e número de repetições
 
-Análise da coleta piloto (S01-08) com o código da análise, e escolha do número de repetições da coleta completa. Documento da Issue S01-09, escrito em 19/11/2026. As regras vêm do [plano de análise](plano-analise.md); as decisões que ele manda registrar no piloto estão no adendo de 19/11/2026, na seção 9 dele.
+Análise da coleta piloto (S01-08) com o código da análise, e escolha do número de repetições da coleta completa. Documento da Issue S01-09, escrito em 19/11/2026; a seção 9 (Q3 e análise pareada por bloco) foi acrescentada na S02-01, em 23/11/2026. As regras vêm do [plano de análise](plano-analise.md); as decisões que ele manda registrar no piloto estão no adendo de 19/11/2026, na seção 9 dele.
 
 > **O resultado do piloto não é conclusão.** Com 5 repetições, as comparações servem só para conferir que o código roda. O piloto decide duas coisas: o teste principal de cada métrica (regra 5.1 do plano) e o número de repetições. Os dados do piloto **não entram** na análise final.
 
@@ -130,3 +130,71 @@ print(poder.diferenca_detectavel(curva))
 - [planejamento.md](planejamento.md), seções 3.3, 6.4 e 7: repetições, tempo da coleta completa e o caso de borda.
 - [plano-analise.md](plano-analise.md), seção 9: adendo de 19/11/2026 com o teste principal por métrica, o número de repetições, o cenário de Holm da simulação e as pendências que passam para a S02.
 - `README.md`: subcomando `analisar` e o tamanho da coleta completa.
+
+## 9. Q3 e análise pareada por bloco (S02-01)
+
+Seção acrescentada em 23/11/2026, antes da coleta completa (S02-02), para decidir o método da Q3 e propor a análise pareada por bloco. As decisões estão no adendo de 23/11/2026 do [plano de análise](plano-analise.md), seção 9. O comando é o mesmo (`python -m lab05 analisar --piloto`, agora cerca de 5 minutos). Saídas novas: [`q3.csv`](../dados/piloto/analise/q3.csv), [`pareada.csv`](../dados/piloto/analise/pareada.csv) e a coluna `analise` em [`diferenca-detectavel.csv`](../dados/piloto/analise/diferenca-detectavel.csv). Código em `q3.py`, `pareada.py` e `poder.py` (`curva_poder_pareada`).
+
+### 9.1 Método da Q3 (regra 5.1 nos resíduos do modelo)
+
+Resíduos do modelo de dois fatores no log, por carga (log da métrica menos a média da sua célula servidor × `io_threads`), juntados por métrica (60 cada):
+
+| Métrica | Shapiro-Wilk p | Assimetria | Levene p (menor das 3 cargas) | Shapiro-Wilk p com o bloco no modelo | Método |
+|---|---|---|---|---|---|
+| `ops_s` | 0,0035 | −0,43 | 0,78 | 0,93 | **ART-ANOVA** |
+| `lat_p99_ms` | 0,0032 | 0,52 | 0,45 | 0,72 | **ART-ANOVA** |
+
+- A normalidade falha; as variâncias e a assimetria passam. Com o bloco (`repeticao`) no modelo, os resíduos ficam normais: o que quebra a normalidade é a deriva entre blocos, a mesma da seção 2.
+- **Decisão registrada:** ART-ANOVA como principal nas duas métricas; ANOVA no log com o bloco como sensibilidade.
+
+Resultado no piloto, **só para conferir que o código roda** (5 repetições por célula):
+
+| Métrica | Carga | R (razão das razões) | IC de 95% | p interação (ART) | p Holm | η² parcial | p com bloco | Situação |
+|---|---|---|---|---|---|---|---|---|
+| `ops_s` | get | 1,40 | [1,06; 2,07] | 0,0040 | 0,0040 | 0,41 | < 0,0001 | diferença relevante |
+| `ops_s` | misto | 1,78 | [1,20; 2,42] | 0,0004 | 0,0007 | 0,56 | < 0,0001 | diferença relevante |
+| `ops_s` | set | 1,54 | [1,20; 2,19] | 0,0002 | 0,0006 | 0,59 | < 0,0001 | diferença relevante |
+| `lat_p99_ms` | get | 0,71 | [0,48; 0,95] | 0,0029 | 0,0029 | 0,43 | < 0,0001 | inconclusivo |
+| `lat_p99_ms` | misto | 0,54 | [0,39; 0,80] | 0,0002 | 0,0006 | 0,59 | < 0,0001 | diferença relevante |
+| `lat_p99_ms` | set | 0,65 | [0,43; 0,87] | 0,0009 | 0,0018 | 0,51 | < 0,0001 | diferença relevante |
+
+O código roda nas duas métricas, e a ART e a ANOVA com bloco concordam em todas as cargas. O modelo com bloco tem p muito menores, porque tira a deriva dos resíduos. Os valores de R não são conclusão.
+
+### 9.2 Análise pareada por bloco no piloto
+
+As 24 comparações (4 métricas × 6 combinações) rodaram, com 5 pares cada e nenhum par excluído (o piloto não teve falhas). Com 5 pares, o menor p possível do Wilcoxon pareado é 0,0625 e o IC de Hodges-Lehmann cobre no máximo 93,75%. Por isso **todas as comparações pareadas saem "inconclusivo"**, como esperado.
+
+Em 13 das 24 comparações, a situação coincide com a do Mann-Whitney. As 11 diferentes são as que o Mann-Whitney marca como "diferença relevante" (com 4 *threads* e na memória), que a pareada não alcança com 5 pares. Mesmo assim, o IC de Hodges-Lehmann já sai mais estreito que o do *bootstrap* independente: por exemplo, `ops_s` com 1 *thread* e carga `get` dá [0,93; 1,16] na pareada, contra [0,78; 1,34] na independente.
+
+### 9.3 Diferença detectável da análise pareada
+
+A simulação é a mesma da seção 5, agora para o Wilcoxon pareado:
+
+- log das razões normal, com σ_par = √2 · σ, sendo σ o de log de cada combinação **sem a deriva entre blocos**;
+- Holm no cenário conservador;
+- poder da pior das 6 comparações;
+- 2.000 simulações por ponto.
+
+Menor diferença com 80% de poder, em passos de 1 ponto percentual:
+
+| Métrica | Análise | n = 30 | **n = 40** | n = 45 | n = 50 | n = 60 |
+|---|---|---|---|---|---|---|
+| `ops_s` | independente (Mann-Whitney, bruta) | 16% | **14%** | 13% | 12% | 11% |
+| `ops_s` | pareada (Wilcoxon, sem a deriva) | 10% | **9%** | 8% | 8% | 7% |
+| `lat_p50_ms` | independente | 15% | **13%** | 12% | 12% | 11% |
+| `lat_p50_ms` | pareada | 9% | **8%** | 7% | 7% | 6% |
+| `lat_p99_ms` | independente | 18% | **16%** | 15% | 14% | 13% |
+| `lat_p99_ms` | pareada | 13% | **11%** | 10% | 10% | 9% |
+| `memoria_bytes` | as duas | 5% | **5%** | 5% | 5% | 5% |
+
+- Com as 40 repetições já fixadas, a pareada detecta diferenças cerca de um terço menores que a análise independente. Na vazão e nas latências, ainda fica acima do limiar de 5%.
+- **Conferência do σ_par:** o desvio do log das razões medido direto nos pares do piloto (coluna `desvio_log_razao` de `pareada.csv`) tem máximos de 0,108 (`ops_s`), 0,099 (`lat_p50_ms`) e 0,144 (`lat_p99_ms`). São valores abaixo dos σ_par da simulação (0,132, 0,121 e 0,170), então a estimativa é conservadora.
+- As limitações da seção 7 também valem aqui: σ estimado com 5 execuções e modelo lognormal com o mesmo σ nos dois servidores.
+
+### 9.4 O que mudou com a S02-01
+
+- `config.yaml`: no bloco `analise`, as decisões fixas `teste_principal` (Mann-Whitney nas quatro métricas) e `metodo_q3` (ART nas duas), que o `analisar` usa na coleta completa.
+- `requirements.txt`: `statsmodels`.
+- Código: `q3.py` e `pareada.py`, novos; `poder.py` (`curva_poder_pareada`); `analise.py` (saídas novas e as decisões fixas). Testes em `tests/test_q3.py`, `tests/test_pareada.py`, `tests/test_poder.py` e `tests/test_analise.py`.
+- Saídas do piloto: `q3.csv` e `pareada.csv`, novos; colunas novas em `teste-principal.csv` (`teste_usado`, `origem`) e em `diferenca-detectavel.csv` (`analise`); seções novas no registro. As demais tabelas não mudaram.
+- [plano-analise.md](plano-analise.md), seção 9: adendo de 23/11/2026.

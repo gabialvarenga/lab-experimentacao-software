@@ -13,7 +13,7 @@ python -m lab05 validar --piloto
 | `registro-piloto.md` | Ambiente e resumo da sessão (gerado pelo executor) |
 | `qualidade-piloto.md` | Relatório de qualidade (gerado pelo `validar`) |
 | `saidas/*.json` | Saída bruta do `memtier_benchmark` de cada execução |
-| `analise/` | Análise do piloto (S01-09): `python -m lab05 analisar --piloto`; leitura em [`docs/analise-piloto.md`](../../docs/analise-piloto.md) |
+| `analise/` | Análise do piloto (S01-09; Q3 e análise pareada por bloco na S02-01): `python -m lab05 analisar --piloto`; leitura em [`docs/analise-piloto.md`](../../docs/analise-piloto.md) |
 
 ## Condições da coleta (18/11/2026, 20h09 às 21h08)
 
