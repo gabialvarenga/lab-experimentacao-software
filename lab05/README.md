@@ -25,7 +25,7 @@ python -m lab05 --help
 pytest
 ```
 
-O caminho completo é `executar` → `validar` → `analisar`, cada um com as mesmas opções de coleta (`--piloto`, `--saida`, `--nome`). O dashboard (S02-08) só lerá os CSVs gravados.
+O caminho completo é `executar` → `validar` → `analisar`, cada um com as mesmas opções de coleta (`--piloto`, `--saida`, `--nome`). O dashboard (`app`, S02-09) só lê os CSVs gravados.
 
 A semente global fica em `config.yaml` (`semente: 42`) e alimenta a ordem aleatorizada das execuções e as reamostragens.
 
@@ -119,6 +119,28 @@ Grava em `<pasta da coleta>/analise/figuras/`:
 | `g4.html` | G4: interação servidor × `io_threads` (Q3), medianas com 1 e 4 threads por carga, em escala log |
 | `apresentacao.html` | Página única para apresentar: números de destaque, as quatro figuras e o texto "como ler" de cada uma. Embute o Plotly.js e abre sem internet |
 
+### Dashboard
+
+O dashboard interativo (S02-09), em Streamlit, reúne o método e os resultados numa página só. A partir de `lab05/`:
+
+```bash
+python -m lab05 app                    # sobe o servidor e abre o navegador (http://localhost:8501)
+python -m lab05 app --sem-abrir --porta 8600
+python -m streamlit run lab05/app.py   # equivalente, sem o subcomando
+```
+
+Ctrl+C no terminal encerra o servidor. O app **só lê CSVs**: abrir a página nunca roda o *benchmark*, e não precisa do Docker. Ele lê `dados/brutos/execucoes.csv` e as tabelas de `dados/brutos/analise/` (`comparacoes.csv`, `q3.csv` e `q3-diferenca-detectavel.csv`), então `executar` e `analisar` precisam ter rodado antes. Se um arquivo falta, a seção que depende dele mostra um aviso com o comando que o gera, e as outras seguem funcionando.
+
+| Seção | Conteúdo |
+|---|---|
+| 1. O software e a pergunta | Redis 8.10.3 × Valkey 9.1.3, a pergunta principal e as perguntas Q1 a Q4 |
+| 2. Como medimos | Ambiente, cliente de carga, cargas e desenho das execuções (blocos em ordem sorteada) |
+| 3. Dados e deriva | Números de destaque da coleta, G1 (cada métrica por combinação, com escolha das métricas) e G2 (deriva) |
+| 4. Resultados das Q1, Q2 e Q4 | G3 (razão Valkey ÷ Redis com IC) e tabela de cada pergunta, com seletor da pergunta |
+| 5. A diferença depende das threads? (Q3) | G4, tabela da interação (R, IC, Holm) e a interação detectável |
+
+Impacto, conclusões e a publicação do dashboard ficam para a Sprint 03. O texto de cada seção que cita números os lê das tabelas, então acompanha a análise se ela for refeita. As figuras são as mesmas de `python -m lab05 graficos`. O comando desliga as estatísticas de uso do Streamlit (`--browser.gatherUsageStats false`).
+
 ## Estrutura
 
 ```
@@ -142,7 +164,7 @@ lab05/
         q3.py              # Q3: interação servidor × io_threads, ART-ANOVA e ANOVA     (S02-01)
         pareada.py         # análise pareada por bloco: Wilcoxon e Hodges-Lehmann       (S02-01)
         graficos.py        # gráficos G1 a G4 e página de apresentação (Plotly)          (S02-05)
-        app.py             # dashboard interativo em Streamlit
+        app.py             # dashboard interativo em Streamlit (`python -m lab05 app`)    (S02-09)
     tests/                 # pytest, um arquivo test_<módulo>.py por módulo
         dados/             # saídas reais gravadas (JSON do cliente, INFO dos servidores) para o parser
     dados/

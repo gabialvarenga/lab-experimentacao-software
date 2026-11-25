@@ -6,15 +6,23 @@ Subcomandos:
     analisar   descritiva, testes, tamanhos de efeito e poder               (S01-09)
                Q3 e análise pareada por bloco                               (S02-01)
     graficos   figuras G1 a G4 e a página de apresentação em HTML           (S02-05)
+    app        dashboard interativo (Streamlit), só lê os CSVs gravados      (S02-09)
 """
 
 import argparse
+import importlib.util
+import subprocess
 import sys
+import threading
+import webbrowser
+from pathlib import Path
 
 import pandas as pd
 
 from lab05 import analise, config, executor, graficos, validacao
 
+APP = Path(__file__).resolve().parent / "app.py"   # o Streamlit roda um script, e não um módulo do pacote
+ESPERA_NAVEGADOR_S = 4.0   # segundos até abrir o navegador, enquanto o servidor sobe
 AJUSTES = ("repeticoes", "aquecimento_s", "medicao_s", "pausa_s", "saida", "nome", "piloto")
 
 
@@ -61,6 +69,14 @@ def _parser() -> argparse.ArgumentParser:
         "em <pasta da coleta>/analise/figuras/, com a página apresentacao.html.",
     )
     _opcoes_da_coleta(gra)
+    app = sub.add_parser(
+        "app",
+        help="dashboard interativo (Streamlit); só lê os CSVs, não precisa do Docker",
+        description="Sobe o dashboard em http://localhost:<porta> e o abre no navegador. Lê a coleta completa "
+        "(execucoes.csv) e as tabelas do `analisar`; abrir a página nunca roda o benchmark. Ctrl+C encerra.",
+    )
+    app.add_argument("--porta", type=int, default=8501, help="porta do servidor local (padrão: 8501)")
+    app.add_argument("--sem-abrir", action="store_true", help="sobe o servidor sem abrir o navegador")
     return parser
 
 
@@ -69,9 +85,30 @@ def _comando(argv) -> str:
     return " ".join(["python -m lab05", *argv])
 
 
+def _app(abrir: bool, porta: int) -> int:
+    """Sobe o servidor do Streamlit com o `app.py` e fica rodando até Ctrl+C.
+
+    Sempre em modo *headless*: sem ele, a primeira execução do Streamlit para num pedido de e-mail
+    no terminal. As estatísticas de uso do Streamlit ficam desligadas. O navegador é aberto daqui, depois de `ESPERA_NAVEGADOR_S`, para dar tempo de o
+    servidor subir.
+    """
+    if importlib.util.find_spec("streamlit") is None:
+        print("o Streamlit não está instalado: rode `python -m pip install -r requirements.txt`", file=sys.stderr)
+        return 1
+    url = f"http://localhost:{porta}"
+    comando = [sys.executable, "-m", "streamlit", "run", str(APP), "--server.port", str(porta), "--server.headless", "true",
+               "--browser.gatherUsageStats", "false"]
+    print(f"Dashboard em {url} (deixe este terminal aberto; Ctrl+C para encerrar)")
+    if abrir:
+        threading.Timer(ESPERA_NAVEGADOR_S, webbrowser.open, args=(url,)).start()
+    return subprocess.call(comando, cwd=APP.parent.parent)
+
+
 def main(argv=None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
+    if args.etapa == "app":
+        return _app(abrir=not args.sem_abrir, porta=args.porta)
     cfg = config.carregar(args.config)
     if args.etapa in ("executar", "validar", "analisar", "graficos"):
         cfg = executor.aplicar_ajustes(cfg, **{k: getattr(args, k, None) for k in AJUSTES})
