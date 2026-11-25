@@ -98,6 +98,13 @@ def test_gravar_escreve_os_csvs_e_um_registro_deterministico(cfg):
     assert analise.sha256(executor.caminhos(cfg)["csv"]) in texto
 
 
+def test_aviso_de_piloto_so_aparece_com_as_repeticoes_do_piloto(cfg):
+    desc = pd.DataFrame({"n": [5, 5]})
+    assert "não é conclusão" in analise._aviso_repeticoes(cfg, desc)
+    completa = analise._aviso_repeticoes(cfg, pd.DataFrame({"n": [40, 40]}))
+    assert completa == "40 repetições por combinação."
+
+
 def test_sha256_ignora_a_diferenca_entre_lf_e_crlf(tmp_path):
     (tmp_path / "lf.txt").write_bytes(b"a\nb\n")
     (tmp_path / "crlf.txt").write_bytes(b"a\r\nb\r\n")
