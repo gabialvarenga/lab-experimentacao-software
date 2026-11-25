@@ -1,0 +1,12 @@
+[
+  { "n": "S02-01", "titulo": "[S02-01] Registrar o adendo de análise antes da coleta: método da Q3 e análise pareada por bloco", "label": "codigo", "depende_de": [] },
+  { "n": "S02-02", "titulo": "[S02-02] Congelar a configuração e preparar a máquina para a coleta", "label": "codigo", "depende_de": [] },
+  { "n": "S02-03", "titulo": "[S02-03] Executar a coleta completa", "label": "codigo", "depende_de": ["S02-01", "S02-02"] },
+  { "n": "S02-04", "titulo": "[S02-04] Validar e versionar os dados; escrever o dicionário de dados", "label": "codigo", "depende_de": ["S02-03"] },
+  { "n": "S02-05", "titulo": "[S02-05] Implementar os gráficos da descritiva e dos efeitos", "label": "codigo", "depende_de": [] },
+  { "n": "S02-06", "titulo": "[S02-06] Rodar os testes e o tamanho de efeito das Q1, Q2 e Q4 e interpretar", "label": "codigo", "depende_de": ["S02-01", "S02-04"] },
+  { "n": "S02-07", "titulo": "[S02-07] Analisar a interação servidor × threads (Q3)", "label": "codigo", "depende_de": ["S02-01", "S02-04"] },
+  { "n": "S02-08", "titulo": "[S02-08] Escrever as ameaças à validade (quatro tipos, com mitigação)", "label": "documentation", "depende_de": [] },
+  { "n": "S02-09", "titulo": "[S02-09] Montar o dashboard com os resultados", "label": "codigo", "depende_de": ["S02-05", "S02-06", "S02-07"] },
+  { "n": "S02-10", "titulo": "[S02-10] Registrar o snapshot do quadro da Sprint 02", "label": "processo", "depende_de": ["S02-01", "S02-02", "S02-03", "S02-04", "S02-05", "S02-06", "S02-07", "S02-08", "S02-09"] }
+]
