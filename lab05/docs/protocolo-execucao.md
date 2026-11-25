@@ -4,7 +4,7 @@ Como o ambiente é montado e como cada execução do *benchmark* é feita, para 
 
 Siglas: CPU (*Central Processing Unit*); WSL2 (*Windows Subsystem for Linux 2*); ops/s (operações por segundo); p50 e p99 (percentis 50 e 99 da latência); TCP (*Transmission Control Protocol*); RESP (*Redis Serialization Protocol*).
 
-> **Estado.** Rascunho da Issue S01-06. Os valores marcados como *proposta* são ajustados pelo piloto (S01-09) e confirmados com o executor (S01-07). O `compose.yaml` foi escrito sem poder ser executado, porque o Docker ainda não estava instalado na máquina designada: **a seção 9 precisa ser cumprida antes do merge.**
+> **Estado (S02-02, 24/11/2026).** Configuração **congelada para a coleta completa**: 40 repetições, aquecimento de 10 s, medição de 30 s, pausa de 5 s, semente 42, imagens pelo *digest*. O piloto (S01-08) e a análise dele (S01-09) confirmaram os valores que eram *proposta*; a verificação da seção 9 foi cumprida. Mudança em `config.yaml` ou `compose.yaml` depois da tag `lab05-coleta-congelada` exige refazer a coleta e registrar o motivo.
 
 ## 1. Escopo e ética
 
@@ -51,6 +51,8 @@ Cumprir todos os itens e anotar o que não for possível:
 4. Máquina fria e ociosa: esperar **10 minutos** depois de fechar programas, parar contêineres, de uma coleta anterior ou de qualquer tarefa pesada. No piloto, o segundo bloco ficou cerca de 16% mais lento que os demais, provavelmente porque a máquina ainda se acomodava (ver a seção 11).
 5. Registrar a hora de início e de fim, para relacionar com eventuais interrupções.
 6. Não mexer na máquina durante a coleta.
+7. **Sem atualização automática** do Windows nem do Docker Desktop até o fim da coleta (adiar; ver a seção 2.3).
+8. Conferir que o commit em uso é o da tag `lab05-coleta-congelada` (`git describe --tags --exact-match`) e que `git status` está limpo em `lab05/`.
 
 ### 2.3 Docker sobre WSL2
 
@@ -147,18 +149,18 @@ Uma execução é uma combinação (servidor, `io_threads`, `carga`, repetição
 
 Para o Valkey, trocar `redis` por `valkey` e `redis-cli` por `valkey-cli`. A pré-carga é feita em **todas** as cargas, de modo que todas começam do mesmo estado (100.000 chaves já gravadas): na carga `set` os valores são sobrescritos, na `get` e na `misto` há o que ler.
 
-*Proposta:* aquecimento de 10 s, medição de 30 s e pausa de 5 s são ajustados pelo piloto (S01-09). A uma execução de cerca de um minuto, a coleta completa (2 servidores × 2 níveis de `io_threads` × 3 cargas × 30 repetições = 360 execuções) leva em torno de 6 horas, e o piloto (5 repetições, 60 execuções) em torno de 1 hora.
+Aquecimento de 10 s, medição de 30 s e pausa de 5 s foram mantidos pelo piloto (seção 11). A uma execução de cerca de um minuto (0,99 min no piloto), a coleta completa (2 servidores × 2 níveis de `io_threads` × 3 cargas × 40 repetições = 480 execuções) leva em torno de 8 horas, e o piloto (5 repetições, 60 execuções) levou cerca de 1 hora. O número de repetições vem da S01-09 ([analise-piloto.md](analise-piloto.md), seção 6).
 
 **O que se grava.** O executor transforma cada execução em uma linha do CSV (colunas `execucao_id`, `ordem`, `servidor`, `versao`, `io_threads`, `carga`, `repeticao`, `ops_s`, `lat_p50_ms`, `lat_p99_ms`, `memoria_bytes`, `inicio`, `fim`) e guarda a saída bruta do cliente (JSON) em `dados/brutos/saidas/`. Execução que falha (contêiner não sobe, cliente cai) é registrada como falha, sem valor inventado: não entra no CSV, ganha uma linha em `falhas.csv` (etapa e mensagem) e é tentada de novo na próxima chamada do executor. As execuções já gravadas no CSV nunca são repetidas, então uma coleta interrompida é retomada com o mesmo comando.
 
 ## 7. Ordem das execuções
 
-A ordem é **aleatorizada com a semente fixa do `config.yaml`** (`semente: 42`), para que o efeito do servidor não se confunda com o aquecimento da máquina ou com a deriva de temperatura. *Proposta de esquema:* cada repetição é um **bloco** com uma execução de cada uma das 12 combinações (2 servidores × 2 níveis × 3 cargas), em ordem sorteada dentro do bloco. Assim, qualquer mudança lenta na máquina atinge todas as combinações por igual, e há 30 blocos. A geração do plano está na Issue S01-07.
+A ordem é **aleatorizada com a semente fixa do `config.yaml`** (`semente: 42`), para que o efeito do servidor não se confunda com o aquecimento da máquina ou com a deriva de temperatura. Cada repetição é um **bloco** com uma execução de cada uma das 12 combinações (2 servidores × 2 níveis × 3 cargas), em ordem sorteada dentro do bloco. Assim, qualquer mudança lenta na máquina atinge todas as combinações por igual, e há 40 blocos. A geração do plano está na Issue S01-07.
 
 ## 8. Limitações conhecidas do ambiente
 
 - **Docker sobre WSL2 num notebook.** Temperatura, frequência da CPU, energia e outros processos do Windows podem variar. Os controles das seções 2.2 e 7 reduzem esse ruído, mas não o eliminam.
-- **Hiperprocessamento.** As 8 *threads* lógicas são 4 núcleos físicos; servidor e cliente usam todas, e o Windows e o Docker competem pelas mesmas. Isso reduz o ganho observável das *threads* de I/O.
+- **Hiperprocessamento e núcleos híbridos.** Na máquina designada (i7-13620H), servidor (`0-3`) e cliente (`4-7`) ocupam 8 das 16 CPUs lógicas da máquina virtual, que são 4 núcleos físicos do ponto de vista dos pares irmãos; as outras 8 ficam para o Windows e o Docker. O processador mistura núcleos de desempenho e de eficiência, e o protocolo **não controla** em quais deles as CPUs `0-7` da máquina virtual caem: isso pode variar a velocidade entre execuções e reduz o ganho observável das *threads* de I/O. Fica como ameaça à validade.
 - **Rede.** Servidor e cliente conversam por TCP na rede virtual do Docker, e não por *loopback* direto. A latência medida inclui essa camada, igual para os dois servidores.
 - **Valores absolutos.** Os ops/s e a latência não valem para outro hardware; valem a ordem entre os servidores e a razão entre as medianas.
 
@@ -225,7 +227,7 @@ Detalhes em [`../dados/piloto/LEIA-ME.md`](../dados/piloto/LEIA-ME.md) e no rela
 |---|---|
 | Execuções | 60 de 60 (5 repetições × 12 combinações), nenhuma falha |
 | Validação | Sem erros; 31 avisos de coeficiente de variação acima de 10% |
-| Tempo total | 59,4 min (0,99 min por execução): a coleta completa, com 360 execuções, leva cerca de 6 horas |
+| Tempo total | 59,4 min (0,99 min por execução): a coleta completa prevista na época (30 repetições, 360 execuções) levaria cerca de 6 horas; com as 40 repetições decididas na S01-09 (480 execuções), cerca de 8 horas |
 | Variabilidade | CV mediano de 11,9% (`ops_s`), 12,6% (`lat_p50_ms`) e 14,5% (`lat_p99_ms`); `memoria_bytes` quase constante (CV ≤ 0,04%) |
 | Causa dos CV altos | Deriva da máquina entre blocos (bloco 2 cerca de 16% mais lento, blocos 4 e 5 cerca de 10% mais rápidos), igual em todas as combinações. Sem o efeito do bloco, o CV mediano cai para cerca de 6% a 7% |
 
