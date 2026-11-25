@@ -232,7 +232,7 @@ def registro(cfg: dict, resultado: dict, comando: str) -> str:
         "",
         "## Comparações Valkey × Redis",
         "",
-        "Só para conferir que o código roda: com 5 repetições, o resultado **não é conclusão**.",
+        _aviso_repeticoes(cfg, desc),
         "",
         "| Métrica | io_threads | Carga | Razão de medianas | IC de 95% | p principal | p Holm | p sensibilidade | Discordam | Situação |",
         "|---|---|---|---|---|---|---|---|---|---|",
@@ -274,18 +274,27 @@ def registro(cfg: dict, resultado: dict, comando: str) -> str:
             grupo = detectavel[(detectavel["metrica"] == metrica) & (detectavel["analise"] == tipo)]
             valores = dict(zip(grupo["n"], grupo["diferenca_detectavel"]))
             linhas.append(f"| `{metrica}` | {tipo} | " + " | ".join(_pct(valores.get(n)) for n in p["candidatos_n"]) + " |")
-    linhas += _registro_q3(resultado["q3"]) + _registro_pareada(resultado["pareada"])
+    linhas += _registro_q3(resultado["q3"], _aviso_repeticoes(cfg, desc)) + _registro_pareada(resultado["pareada"])
     return "\n".join(linhas) + "\n"
 
 
-def _registro_q3(tabela: pd.DataFrame) -> list:
+def _aviso_repeticoes(cfg: dict, desc: pd.DataFrame) -> str:
+    """Quantas repetições a coleta tem e, se forem as do piloto ou menos, que o resultado não é conclusão."""
+    n = int(desc["n"].min())
+    texto = f"{n} repeti{'ção' if n == 1 else 'ções'} por combinação."
+    if n <= (cfg.get("piloto") or {}).get("repeticoes", 0):
+        texto += " Só para conferir que o código roda: o resultado **não é conclusão**."
+    return texto
+
+
+def _registro_q3(tabela: pd.DataFrame, aviso: str) -> list:
     linhas = [
         "",
         "## Q3: interação servidor × io_threads",
         "",
         "Método principal pela regra 5.1 aplicada aos resíduos do modelo de dois fatores no log, juntados por métrica; "
         "sensibilidade: ANOVA no log com o bloco (repetição). Holm entre as 3 cargas de cada métrica. "
-        "R = razão das razões, (valkey 4 ÷ valkey 1) ÷ (redis 4 ÷ redis 1). Só para conferir que o código roda.",
+        "R = razão das razões, (valkey 4 ÷ valkey 1) ÷ (redis 4 ÷ redis 1). " + aviso,
         "",
         "| Métrica | Shapiro-Wilk p | Assimetria | Levene p (menor) | Regra | Motivo | Usado |",
         "|---|---|---|---|---|---|---|",
