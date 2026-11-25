@@ -96,7 +96,7 @@ Grava em `<pasta da coleta>/analise/`:
 | `pareada.csv` | Análise pareada por bloco (sensibilidade): Valkey ÷ Redis dentro de cada repetição, Wilcoxon pareado, Hodges-Lehmann com IC exato, Holm e a situação comparada à do teste principal; pares com execução refeita saem |
 | `registro-analise.md` | Comando, parâmetros, hash do CSV de entrada, ambiente e as tabelas principais (determinístico) |
 
-A saída da coleta completa está versionada em `dados/brutos/analise/`, e a interpretação das Q1 a Q4 (tabelas com Holm, situação de cada comparação, a interação da Q3, diferença detectável e expectativa × resultado) está em [docs/resultados.md](docs/resultados.md).
+A saída da coleta completa está versionada em `dados/brutos/analise/`, e a interpretação das Q1 a Q4 (tabelas com Holm, situação de cada comparação, a interação da Q3, diferença detectável e expectativa × resultado) está em [docs/resultados.md](docs/resultados.md). As ameaças à validade (conclusão, interna, construto e externa, com mitigação e risco restante) estão em [docs/ameacas-validade.md](docs/ameacas-validade.md).
 
 O poder é estimado por simulação com o motor do Lab04 adaptado: amostras lognormais com o σ de log de cada combinação observado na coleta e Holm aplicado à família de 6 comparações em cada repetição simulada. A opção `--simulacoes` troca o número de simulações por ponto, para uma rodada rápida.
 
