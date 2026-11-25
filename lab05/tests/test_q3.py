@@ -129,3 +129,77 @@ def test_q3_roda_no_piloto(piloto):
     t = q3.analisar(piloto, "ops_s", rng=np.random.default_rng(0), n_boot=200)
     assert (t["teste"] == "art").all() and (t["n_por_celula"] == 5).all()
     assert t["situacao"].isin(testes.SITUACOES).all() and t["eta2_parcial"].between(0, 1).all()
+
+
+# --- diferença detectável da interação (S02-07) ---
+
+
+def _celulas(dados):
+    """As 4 células de uma carga na ordem de `_p_art_interacao`: valkey 1, valkey 4, redis 1, redis 4."""
+    ordem = (("valkey", 1), ("valkey", 4), ("redis", 1), ("redis", 4))
+    return np.stack([dados[(dados["servidor"] == s) & (dados["io_threads"] == t)]["y"].to_numpy() for s, t in ordem])
+
+
+def test_art_vetorizada_confere_com_a_art_do_modelo():
+    for carga, razao in (("get", 1.0), ("set", 1.2)):
+        dados = _carga(coleta_sintetica(n=12, sigma=0.1, semente=3, razao_threads4=razao), carga)
+        esperado = q3.art(dados)["interacao"]["p"]
+        assert q3._p_art_interacao(_celulas(dados)[None])[0] == pytest.approx(esperado, rel=1e-9)
+
+
+def test_art_vetorizada_com_empates_fica_perto_da_art_do_modelo_e_aceita_varias_repeticoes():
+    dados = _carga(coleta_sintetica(n=10, sigma=0.1, semente=8, razao_threads4=1.1))
+    dados = dados.assign(y=np.round(dados["y"], 1))  # valores repetidos
+    y = np.stack([_celulas(dados), _celulas(dados)[::-1]])  # a segunda repetição troca as células de lugar
+    p = q3._p_art_interacao(y)
+    # com empates, a ordem das contas em ponto flutuante desfaz alguns empates de um jeito ou de outro: p igual até ~1%
+    assert p[0] == pytest.approx(q3.art(dados)["interacao"]["p"], rel=1e-2) and 0 <= p[1] <= 1
+
+
+def test_art_vetorizada_devolve_nan_sem_variacao():
+    assert np.isnan(q3._p_art_interacao(np.zeros((1, 4, 5)))).all()
+
+
+def test_sigmas_por_carga_juntam_as_quatro_celulas():
+    df = coleta_sintetica(n=40, sigma=0.05, semente=1)
+    s = q3.sigmas_por_carga(df, "ops_s")
+    assert list(s["carga"]) == ["get", "misto", "set"] and (s["n_por_celula"] == 40).all()
+    assert s["sigma_log"].between(0.04, 0.06).all()
+
+
+def test_poder_da_interacao_cresce_com_a_diferenca_e_fica_perto_de_alfa_sem_efeito():
+    sigmas = [0.02, 0.02, 0.02]
+    rng = np.random.default_rng(0)
+    sem = q3.poder_interacao(sigmas, 20, 0.0, 400, rng)
+    pequeno = q3.poder_interacao(sigmas, 20, 0.01, 400, rng)
+    grande = q3.poder_interacao(sigmas, 20, 0.10, 400, rng)
+    assert (sem / 400 < 0.05).all()  # só a carga avaliada tem efeito; sem efeito rejeita pouco (Holm conservador)
+    assert (grande / 400 > 0.99).all() and (pequeno <= grande).all()
+
+
+def test_poder_da_interacao_no_cenario_todas_nao_e_menor_que_no_conservador():
+    sigmas = [0.03, 0.03, 0.03]
+    conservador = q3.poder_interacao(sigmas, 20, 0.03, 600, np.random.default_rng(4), cenario="conservador").sum()
+    todas = q3.poder_interacao(sigmas, 20, 0.03, 600, np.random.default_rng(4), cenario="todas").sum()
+    assert todas >= conservador
+    with pytest.raises(ValueError, match="cenário"):
+        q3.poder_interacao(sigmas, 20, 0.03, 10, np.random.default_rng(0), cenario="outro")
+
+
+def test_curva_e_diferenca_detectavel_da_interacao():
+    df = coleta_sintetica(n=40, sigma=0.02, semente=2)
+    curva = q3.curva_poder_interacao(df, "ops_s", diferencas=(0.005, 0.02, 0.10), n_rep=300)
+    assert list(curva.columns) == q3.COLUNAS_CURVA_Q3 and len(curva) == 3 * 3 and (curva["n"] == 40).all()
+    assert curva["ic_inf"].le(curva["poder"]).all() and curva["poder"].le(curva["ic_sup"]).all()
+    again = q3.curva_poder_interacao(df, "ops_s", diferencas=(0.005, 0.02, 0.10), n_rep=300)
+    pd.testing.assert_frame_equal(curva, again)  # determinístico
+    detectavel = q3.diferenca_detectavel_interacao(curva)
+    assert list(detectavel.columns) == q3.COLUNAS_DETECTAVEL_Q3 and len(detectavel) == 3
+    assert detectavel["diferenca_detectavel"].between(0.005, 0.10).all()
+    inalcancavel = q3.diferenca_detectavel_interacao(curva[curva["diferenca"] == 0.005])
+    assert inalcancavel["diferenca_detectavel"].isna().all() and inalcancavel["poder_no_ponto"].isna().all()
+
+
+def test_diferenca_detectavel_da_interacao_no_piloto(piloto):
+    curva = q3.curva_poder_interacao(piloto, "lat_p99_ms", diferencas=(0.05, 0.50), n_rep=200)
+    assert (curva["n"] == 5).all() and curva["poder"].between(0, 1).all()

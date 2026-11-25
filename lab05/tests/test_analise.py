@@ -7,7 +7,7 @@ from conftest import PILOTO
 from lab05 import analise, config, executor, testes
 
 RAPIDO = {"grade_n": [5, 10], "candidatos_n": [5, 10], "diferencas": [0.05, 0.5], "simulacoes": 100, "bootstrap": 200}
-ARQUIVOS = ["descritiva", "teste-principal", "comparacoes", "repeticoes", "curva-poder", "diferenca-detectavel", "q3", "pareada"]
+ARQUIVOS = ["descritiva", "teste-principal", "comparacoes", "repeticoes", "curva-poder", "diferenca-detectavel", "q3", "q3-curva-poder", "q3-diferenca-detectavel", "pareada"]
 
 
 @pytest.fixture
@@ -65,6 +65,7 @@ def test_analisar_o_piloto_gera_todas_as_tabelas(cfg):
     assert len(r["curva-poder"]) == 4 * 2 * 6 and len(r["diferenca-detectavel"]) == 2 * 4 * 2
     assert r["diferenca-detectavel"]["analise"].value_counts().to_dict() == {"independente": 8, "pareada": 8}
     assert len(r["q3"]) == 2 * 3 and (r["q3"]["teste"] == "art").all()
+    assert len(r["q3-diferenca-detectavel"]) == 2 * 3 and len(r["q3-curva-poder"]) == 2 * 3 * len(analise.parametros(cfg)["diferencas_q3"])
     assert len(r["pareada"]) == 24 and (r["pareada"]["n_excluidos"] == 0).all() and r["pareada"]["situacao_principal"].notna().all()
 
 

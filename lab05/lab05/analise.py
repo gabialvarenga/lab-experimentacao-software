@@ -16,6 +16,8 @@ Saídas, em `<pasta da coleta>/analise/`:
 | `curva-poder.csv` | Poder de cada comparação na grade de n (variabilidade bruta, cenário do config) |
 | `diferenca-detectavel.csv` | Menor diferença com o poder do config em cada n candidato, por `analise`: `independente` (Mann-Whitney, variabilidade bruta) e `pareada` (Wilcoxon pareado, sem a deriva entre blocos) |
 | `q3.csv` | `q3.analisar` de `ops_s` e `lat_p99_ms`: interação servidor × `io_threads`, uma linha por carga (S02-01) |
+| `q3-curva-poder.csv` | Poder da interação da Q3 em cada carga e para cada R − 1 da grade, com o σ de log da coleta (S02-07) |
+| `q3-diferenca-detectavel.csv` | Menor R − 1 com o poder do config, por métrica e carga (S02-07) |
 | `pareada.csv` | `pareada.comparar` das quatro métricas: Valkey × Redis dentro de cada bloco, sensibilidade (S02-01) |
 | `registro-analise.md` | Comando, parâmetros, hash do CSV de entrada, ambiente e as tabelas principais |
 
@@ -55,6 +57,7 @@ PADROES = {
     "diferencas": [0.05, 0.10, 0.15, 0.20],
     "teste_principal": None,  # sem decisão fixa: a regra 5.1 decide sobre os próprios dados
     "metodo_q3": None,
+    "diferencas_q3": list(q3.DIFERENCAS_DETECTAVEIS),  # R − 1 simulado na diferença detectável da Q3 (S02-07)
 }
 CHAVE_Q3 = 3  # chave do gerador do bootstrap da Q3 (Q3 = pergunta 3)
 VARIANTES = (  # (variabilidade, cenário de Holm): a primeira é a principal
@@ -155,6 +158,11 @@ def analisar(cfg: dict, df: pd.DataFrame | None = None) -> dict:
         [q3.analisar(df, m, metodos_q3.get(m), rng_q3, p["bootstrap"], p["diferenca_relevante"], p["alfa"]) for m in q3.METRICAS],
         ignore_index=True,
     )
+    curva_q3 = pd.concat(
+        [q3.curva_poder_interacao(df, m, None, p["diferencas_q3"], p["simulacoes"], p["alfa"], p["cenario_holm"], cfg["semente"])
+         for m in q3.METRICAS],
+        ignore_index=True,
+    )  # fmt: skip
     refeitas = pareada.ler_refeitas(executor.caminhos(cfg)["falhas"])
     tabela_pareada = pd.concat(
         [pareada.comparar(df, m, refeitas, comparacoes, p["diferenca_relevante"], p["alfa"]) for m in metricas],
@@ -171,6 +179,8 @@ def analisar(cfg: dict, df: pd.DataFrame | None = None) -> dict:
         "curva-poder": curva,
         "diferenca-detectavel": detectavel[["analise", "metrica", "n", "diferenca_detectavel", "poder_no_ponto"]],
         "q3": tabela_q3,
+        "q3-curva-poder": curva_q3,
+        "q3-diferenca-detectavel": q3.diferenca_detectavel_interacao(curva_q3, p["poder"]),
         "pareada": tabela_pareada,
     }
 
@@ -274,7 +284,9 @@ def registro(cfg: dict, resultado: dict, comando: str) -> str:
             grupo = detectavel[(detectavel["metrica"] == metrica) & (detectavel["analise"] == tipo)]
             valores = dict(zip(grupo["n"], grupo["diferenca_detectavel"]))
             linhas.append(f"| `{metrica}` | {tipo} | " + " | ".join(_pct(valores.get(n)) for n in p["candidatos_n"]) + " |")
-    linhas += _registro_q3(resultado["q3"], _aviso_repeticoes(cfg, desc)) + _registro_pareada(resultado["pareada"])
+    linhas += _registro_q3(resultado["q3"], _aviso_repeticoes(cfg, desc))
+    linhas += _registro_q3_detectavel(resultado["q3-diferenca-detectavel"], p)
+    linhas += _registro_pareada(resultado["pareada"])
     return "\n".join(linhas) + "\n"
 
 
@@ -313,6 +325,24 @@ def _registro_q3(tabela: pd.DataFrame, aviso: str) -> list:
             f"{_num(l.p_interacao, 4)} | {_num(l.p_holm, 4)} | {_num(l.eta2_parcial)} | {_num(l.p_sensibilidade, 4)} | "
             f"{'sim' if l.testes_discordam else 'não'} | {l.situacao} |"
         )
+    return linhas
+
+
+def _registro_q3_detectavel(tabela: pd.DataFrame, p: dict) -> list:
+    linhas = [
+        "",
+        f"## Q3: diferença detectável da interação com {_pct(p['poder'], 0)} de poder",
+        "",
+        "ART-ANOVA simulada em cada carga, com o n por célula e o σ de log da coleta (juntando as 4 células). "
+        "Só a célula valkey × io_threads alto é deslocada, de modo que R = 1 + diferença; Holm sobre as 3 cargas, "
+        f"cenário `{p['cenario_holm']}`, {p['simulacoes']} simulações por ponto. Diferenças simuladas: "
+        + ", ".join(_pct(d) for d in p["diferencas_q3"]) + ". \"—\": nenhuma delas basta.",
+        "",
+        "| Métrica | Carga | n por célula | σ de log | R − 1 detectável | Poder nesse ponto |",
+        "|---|---|---|---|---|---|",
+    ]
+    for l in tabela.itertuples():
+        linhas.append(f"| `{l.metrica}` | {l.carga} | {l.n_por_celula} | {_num(l.sigma_log)} | {_pct(l.diferenca_detectavel)} | {_pct(l.poder_no_ponto)} |")
     return linhas
 
 

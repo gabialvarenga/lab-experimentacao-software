@@ -1,8 +1,8 @@
-# Lab05 — Resultados das Q1, Q2 e Q4
+# Lab05 — Resultados das Q1 a Q4
 
-Este documento traz as respostas às perguntas Q1 (vazão), Q2 (latência de cauda) e Q4 (memória) com a coleta completa. As regras usadas são as do [plano de análise](plano-analise.md), seções 5 e 6, e dos adendos de 19/11 e 23/11. A expectativa é a do [cenário](cenario.md), seção 7. Documento da Issue S02-06.
+Este documento traz as respostas às perguntas Q1 (vazão), Q2 (latência de cauda), Q3 (interação servidor × `io_threads`) e Q4 (memória) com a coleta completa. As regras usadas são as do [plano de análise](plano-analise.md), seções 5 e 6, e dos adendos de 19/11 e 23/11. A expectativa é a do [cenário](cenario.md), seção 7. Documento das Issues S02-06 (Q1, Q2 e Q4) e S02-07 (Q3, seção 6).
 
-A Q3 (interação servidor × `io_threads`) fica para a S02-07, e o impacto prático para a S03.
+O impacto prático dos resultados fica para a Sprint 03.
 
 ## 1. Dados e comando
 
@@ -12,7 +12,7 @@ A Q3 (interação servidor × `io_threads`) fica para a S02-07, e o impacto prá
 | SHA-256 do CSV (LF) | `e7ce9d81f951928c63f2ddd14579e659fe18ae91d797cc3d0a55d3e78355234d` |
 | Servidores | Redis 8.10.3 × Valkey 9.1.3 |
 | Comando (a partir de `lab05/`) | `python -m lab05 analisar` (cerca de 4 min, determinístico, semente 42) |
-| Saídas | [`dados/brutos/analise/`](../dados/brutos/analise/): `comparacoes.csv`, `pareada.csv`, `descritiva.csv`, `diferenca-detectavel.csv` e [`registro-analise.md`](../dados/brutos/analise/registro-analise.md) |
+| Saídas | [`dados/brutos/analise/`](../dados/brutos/analise/): `comparacoes.csv`, `pareada.csv`, `descritiva.csv`, `diferenca-detectavel.csv`, `q3.csv`, `q3-curva-poder.csv`, `q3-diferenca-detectavel.csv` e [`registro-analise.md`](../dados/brutos/analise/registro-analise.md) |
 | Figuras | [`apresentacao.html`](../dados/brutos/analise/figuras/apresentacao.html) (S02-05). O G3 mostra as razões desta análise |
 
 ## 2. Como ler as tabelas
@@ -51,7 +51,7 @@ Métrica: `ops_s`, em milhares de operações por segundo.
 
 **Com 4 *threads* de E/S, o Valkey entrega cerca de 62% a 63% mais vazão nas três cargas.** Os IC ficam entre 1,61 e 1,64. As 40 execuções do Valkey superam todas as 40 do Redis (δ = 1), e a diferença é relevante.
 
-Os dois servidores ganham vazão com 4 *threads*, mas em proporções muito diferentes. A pergunta sobre essa interação é a Q3 (S02-07).
+Os dois servidores ganham vazão com 4 *threads*, mas em proporções muito diferentes. A pergunta sobre essa interação é a Q3 (seção 6).
 
 ## 4. Q2 — A latência de cauda difere?
 
@@ -110,7 +110,86 @@ Com 4 *threads* de E/S, os dois servidores usam cerca de 0,53 MiB a mais: 558.80
 
 A carga muda a memória em menos de 0,03 MiB.
 
-## 6. Diferença detectável, recalculada com a coleta completa
+## 6. Q3 — A diferença entre os servidores depende das *threads* de E/S?
+
+Métricas: `ops_s` e `lat_p99_ms`. A Q3 pergunta se passar de 1 para 4 *threads* muda a métrica na mesma proporção nos dois servidores. Em cada carga, o termo de interação servidor × `io_threads` é testado no logaritmo da métrica, com a **ART-ANOVA** (método fixado antes da coleta, adendo de 23/11, item 1). Código em `lab05/q3.py`; resultados em [`q3.csv`](../dados/brutos/analise/q3.csv).
+
+- **R** é a razão das razões: (Valkey com 4 ÷ Valkey com 1) ÷ (Redis com 4 ÷ Redis com 1), calculada nas medianas. R = 1 é "sem interação". O IC de 95% vem de *bootstrap*, com as 4 células reamostradas separadamente.
+- **p Holm:** p da interação ajustado entre as 3 cargas de cada métrica.
+- **η² parcial:** parcela da variância (nos postos da ART) explicada pela interação, dado o resíduo.
+- **Situação:** a mesma regra da seção 2, com R no lugar da razão de medianas: relevante se p Holm < 0,05 e o IC de R inteiro fora de [0,95; 1,05].
+
+### 6.1 Resultado
+
+Vazão (`ops_s`):
+
+| Carga | Valkey 4 ÷ 1 | Redis 4 ÷ 1 | R [IC 95%] | p Holm | η² parcial | Situação |
+|---|---|---|---|---|---|---|
+| set | 2,68 | 1,62 | **1,655** [1,645; 1,664] | 5,2e-49 | 0,755 | diferença relevante |
+| get | 2,68 | 1,64 | **1,630** [1,620; 1,637] | 1,2e-48 | 0,750 | diferença relevante |
+| misto | 2,68 | 1,63 | **1,640** [1,632; 1,649] | 1,2e-48 | 0,751 | diferença relevante |
+
+p99 (`lat_p99_ms`; menor é melhor, então R < 1 significa que as *threads* reduzem mais o p99 do Valkey):
+
+| Carga | Valkey 4 ÷ 1 | Redis 4 ÷ 1 | R [IC 95%] | p Holm | η² parcial | Situação |
+|---|---|---|---|---|---|---|
+| set | 0,487 | 0,810 | **0,602** [0,602; 0,612] | 1,3e-49 | 0,759 | diferença relevante |
+| get | 0,487 | 0,800 | **0,609** [0,609; 0,625] | 2,2e-49 | 0,755 | diferença relevante |
+| misto | 0,491 | 0,801 | **0,613** [0,613; 0,623] | 2,2e-49 | 0,756 | diferença relevante |
+
+**Interpretação.**
+
+**Existe interação, e ela é grande, nas duas métricas e nas três cargas.** A diferença entre os servidores depende do uso de *threads* de E/S.
+
+- **Vazão.** Passar de 1 para 4 *threads* multiplica a vazão do Valkey por cerca de 2,7 (+168%) e a do Redis por cerca de 1,6 (+62% a +64%). O ganho do Valkey é de 1,63 a 1,66 vez o do Redis. Isso é coerente com a Q1: com 1 *thread* os dois servidores empatam na prática (diferença de 0,7% a 1,4%), e com 4 o Valkey fica 62% a 63% acima.
+- **p99.** Com 4 *threads*, o p99 do Valkey cai a cerca de metade do valor com 1 *thread* (−51%), e o do Redis cai a cerca de 80% (−20%). O R de 0,60 a 0,61 diz que a redução do Valkey é bem maior que a do Redis.
+- **Relevância prática.** Os seis R ficam longe de [0,95; 1,05], e nenhum IC se aproxima da faixa. O caso "interação significativa, mas com R dentro da faixa de 5%" não ocorreu.
+- **Concordância.** A ANOVA no log com o bloco (`repeticao`) concorda com a ART em todas as 6 linhas (`testes_discordam` falso). Os p dela (da ordem de 1e-110 a 1e-143) **não devem ser lidos como grandeza**, pelos motivos da seção 6.2: servem só para mostrar que a decisão não depende do método.
+
+**Limites.**
+- **IC do p99.** O limite inferior do IC de R coincide com o próprio R nas três cargas (0,602, 0,609, 0,613). É o efeito dos degraus de 0,008 ms do cliente, descrito na seção 4: as medianas assumem poucos valores, e o *bootstrap* da razão de medianas subestima a incerteza. A conclusão não depende dele, porque R fica a cerca de 40% de 1.
+- **O estudo mede a interação, não a causa.** Ele não mostra por que o Redis ganha menos com 4 *threads*. A explicação do novo modelo de *threads* de E/S do Valkey é uma hipótese ([cenario.md](cenario.md), seção 7), e não um resultado. Se o cliente de carga limitar a vazão do Valkey com 4 *threads* (seção 10), o R real seria **maior** que o medido.
+
+### 6.2 Pressupostos conferidos na coleta completa
+
+A regra 5.1 foi aplicada aos resíduos do modelo de dois fatores no log (log da métrica menos a média da sua célula, por carga), juntados por métrica: 480 resíduos cada. A decisão do método **não é revista**: o adendo de 23/11 fixou a ART-ANOVA, e o `analisar` só registra o que a regra daria ([`registro-analise.md`](../dados/brutos/analise/registro-analise.md)).
+
+| Métrica | Shapiro-Wilk p | Assimetria | Levene p (por carga: get / misto / set) | Regra dá | Usado |
+|---|---|---|---|---|---|
+| `ops_s` | 2,9e-24 | −1,96 | 0,122 / 0,888 / 0,145 | ART-ANOVA (Shapiro-Wilk rejeita; \|assimetria\| > 1) | ART-ANOVA |
+| `lat_p99_ms` | 1,5e-20 | −0,30 | 0,196 / 0,670 / 0,551 | ART-ANOVA (Shapiro-Wilk rejeita) | ART-ANOVA |
+
+- **A regra deu o mesmo método do piloto.** No piloto, o Shapiro-Wilk também rejeitou (p = 0,0035 e 0,0032), com assimetria dentro de ±1. Na coleta a rejeição é muito mais forte, e a `ops_s` passa a ter assimetria forte e negativa: há execuções ocasionais bem mais lentas que a mediana da célula.
+- **Variâncias iguais.** O Levene não rejeita em nenhuma carga (menor p = 0,122 na vazão e 0,196 no p99). O que falha é a forma da distribuição, e não a igualdade das variâncias.
+- **Com o bloco no modelo, a normalidade continua rejeitada.** No piloto, os resíduos da ANOVA com o bloco ficaram normais (p = 0,93 e 0,72), porque a deriva entre blocos era a causa da não normalidade. Aqui o Shapiro-Wilk com o bloco rejeita (p = 3,3e-19 na vazão e 1,8e-18 no p99, assimetria −0,88 e −0,77), e a deriva entre blocos quase não existe: a mediana relativa da `ops_s` por bloco vai de 0,994 a 1,004. A não normalidade da coleta vem das caudas dos próprios resíduos, e não da deriva. A causa das execuções lentas não foi investigada.
+- **Consequência para a sensibilidade.** O caso de borda da issue previa pressupostos da ANOVA violados na coleta completa e não no piloto: ele ocorreu para a ANOVA com bloco. Como o adendo já manda a ART-ANOVA como principal, a análise segue como fixada. A ANOVA com bloco permanece como sensibilidade, com a ressalva de que ela própria viola o pressuposto, e por isso só a **decisão** dela (rejeitar a ausência de interação) é usada.
+
+### 6.3 Diferença detectável da interação
+
+O número de repetições do piloto foi calculado só para as comparações das Q1, Q2 e Q4 ([analise-piloto.md](analise-piloto.md), seção 7). Para a Q3, a simulação de poder foi feita agora, com a variabilidade da coleta completa ([`q3-diferenca-detectavel.csv`](../dados/brutos/analise/q3-diferenca-detectavel.csv) e [`q3-curva-poder.csv`](../dados/brutos/analise/q3-curva-poder.csv)).
+
+**Método** (`q3.curva_poder_interacao`):
+1. Em cada carga, o σ de log é o da coleta, juntando as 4 células (raiz da média das variâncias), com 40 execuções por célula.
+2. As amostras são lognormais. Só a célula Valkey × 4 *threads* é deslocada, de modo que R = 1 + diferença.
+3. A interação é testada com a ART-ANOVA, em 2.000 simulações por ponto, para diferenças de 0,5% a 10%.
+4. Holm entre as 3 cargas, no cenário conservador (só a carga avaliada tem o efeito), como nas comparações das Q1, Q2 e Q4.
+5. A diferença detectável é a menor da grade com poder de pelo menos 80%.
+
+| Métrica | Carga | σ de log | R − 1 detectável com 80% de poder | Poder nesse ponto |
+|---|---|---|---|---|
+| `ops_s` | get | 0,009 | 1,0% | 82,4% |
+| `ops_s` | misto | 0,009 | 1,0% | 82,7% |
+| `ops_s` | set | 0,014 | 1,5% | 80,7% |
+| `lat_p99_ms` | get | 0,012 | 1,5% | 90,1% |
+| `lat_p99_ms` | misto | 0,013 | 1,5% | 87,7% |
+| `lat_p99_ms` | set | 0,017 | 2,0% | 87,8% |
+
+- **A coleta detecta uma interação de 1% a 2%.** O limiar de relevância do plano é 5%, e o poder já é de 100% a partir de 3,5% nas seis linhas ([`q3-curva-poder.csv`](../dados/brutos/analise/q3-curva-poder.csv)). A interação observada (R − 1 de cerca de 60% na vazão, e 1/R − 1 de cerca de 64% no p99) é dezenas de vezes maior que esse limite.
+- **Nenhuma conclusão da Q3 depende de poder.** Não há resultado "inconclusivo" por falta de repetições. Vale o que a seção 7 diz para as outras perguntas: o ruído da coleta ficou bem abaixo do que o piloto previa.
+- **Para o p99, o valor é um limite inferior.** A simulação supõe valores contínuos, e o cliente reporta o p99 em degraus de 0,008 ms (1% a 1,7% do valor nas células com 4 *threads*, perto de 0,47 a 0,8 ms). Uma interação de 1,5% a 2% está, portanto, no limite da resolução do cliente, e a diferença detectável real do p99 não deve ser lida como mais precisa que isso.
+- **Escopo.** A grade de diferenças está em `q3.DIFERENCAS_DETECTAVEIS`, e não no `config.yaml`, porque o arquivo está congelado para a coleta (tag `lab05-coleta-congelada`).
+
+## 7. Diferença detectável, recalculada com a coleta completa
 
 O piloto previa, para 40 repetições e 80% de poder, uma diferença detectável de cerca de 14% na vazão, 13% no p50, 16% no p99 e 5% na memória na análise independente. Na análise pareada, a previsão era de 9%, 8%, 11% e 5% (adendos de 19/11 e 23/11). Com a variabilidade da coleta completa ([`diferenca-detectavel.csv`](../dados/brutos/analise/diferenca-detectavel.csv) e [`repeticoes.csv`](../dados/brutos/analise/repeticoes.csv)), os números passam a ser estes:
 
@@ -131,7 +210,7 @@ O motivo da melhora é a variabilidade:
 
 **Consequência:** nenhuma comparação ficou inconclusiva por falta de repetições. As diferenças de cerca de 1% com 1 *thread* foram detectadas e classificadas como pequenas demais, e não como inconclusivas, como o piloto previa ([analise-piloto.md](analise-piloto.md), seção 6).
 
-## 7. Análise pareada por bloco (sensibilidade)
+## 8. Análise pareada por bloco (sensibilidade)
 
 Os resultados da pareada estão em [`pareada.csv`](../dados/brutos/analise/pareada.csv), com 40 pares por comparação e nenhum excluído (nenhuma execução refeita).
 
@@ -155,7 +234,7 @@ O caso de borda da issue sugeria a deriva entre blocos como causa provável de u
 
 A `lat_p50_ms` é só descritiva, então a discordância não muda a resposta da Q2. A conclusão segue o teste principal, como manda o adendo.
 
-## 8. Expectativa × resultado
+## 9. Expectativa × resultado
 
 A expectativa está no [cenario.md](cenario.md), seção 7, escrita antes da coleta. Os resultados abaixo estão registrados como saíram, sem reescrever a expectativa.
 
@@ -166,16 +245,17 @@ A expectativa está no [cenario.md](cenario.md), seção 7, escrita antes da col
 | Q2, 1 *thread* | p99 sem diferença maior que 5% | Equivalência prática em `get` e `misto`; diferença pequena demais (+1,7%) em `set` | **Confirmada** |
 | Q2, 4 *threads* | p99 igual ou menor no Valkey | Valkey de 38% a 39% menor | **Confirmada**, com diferença grande |
 | Q2, cargas | p99 de `misto` acima do de `get` nos dois servidores | Acima nos dois servidores e nos dois níveis de *threads*, sempre por um degrau de 0,008 ms (comparação só descritiva, sem teste) | **Confirmada**, mas no limite da resolução do cliente |
+| Q3 | Existe interação: os dois ganham vazão com 4 *threads* e o Valkey ganha proporcionalmente mais (R_valkey > R_redis) em `set` e `get` | Interação nas três cargas, na vazão (R de 1,63 a 1,66: Valkey ×2,68, Redis ×1,62 a ×1,64) e no p99 (R de 0,60 a 0,61: Valkey −51%, Redis −20%). Diferença detectável da interação de 1% a 2% | **Confirmada**, inclusive em `misto`, que a expectativa não citava. A magnitude é grande: o ganho do Valkey com 4 *threads* é cerca de 1,6 vez o do Redis. A expectativa não previa o p99, que mostra o mesmo padrão |
 | Q4 | Valkey com 10% a 20% menos memória; a memória não depende de `io_threads` nem da carga | Valkey de 12,5% a 12,9% a menos. A carga quase não muda a memória (< 0,03 MiB); com 4 *threads*, os dois usam cerca de 0,53 MiB a mais | **Confirmada** na diferença entre servidores e na carga. **Não confirmada** quanto a `io_threads`: a memória de cada servidor muda com as *threads*, embora a vantagem do Valkey quase não mude (0,871 → 0,875) |
 
 **Diferenças entre o esperado e o observado:**
 
 - **A diferença com 4 *threads* foi muito maior que a esperada.** Com 4 *threads*, o Redis ganhou de 62% a 64% de vazão sobre 1 *thread*; o Valkey ganhou cerca de 168% (medianas de [`descritiva.csv`](../dados/brutos/analise/descritiva.csv)).
   - Isso combina com o anúncio do novo modelo de *threads* de E/S do Valkey 8 ([cenario.md](cenario.md), seção 7).
-  - O estudo não mede por que o Redis ganha menos. A comparação dos dois ganhos é a Q3.
+  - O estudo não mede por que o Redis ganha menos. A comparação dos dois ganhos é a Q3 (seção 6).
 - **A vantagem pequena do Redis com 1 *thread*.** A expectativa tratava "empate técnico" como ausência de diferença. Com a variabilidade baixa da coleta, uma diferença de cerca de 1% ficou visível. Pela regra do plano, ela continua sem relevância prática.
 
-## 9. Cuidados de leitura
+## 10. Cuidados de leitura
 
 - **A validade vale para este ambiente.** Os resultados valem para uma máquina com Docker sobre WSL2, valores de 100 bytes, 50 conexões, *pipeline* 1 e 100.000 chaves. Os valores absolutos de ops/s e ms não se transferem para outro ambiente; a ordem entre os servidores e as razões são o resultado (plano, seção 8, armadilha 2).
 - **Os tamanhos de efeito padronizados saturam.**
