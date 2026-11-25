@@ -25,7 +25,7 @@ python -m lab05 validar --piloto
 ## Resultado da validação
 
 - **Sem erros**: 60 de 60 execuções gravadas, nenhuma falha, versões 8.10.3 e 9.1.3, `lat_p99_ms` ≥ `lat_p50_ms` em todas, nenhum erro de conexão do cliente.
-- **Tempo total: 59,4 min** (0,99 min por execução). A coleta completa, com 30 repetições (360 execuções), levaria cerca de **6 horas**, como previsto no protocolo.
+- **Tempo total: 59,4 min** (0,99 min por execução). A coleta completa prevista na época, com 30 repetições (360 execuções), levaria cerca de **6 horas**, como previsto no protocolo. A S01-09 fixou 40 repetições (480 execuções, cerca de 8 horas).
 - **31 avisos de coeficiente de variação acima de 10%**, em 21 das 36 combinações de `ops_s`, `lat_p50_ms` e `lat_p99_ms`. A `memoria_bytes` é quase constante (CV máximo de 0,04%).
 
 ## Investigação dos avisos de CV
