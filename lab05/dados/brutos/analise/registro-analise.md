@@ -12,7 +12,7 @@ Gerado por `lab05/analise.py`; não edite à mão. Para refazer, rode o comando 
 | α | 0,05, bicaudal, Holm dentro de cada métrica |
 | *Bootstrap* | 10000 reamostragens |
 | Poder | 80%, 2000 simulações por ponto, cenário de Holm `conservador` |
-| Ambiente | Python 3.14.3, numpy 2.5.2, scipy 1.18.1, pandas 3.0.5, statsmodels 0.15.0 |
+| Ambiente | Python 3.12.10, numpy 2.5.3, scipy 1.18.1, pandas 3.0.6, statsmodels 0.15.0 |
 
 ## Teste principal por métrica (regra 5.1)
 
@@ -107,6 +107,19 @@ Método principal pela regra 5.1 aplicada aos resíduos do modelo de dois fatore
 | `lat_p99_ms` | get | art | 0,609 | [0,609; 0,625] | 0,0000 | 0,0000 | 0,755 | 0,0000 | não | diferença relevante |
 | `lat_p99_ms` | misto | art | 0,613 | [0,613; 0,623] | 0,0000 | 0,0000 | 0,756 | 0,0000 | não | diferença relevante |
 | `lat_p99_ms` | set | art | 0,602 | [0,602; 0,612] | 0,0000 | 0,0000 | 0,759 | 0,0000 | não | diferença relevante |
+
+## Q3: diferença detectável da interação com 80% de poder
+
+ART-ANOVA simulada em cada carga, com o n por célula e o σ de log da coleta (juntando as 4 células). Só a célula valkey × io_threads alto é deslocada, de modo que R = 1 + diferença; Holm sobre as 3 cargas, cenário `conservador`, 2000 simulações por ponto. Diferenças simuladas: 0,5%, 1,0%, 1,5%, 2,0%, 2,5%, 3,0%, 3,5%, 4,0%, 4,5%, 5,0%, 6,0%, 8,0%, 10,0%. "—": nenhuma delas basta.
+
+| Métrica | Carga | n por célula | σ de log | R − 1 detectável | Poder nesse ponto |
+|---|---|---|---|---|---|
+| `lat_p99_ms` | get | 40 | 0,012 | 1,5% | 90,1% |
+| `lat_p99_ms` | misto | 40 | 0,013 | 1,5% | 87,7% |
+| `lat_p99_ms` | set | 40 | 0,017 | 2,0% | 87,8% |
+| `ops_s` | get | 40 | 0,009 | 1,0% | 82,4% |
+| `ops_s` | misto | 40 | 0,009 | 1,0% | 82,7% |
+| `ops_s` | set | 40 | 0,014 | 1,5% | 80,7% |
 
 ## Análise pareada por bloco (sensibilidade)
 

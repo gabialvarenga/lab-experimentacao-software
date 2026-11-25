@@ -23,6 +23,12 @@ alinhada é o resíduo do modelo completo somado à estimativa daquele efeito (p
 marginais); os alinhados são ranqueados (postos médios nos empates) e a ANOVA completa é
 ajustada nos postos, lendo-se só o termo do efeito alinhado. Aqui o alinhamento é feito no log da
 métrica, como a ANOVA: em log, a interação é a razão das razões.
+
+**Diferença detectável da interação** (S02-07, `curva_poder_interacao`): simula a ART-ANOVA da
+interação num delineamento 2 × 2 com `n` execuções por célula, em cada carga, com o σ de log
+observado na coleta (juntando as 4 células da carga). O efeito é a razão das razões R = 1 + `diferenca`
+(só a célula valkey × `io_threads` alto é deslocada); Holm sobre as 3 cargas, no cenário conservador
+(só a carga avaliada tem o efeito), como no adendo de 19/11 para as comparações das Q1, Q2 e Q4.
 """
 
 import warnings
@@ -33,7 +39,7 @@ import statsmodels.formula.api as smf
 from scipy import stats
 from statsmodels.stats.anova import anova_lm
 
-from lab05 import testes
+from lab05 import poder, testes
 
 METRICAS = ["ops_s", "lat_p99_ms"]  # plano de análise, seção 5.2
 METODOS = ("anova", "art")
@@ -43,6 +49,12 @@ TERMOS = {
     "interacao": "C(servidor, Sum):C(io_threads, Sum)",
 }
 SENSIBILIDADE = "anova_bloco"
+# R − 1 simulado na diferença detectável da interação. Fica aqui, e não no `config.yaml`, porque o
+# arquivo está congelado para a coleta (tag `lab05-coleta-congelada`).
+DIFERENCAS_DETECTAVEIS = (0.005, 0.01, 0.015, 0.02, 0.025, 0.03, 0.035, 0.04, 0.045, 0.05, 0.06, 0.08, 0.10)
+CHAVE_PODER = 33  # primeira chave dos geradores desta simulação, distinta das de `poder.py`
+COLUNAS_CURVA_Q3 = ["metrica", "carga", "n", "sigma_log", "diferenca", "n_rep", "rejeicoes", "poder", "ic_inf", "ic_sup"]
+COLUNAS_DETECTAVEL_Q3 = ["metrica", "carga", "n_por_celula", "sigma_log", "diferenca_detectavel", "poder_no_ponto"]
 COLUNAS = [
     "metrica", "carga", "teste", "n_por_celula",
     "mediana_valkey_1", "mediana_valkey_4", "mediana_redis_1", "mediana_redis_4",
@@ -249,3 +261,125 @@ def analisar(
     )
     tabela["situacao"] = [testes.situacao(l.p_holm, l.ic_inf, l.ic_sup, diferenca, alfa) for l in tabela.itertuples()]
     return tabela[COLUNAS]
+
+
+# ---------------------------------------------------------------------------------------------
+# Diferença detectável da interação (S02-07)
+# ---------------------------------------------------------------------------------------------
+
+
+def _p_art_interacao(y: np.ndarray) -> np.ndarray:
+    """p da interação pela ART-ANOVA, vetorizado, para `y` de forma `(n_rep, 4, n)`.
+
+    As 4 células, nesta ordem: valkey × baixo, valkey × alto, redis × baixo, redis × alto, cada
+    uma com `n` execuções (delineamento balanceado). Equivale a `art(...)["interacao"]["p"]` de
+    cada repetição simulada: alinha pela interação, ranqueia (postos médios nos empates) e lê o F
+    da interação nos postos. Devolve NaN onde os postos não têm variação dentro das células.
+    """
+    n = y.shape[2]
+    celula = y.mean(axis=2)  # (n_rep, 4)
+    servidor = np.stack([celula[:, :2].mean(axis=1)] * 2 + [celula[:, 2:].mean(axis=1)] * 2, axis=1)
+    threads = np.stack([celula[:, [0, 2]].mean(axis=1), celula[:, [1, 3]].mean(axis=1)] * 2, axis=1)
+    alinhado = y - servidor[:, :, None] - threads[:, :, None] + celula.mean(axis=1)[:, None, None]
+    postos = stats.rankdata(alinhado.reshape(len(y), -1), axis=1).reshape(y.shape)
+    media = postos.mean(axis=2)
+    contraste = media[:, 0] - media[:, 1] - media[:, 2] + media[:, 3]
+    residual = ((postos - media[:, :, None]) ** 2).sum(axis=(1, 2))
+    gl = 4 * (n - 1)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        f = (n * contraste**2 / 4) / (residual / gl)
+    return np.where(residual > 0, stats.f.sf(f, 1, gl), np.nan)
+
+
+def _p_interacao_simulada(sigmas, n: int, diferenca: float, n_rep: int, rng) -> np.ndarray:
+    """p da interação `(n_rep, m)`, uma coluna por carga; a célula valkey × alto vale 1 + `diferenca`."""
+    p = np.full((n_rep, len(sigmas)), np.nan)
+    for j, sigma in enumerate(sigmas):
+        y = sigma * rng.standard_normal((n_rep, 4, n))
+        y[:, 1, :] += np.log1p(diferenca)
+        p[:, j] = _p_art_interacao(y)
+    return p
+
+
+def poder_interacao(sigmas, n: int, diferenca: float, n_rep: int, rng, alfa: float = testes.ALFA,
+                    cenario: str = "conservador") -> np.ndarray:  # fmt: skip
+    """Rejeições (de `n_rep`) da interação em cada carga, com Holm sobre as cargas.
+
+    `sigmas` é o σ de log de cada carga. No cenário `conservador`, só a carga avaliada tem a
+    razão das razões `1 + diferenca` e as outras não têm interação (o pior caso de Holm); em
+    `todas`, as cargas têm a mesma diferença.
+    """
+    if cenario not in poder.CENARIOS:
+        raise ValueError(f"cenário '{cenario}' desconhecido; use {' ou '.join(poder.CENARIOS)}")
+    com_efeito = _p_interacao_simulada(sigmas, n, diferenca, n_rep, rng)
+    if cenario == "todas":
+        rejeita = testes.holm(com_efeito) < alfa
+    else:
+        sem_efeito = _p_interacao_simulada(sigmas, n, 0.0, n_rep, rng)
+        rejeita = np.zeros_like(com_efeito, dtype=bool)
+        for k in range(len(sigmas)):
+            familia = sem_efeito.copy()
+            familia[:, k] = com_efeito[:, k]
+            rejeita[:, k] = testes.holm(familia)[:, k] < alfa
+    return rejeita.sum(axis=0).astype(int)
+
+
+def sigmas_por_carga(df: pd.DataFrame, metrica: str) -> pd.DataFrame:
+    """σ de log da métrica em cada carga, juntando as 4 células (raiz da média das variâncias).
+
+    Colunas: `carga`, `sigma_log`, `n_por_celula` (o menor n entre as 4 células).
+    """
+    dados = _preparar(df, metrica)
+    linhas = []
+    for carga, grupo in dados.groupby("carga", sort=True):
+        celulas = grupo.groupby(["servidor", "io_threads"])["y"]
+        linhas.append({"carga": carga, "sigma_log": float(np.sqrt(celulas.var(ddof=1).mean())), "n_por_celula": int(celulas.size().min())})
+    return pd.DataFrame(linhas, columns=["carga", "sigma_log", "n_por_celula"])
+
+
+def curva_poder_interacao(
+    df: pd.DataFrame,
+    metrica: str,
+    n: int | None = None,
+    diferencas=DIFERENCAS_DETECTAVEIS,
+    n_rep: int = poder.N_SIMULACOES,
+    alfa: float = testes.ALFA,
+    cenario: str = "conservador",
+    semente: int = poder.SEMENTE_PADRAO,
+) -> pd.DataFrame:
+    """Poder da interação em cada carga e para cada `diferenca` (R − 1): tabela longa de `COLUNAS_CURVA_Q3`.
+
+    `n` é o de execuções por célula (padrão: o menor da coleta). O σ de cada carga vem do `df`
+    (`sigmas_por_carga`). Cada ponto tem o seu gerador, com a chave (`CHAVE_PODER`, posição da
+    métrica, diferença); `ic_inf` e `ic_sup` são o intervalo de Wilson de 95% do poder.
+    """
+    sigmas = sigmas_por_carga(df, metrica)
+    n = int(sigmas["n_por_celula"].min()) if n is None else n
+    indice = METRICAS.index(metrica) if metrica in METRICAS else len(METRICAS)
+    linhas = []
+    for diferenca in diferencas:
+        rng = poder.gerador_da_celula(semente, CHAVE_PODER, indice, poder._chave_diferenca(diferenca))
+        rejeicoes = poder_interacao(sigmas["sigma_log"], n, diferenca, n_rep, rng, alfa, cenario)
+        for carga, quantas in zip(sigmas.itertuples(), rejeicoes):
+            inf, sup = poder.intervalo_wilson(int(quantas), n_rep)
+            linhas.append({
+                "metrica": metrica, "carga": carga.carga, "n": n, "sigma_log": carga.sigma_log, "diferenca": diferenca,
+                "n_rep": n_rep, "rejeicoes": int(quantas), "poder": quantas / n_rep, "ic_inf": inf, "ic_sup": sup,
+            })  # fmt: skip
+    return pd.DataFrame(linhas, columns=COLUNAS_CURVA_Q3)
+
+
+def diferenca_detectavel_interacao(curva: pd.DataFrame, poder_alvo: float = poder.PODER_ALVO) -> pd.DataFrame:
+    """Menor `diferenca` (R − 1) da curva com poder ≥ `poder_alvo`, por métrica e carga.
+
+    Colunas de `COLUNAS_DETECTAVEL_Q3`; `diferenca_detectavel` é NaN se nenhuma da curva basta.
+    """
+    linhas = []
+    for (metrica, carga), grupo in curva.groupby(["metrica", "carga"], sort=True):
+        bastam = grupo[grupo["poder"] >= poder_alvo].sort_values("diferenca")
+        linhas.append({
+            "metrica": metrica, "carga": carga, "n_por_celula": int(grupo["n"].iloc[0]), "sigma_log": float(grupo["sigma_log"].iloc[0]),
+            "diferenca_detectavel": float(bastam["diferenca"].iloc[0]) if len(bastam) else np.nan,
+            "poder_no_ponto": float(bastam["poder"].iloc[0]) if len(bastam) else np.nan,
+        })  # fmt: skip
+    return pd.DataFrame(linhas, columns=COLUNAS_DETECTAVEL_Q3)

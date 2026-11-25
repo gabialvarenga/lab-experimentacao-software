@@ -92,10 +92,11 @@ Grava em `<pasta da coleta>/analise/`:
 | `repeticoes.csv` | Repetições necessárias para 5% com 80% de poder, por métrica, na variabilidade bruta e nas sensibilidades |
 | `curva-poder.csv` e `diferenca-detectavel.csv` | Poder de cada comparação na grade de n e a menor diferença detectável nos n candidatos (`analise`: `independente` ou `pareada`) |
 | `q3.csv` | Q3, por métrica (`ops_s`, `lat_p99_ms`) e carga: interação servidor × `io_threads` pela ART-ANOVA, razão das razões com IC por *bootstrap*, η² parcial, Holm entre as cargas e a ANOVA no log com o bloco como sensibilidade |
+| `q3-curva-poder.csv` e `q3-diferenca-detectavel.csv` | Poder da interação da Q3 em cada carga e a menor razão das razões (R − 1) detectável com 80% de poder, com o σ de log da coleta (S02-07) |
 | `pareada.csv` | Análise pareada por bloco (sensibilidade): Valkey ÷ Redis dentro de cada repetição, Wilcoxon pareado, Hodges-Lehmann com IC exato, Holm e a situação comparada à do teste principal; pares com execução refeita saem |
 | `registro-analise.md` | Comando, parâmetros, hash do CSV de entrada, ambiente e as tabelas principais (determinístico) |
 
-A saída da coleta completa está versionada em `dados/brutos/analise/`, e a interpretação das Q1, Q2 e Q4 (tabelas com Holm, situação de cada comparação, diferença detectável e expectativa × resultado) está em [docs/resultados.md](docs/resultados.md).
+A saída da coleta completa está versionada em `dados/brutos/analise/`, e a interpretação das Q1 a Q4 (tabelas com Holm, situação de cada comparação, a interação da Q3, diferença detectável e expectativa × resultado) está em [docs/resultados.md](docs/resultados.md).
 
 O poder é estimado por simulação com o motor do Lab04 adaptado: amostras lognormais com o σ de log de cada combinação observado na coleta e Holm aplicado à família de 6 comparações em cada repetição simulada. A opção `--simulacoes` troca o número de simulações por ponto, para uma rodada rápida.
 
