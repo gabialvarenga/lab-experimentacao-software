@@ -5,12 +5,15 @@ Subcomandos:
     validar    confere os dados coletados                                   (S01-08)
     analisar   descritiva, testes, tamanhos de efeito e poder               (S01-09)
                Q3 e análise pareada por bloco                               (S02-01)
+    graficos   figuras G1 a G4 e a página de apresentação em HTML           (S02-05)
 """
 
 import argparse
 import sys
 
-from lab05 import analise, config, executor, validacao
+import pandas as pd
+
+from lab05 import analise, config, executor, graficos, validacao
 
 AJUSTES = ("repeticoes", "aquecimento_s", "medicao_s", "pausa_s", "saida", "nome", "piloto")
 
@@ -51,6 +54,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     _opcoes_da_coleta(ana)
     ana.add_argument("--simulacoes", type=int, help="simulações por ponto da curva de poder (padrão: config)")
+    gra = sub.add_parser(
+        "graficos",
+        help="figuras G1 a G4 e a página de apresentação (não precisa do Docker)",
+        description="Lê o CSV de uma coleta e o comparacoes.csv do `analisar` e grava as figuras em HTML "
+        "em <pasta da coleta>/analise/figuras/, com a página apresentacao.html.",
+    )
+    _opcoes_da_coleta(gra)
     return parser
 
 
@@ -63,7 +73,7 @@ def main(argv=None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     cfg = config.carregar(args.config)
-    if args.etapa in ("executar", "validar", "analisar"):
+    if args.etapa in ("executar", "validar", "analisar", "graficos"):
         cfg = executor.aplicar_ajustes(cfg, **{k: getattr(args, k, None) for k in AJUSTES})
     if args.etapa == "executar":
         resumo = executor.executar(cfg)
@@ -79,6 +89,18 @@ def main(argv=None) -> int:
         resultado = analise.analisar(cfg)
         pasta = analise.gravar(cfg, resultado, _comando(sys.argv[1:] if argv is None else argv))
         print(f"análise gravada em {pasta}")
+        return 0
+    if args.etapa == "graficos":
+        df = analise.ler_coleta(cfg)
+        comparacoes_csv = analise.pasta_saida(cfg) / "comparacoes.csv"
+        if not comparacoes_csv.exists():
+            raise SystemExit(f"{comparacoes_csv} não existe: rode o analisar antes (o G3 usa as comparações)")
+        comparacoes = pd.read_csv(comparacoes_csv)
+        csv = executor.caminhos(cfg)["csv"]
+        origem = f"{csv.parent.name}/{csv.name} ({len(df)} execuções)"
+        titulo = "Lab05: Redis × Valkey" + (" (piloto)" if args.piloto else "")
+        caminhos = graficos.exportar(df, comparacoes, analise.pasta_saida(cfg) / "figuras", titulo, origem)
+        print(f"{len(caminhos)} arquivo(s) gravado(s) em {caminhos[0].parent}")
         return 0
     parser.print_help()
     return 0

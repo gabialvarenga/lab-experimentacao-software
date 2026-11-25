@@ -97,6 +97,25 @@ Grava em `<pasta da coleta>/analise/`:
 
 O poder é estimado por simulação com o motor do Lab04 adaptado: amostras lognormais com o σ de log de cada combinação observado na coleta e Holm aplicado à família de 6 comparações em cada repetição simulada. A opção `--simulacoes` troca o número de simulações por ponto, para uma rodada rápida.
 
+### Gráficos
+
+Os gráficos (S02-05) leem o CSV da coleta e o `comparacoes.csv` do `analisar`, então o `analisar` precisa rodar antes. Eles são feitos em Plotly, em `lab05/graficos.py`, e o dashboard (S02-09) usa as mesmas funções.
+
+```bash
+python -m lab05 graficos            # coleta completa
+python -m lab05 graficos --piloto
+```
+
+Grava em `<pasta da coleta>/analise/figuras/`:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `g1.html` | G1: distribuição de cada métrica por combinação (Redis e Valkey lado a lado, um painel por métrica) |
+| `g2.html` | G2: deriva ao longo da coleta (valor ÷ mediana da combinação, por bloco, com a faixa de ±5%) |
+| `g3.html` | G3: razão de medianas Valkey ÷ Redis com IC de 95% por *bootstrap* e faixa de [0,95; 1,05] |
+| `g4.html` | G4: interação servidor × `io_threads` (Q3), medianas com 1 e 4 threads por carga, em escala log |
+| `apresentacao.html` | Página única para apresentar: números de destaque, as quatro figuras e o texto "como ler" de cada uma. Embute o Plotly.js e abre sem internet |
+
 ## Estrutura
 
 ```
@@ -119,7 +138,7 @@ lab05/
         poder.py           # poder e repetições por simulação (origem: motor do Lab04)    (S01-09)
         q3.py              # Q3: interação servidor × io_threads, ART-ANOVA e ANOVA     (S02-01)
         pareada.py         # análise pareada por bloco: Wilcoxon e Hodges-Lehmann       (S02-01)
-        graficos.py        # gráficos em Plotly
+        graficos.py        # gráficos G1 a G4 e página de apresentação (Plotly)          (S02-05)
         app.py             # dashboard interativo em Streamlit
     tests/                 # pytest, um arquivo test_<módulo>.py por módulo
         dados/             # saídas reais gravadas (JSON do cliente, INFO dos servidores) para o parser
